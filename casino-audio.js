@@ -781,6 +781,7 @@
       lucky7:        'LUCKY 7 SALOON',
       craplesscraps: 'CRAPLESS CRAPS',
       plinko:        'PLINKO',
+      rocket:        'ROCKET',
     };
     const GAME_ICON = {
       blackjack:     '♠',
@@ -789,6 +790,7 @@
       lucky7:        '7',
       craplesscraps: '🎲',
       plinko:        '▼',
+      rocket:        '^',
     };
 
     function fmtMoney(n) {

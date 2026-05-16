@@ -4,6 +4,8 @@
 // Model:
 //   /globals/stats           single doc, world-readable, world-incrementable
 //   /recentJackpots/*        world-readable, append-only (auth required)
+//   /rocketRoundCashouts/*   world-readable, append-only cashout dots
+//   /rocketClock/{uid}       owner-only clock sync pings for shared rounds
 //   /users/{uid}             only the owner can read/write their record
 //
 // Unauthenticated visitors can read everything (so the lobby's LIVE
@@ -35,6 +37,30 @@ service cloud.firestore {
         && request.resource.data.player is string
         && request.resource.data.player.size() < 64;
       allow update, delete: if false;
+    }
+
+    // Rocket crash-table cashout dots, scoped by deterministic round id.
+    match /rocketRoundCashouts/{roundId}/cashouts/{id} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.roundId == roundId
+        && request.resource.data.multiplier is number
+        && request.resource.data.multiplier >= 1
+        && request.resource.data.multiplier < 1000
+        && request.resource.data.bet is number
+        && request.resource.data.bet > 0
+        && request.resource.data.bet < 100000000
+        && request.resource.data.payout is number
+        && request.resource.data.payout > 0
+        && request.resource.data.payout < 100000000
+        && request.resource.data.player is string
+        && request.resource.data.player.size() < 64;
+      allow update, delete: if false;
+    }
+
+    // Per-client server-time pings used to align Rocket rounds.
+    match /rocketClock/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
     // Per-user stats: public read (for future leaderboards), owner-only write.

@@ -1019,6 +1019,212 @@ body::after {
 }
 
 /* CRAPS PREVIEW — mini bubble dome with two dice */
+/* ROCKET PREVIEW: crash-table launch curve with a gold rocket */
+.preview.rocket {
+  background:
+    radial-gradient(ellipse at 50% 10%, rgba(255,210,74,0.18), transparent 48%),
+    radial-gradient(ellipse at 77% 20%, rgba(34,211,238,0.26), transparent 42%),
+    radial-gradient(ellipse at 48% 100%, rgba(255,46,147,0.20), transparent 68%),
+    linear-gradient(180deg, #09021e 0%, #17052f 58%, #050116 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.30), inset 0 0 36px rgba(34,211,238,0.10);
+  overflow: hidden;
+}
+.preview.rocket::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 16% 24%, rgba(255,255,255,0.80) 0 1px, transparent 2px),
+    radial-gradient(circle at 34% 18%, rgba(34,211,238,0.62) 0 1px, transparent 2px),
+    radial-gradient(circle at 72% 38%, rgba(255,240,168,0.72) 0 1px, transparent 2px),
+    linear-gradient(90deg, transparent 0 98%, rgba(34,211,238,0.08) 98% 100%);
+  background-size: auto, auto, auto, 28px 28px;
+  opacity: 0.8;
+}
+.preview.rocket .rk-stage {
+  position: relative;
+  z-index: 1;
+  width: min(312px, 96%);
+  height: 154px;
+}
+.preview.rocket .rk-stage::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  bottom: 0;
+  height: 34px;
+  background:
+    linear-gradient(90deg, transparent 0 8%, rgba(34,211,238,0.25) 8% 9%, transparent 9% 100%),
+    linear-gradient(180deg, transparent 0 18%, rgba(3,1,13,0.90) 18% 100%);
+  clip-path: polygon(0 100%, 0 50%, 6% 50%, 6% 18%, 14% 18%, 14% 48%, 21% 48%, 21% 30%, 30% 30%, 30% 100%, 100% 100%, 100% 36%, 92% 36%, 92% 58%, 84% 58%, 84% 24%, 74% 24%, 74% 52%, 64% 52%, 64% 100%);
+  opacity: 0.88;
+}
+.preview.rocket .rk-logo {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 0;
+  text-align: center;
+  line-height: 0.92;
+  pointer-events: none;
+}
+.preview.rocket .rk-logo span {
+  font-family: 'Bungee', cursive;
+  font-size: 8px;
+  letter-spacing: 0.36em;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(34,211,238,0.75);
+}
+.preview.rocket .rk-logo b {
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: 21px;
+  letter-spacing: 0.05em;
+  color: var(--gold-1);
+  text-shadow: 0 0 16px rgba(255,210,74,0.45), 0 2px 0 rgba(0,0,0,0.55);
+}
+.preview.rocket .rk-balance {
+  position: absolute;
+  top: 10px;
+  right: 8px;
+  z-index: 3;
+  padding: 4px 6px 3px;
+  border-radius: 999px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 8px;
+  font-weight: 800;
+  color: #d8ffe8;
+  background: rgba(5,1,16,0.64);
+  box-shadow: inset 0 0 0 1px rgba(92,255,161,0.24);
+}
+.preview.rocket .rk-curve {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 31px;
+  height: 84px;
+  border-bottom: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-radius: 0 0 98% 0 / 0 0 95% 0;
+  transform: skewX(-11deg) rotate(-9deg);
+  background:
+    linear-gradient(#0000, #0000) padding-box,
+    linear-gradient(90deg, var(--neon-cyan), var(--neon-green), var(--gold-1), var(--neon-pink)) border-box;
+  filter: drop-shadow(0 0 16px rgba(34,211,238,0.82)) drop-shadow(0 0 18px rgba(255,46,147,0.38));
+}
+.preview.rocket .rk-curve::after {
+  content: '';
+  position: absolute;
+  right: -17px;
+  bottom: -17px;
+  width: 88px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.88), var(--gold-1), var(--neon-pink));
+  box-shadow: 0 0 22px rgba(255,46,147,0.76), 0 0 18px rgba(255,210,74,0.42);
+}
+.preview.rocket .rk-ship {
+  position: absolute;
+  right: 22px;
+  top: 38px;
+  width: 76px;
+  height: 76px;
+  transform: rotate(24deg);
+  filter: drop-shadow(0 10px 12px rgba(0,0,0,0.44)) drop-shadow(0 0 16px rgba(255,210,74,0.34));
+  animation: rkFloat 1.7s ease-in-out infinite alternate;
+}
+.preview.rocket .rk-body {
+  position: absolute;
+  left: 22px;
+  top: 8px;
+  width: 28px;
+  height: 54px;
+  border-radius: 48% 48% 42% 42%;
+  background: linear-gradient(115deg, #5c3d00, #ffd24a 34%, #fff0a8 56%, #8f5f00);
+  box-shadow: inset 0 0 0 2px rgba(255,240,168,0.55);
+}
+.preview.rocket .rk-body::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: -11px;
+  width: 18px;
+  height: 22px;
+  border-radius: 50% 50% 30% 30%;
+  background: linear-gradient(180deg, #f9fbff, #566077 62%, #151c30);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.preview.rocket .rk-window {
+  position: absolute;
+  left: 7px;
+  top: 18px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #e7fbff, #22d3ee 52%, #07556b);
+  box-shadow: 0 0 9px rgba(34,211,238,0.8), inset 0 0 0 2px #1a0838;
+}
+.preview.rocket .rk-fin {
+  position: absolute;
+  bottom: 3px;
+  width: 18px;
+  height: 22px;
+  background: linear-gradient(180deg, #ff8bc6, #a855f7);
+  border-radius: 4px 4px 12px 12px;
+}
+.preview.rocket .rk-fin.left { left: 10px; transform: rotate(-24deg); }
+.preview.rocket .rk-fin.right { right: 10px; transform: rotate(24deg); }
+.preview.rocket .rk-flame {
+  position: absolute;
+  left: 21px;
+  bottom: -18px;
+  width: 30px;
+  height: 28px;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(255,255,255,0.95), transparent 26%),
+    radial-gradient(ellipse at 50% 36%, rgba(92,255,255,0.92), transparent 48%),
+    radial-gradient(ellipse at 50% 70%, rgba(255,46,147,0.88), transparent 74%);
+  filter: blur(1px);
+  animation: rkFlame 0.12s infinite alternate;
+}
+.preview.rocket .rk-mult {
+  position: absolute;
+  z-index: 3;
+  left: 28px;
+  top: 58px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 17px;
+  font-weight: 800;
+  color: #dffbff;
+  text-shadow: 0 0 12px rgba(34,211,238,0.90);
+}
+.preview.rocket .rk-mult.m2 { left: 108px; top: 72px; color: #d8ffe8; text-shadow: 0 0 12px rgba(92,255,161,0.70); }
+.preview.rocket .rk-mult.m3 { left: 174px; top: 48px; color: #fff0a8; text-shadow: 0 0 12px rgba(255,210,74,0.70); }
+.preview.rocket .rk-dot {
+  position: absolute;
+  z-index: 3;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--neon-green);
+  box-shadow: 0 0 12px rgba(92,255,161,0.90), inset 0 0 0 2px rgba(255,255,255,0.70);
+}
+.preview.rocket .rk-dot.d1 { left: 68px; top: 94px; }
+.preview.rocket .rk-dot.d2 { left: 150px; top: 76px; background: var(--gold-1); box-shadow: 0 0 12px rgba(255,210,74,0.88), inset 0 0 0 2px rgba(255,255,255,0.70); }
+.preview.rocket .rk-dot.d3 { left: 214px; top: 53px; background: var(--neon-pink); box-shadow: 0 0 12px rgba(255,46,147,0.88), inset 0 0 0 2px rgba(255,255,255,0.70); }
+@keyframes rkFloat {
+  0% { transform: rotate(24deg) translateY(0); }
+  100% { transform: rotate(24deg) translateY(-4px); }
+}
+@keyframes rkFlame {
+  0% { transform: scaleY(0.74); opacity: 0.72; }
+  100% { transform: scaleY(1.14); opacity: 1; }
+}
+
 .preview.craps {
   background:
     radial-gradient(ellipse at 50% 50%, rgba(255,210,74,0.14), transparent 65%),
@@ -1316,6 +1522,19 @@ body::after {
   .preview.plinko .pk-peg { width: 5px; height: 5px; }
   .preview.plinko .pk-ball { width: 8px; height: 8px; margin-left: -4px; }
   .preview.plinko .pk-slot { width: 15px; height: 14px; font-size: 7px; }
+  .preview.rocket .rk-stage { width: 154px; height: 102px; }
+  .preview.rocket .rk-logo span { font-size: 6px; letter-spacing: 0.22em; }
+  .preview.rocket .rk-logo b { font-size: 14px; }
+  .preview.rocket .rk-balance { display: none; }
+  .preview.rocket .rk-curve { left: 10px; right: 10px; height: 55px; bottom: 20px; border-bottom-width: 6px; border-right-width: 6px; }
+  .preview.rocket .rk-ship { width: 50px; height: 50px; right: 12px; top: 32px; }
+  .preview.rocket .rk-mult { font-size: 10px; left: 14px; top: 45px; }
+  .preview.rocket .rk-mult.m2 { left: 58px; top: 57px; }
+  .preview.rocket .rk-mult.m3 { left: 94px; top: 38px; }
+  .preview.rocket .rk-dot { width: 7px; height: 7px; }
+  .preview.rocket .rk-dot.d1 { left: 35px; top: 69px; }
+  .preview.rocket .rk-dot.d2 { left: 78px; top: 57px; }
+  .preview.rocket .rk-dot.d3 { left: 112px; top: 40px; }
   @keyframes pkBall {
     0%   { transform: translate(0, -3px);   opacity: 0; animation-timing-function: ease-in; }
     4%   { transform: translate(0, 2px);    opacity: 1; animation-timing-function: cubic-bezier(.4,.0,.55,1); }
@@ -1368,7 +1587,7 @@ body::after {
     </div>
     <div class="live-grid">
       <div class="live-stat spins">
-        <div class="lbl">TOTAL SPINS</div>
+        <div class="lbl">TOTAL BETS</div>
         <div class="val" id="stat-spins">0</div>
       </div>
       <div class="live-stat wagered">
@@ -1376,7 +1595,7 @@ body::after {
         <div class="val" id="stat-wagered">$0</div>
       </div>
       <div class="live-stat won">
-        <div class="lbl">PAID OUT</div>
+        <div class="lbl">TOTAL WON</div>
         <div class="val" id="stat-won">$0</div>
       </div>
       <div class="live-stat jp">
@@ -1495,6 +1714,37 @@ body::after {
       <div class="play-cta">PLAY</div>
     </a>
 
+    <a class="game-card" href="rocket.html">
+      <div class="preview rocket">
+        <div class="rk-stage">
+          <div class="rk-logo"><span>DIAMOND</span><b>ROCKET</b></div>
+          <div class="rk-balance">BAL $1,000</div>
+          <div class="rk-curve"></div>
+          <div class="rk-mult m1">1.62x</div>
+          <div class="rk-mult m2">3.18x</div>
+          <div class="rk-mult m3">8.40x</div>
+          <span class="rk-dot d1"></span>
+          <span class="rk-dot d2"></span>
+          <span class="rk-dot d3"></span>
+          <div class="rk-ship">
+            <span class="rk-fin left"></span>
+            <span class="rk-fin right"></span>
+            <span class="rk-body"><span class="rk-window"></span></span>
+            <span class="rk-flame"></span>
+          </div>
+        </div>
+      </div>
+      <div class="game-title">ROCKET</div>
+      <div class="game-tagline">GLOBAL CRASH TABLE &middot; LIVE DOTS</div>
+      <div class="game-desc">Join the shared launch, cash out before burnout, and watch every player land as a glowing dot on the trail.</div>
+      <div class="game-meta">
+        <span class="meta-pill">GLOBAL</span>
+        <span class="meta-pill">MANUAL FIRST</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
     <a class="game-card" href="blackjack.html">
       <div class="preview blackjack">
         <div class="card-fan">
@@ -1526,6 +1776,88 @@ body::after {
       <div class="play-cta">PLAY</div>
     </a>
 
+    <a class="game-card" href="multihandblackjack.html">
+      <div class="preview blackjack">
+        <div class="card-fan">
+          <div class="pcard black c1">
+            <div class="rank">10<br><span style="font-size: 0.7em">♣</span></div>
+            <div class="suit-center">♣</div>
+            <div class="bot">10<br><span style="font-size: 0.7em">♣</span></div>
+          </div>
+          <div class="pcard red c2">
+            <div class="rank">A<br><span style="font-size: 0.7em">♥</span></div>
+            <div class="suit-center">♥</div>
+            <div class="bot">A<br><span style="font-size: 0.7em">♥</span></div>
+          </div>
+          <div class="pcard black c3">
+            <div class="rank">J<br><span style="font-size: 0.7em">♠</span></div>
+            <div class="suit-center">♠</div>
+            <div class="bot">J<br><span style="font-size: 0.7em">♠</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="game-title">MULTI-HAND BLACKJACK</div>
+      <div class="game-tagline">3 HANDS · ONE DEALER · 3:2</div>
+      <div class="game-desc">Play up to three hands at once. Bet any combo of seats; each plays in turn, dealer plays once. Split still works on any hand.</div>
+      <div class="game-meta">
+        <span class="meta-pill">3 SEATS</span>
+        <span class="meta-pill">3:2 BJ</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="standardcraps.html">
+      <div class="preview craps">
+        <div class="cr-dome">
+          <div class="cr-die">
+            <span class="pip a1"></span>
+            <span class="pip a3"></span>
+            <span class="pip b2"></span>
+            <span class="pip c1"></span>
+            <span class="pip c3"></span>
+          </div>
+          <div class="cr-die">
+            <span class="pip b2"></span>
+          </div>
+        </div>
+      </div>
+      <div class="game-title">BUBBLE CRAPS</div>
+      <div class="game-tagline">STANDARD · 7/11 WINS · 2/3/12 CRAPS</div>
+      <div class="game-desc">The real deal. Vegas-style come-out: naturals win, craps lose, points are 4-5-6-8-9-10. Full pass, odds, place, field, hardways, props and Fire Bet.</div>
+      <div class="game-meta">
+        <span class="meta-pill">STANDARD</span>
+        <span class="meta-pill">BUBBLE</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="easycraps.html">
+      <div class="preview craps">
+        <div class="cr-dome">
+          <div class="cr-die">
+            <span class="pip a1"></span>
+            <span class="pip c3"></span>
+          </div>
+          <div class="cr-die">
+            <span class="pip a1"></span>
+            <span class="pip b2"></span>
+            <span class="pip c3"></span>
+          </div>
+        </div>
+      </div>
+      <div class="game-title">EASY CRAPS</div>
+      <div class="game-tagline">LEARN THE LINE · NO PROPS, NO STRESS</div>
+      <div class="game-desc">A friendlier table. Pass &amp; odds, place 4-5-6-8-9-10, field, hardways. Same rules as standard craps, none of the prop-bet noise.</div>
+      <div class="game-meta">
+        <span class="meta-pill">EASY</span>
+        <span class="meta-pill">BEGINNER</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
     <a class="game-card" href="craplesscraps.html">
       <div class="preview craps">
         <div class="cr-dome">
@@ -1550,7 +1882,6 @@ body::after {
       <div class="game-meta">
         <span class="meta-pill">CRAPLESS</span>
         <span class="meta-pill">BUBBLE</span>
-        <span class="meta-pill hot">NEW</span>
       </div>
       <div class="play-cta">PLAY</div>
     </a>
@@ -1590,7 +1921,7 @@ body::after {
         <div class="email" id="auth-mail"></div>
       </div>
       <div class="auth-personal">
-        <div class="pstat"><div class="lbl">YOUR SPINS</div><div class="val" id="ps-spins">0</div></div>
+        <div class="pstat"><div class="lbl">YOUR BETS</div><div class="val" id="ps-spins">0</div></div>
         <div class="pstat"><div class="lbl">YOUR WAGERED</div><div class="val" id="ps-wagered">$0</div></div>
         <div class="pstat"><div class="lbl">YOU WON</div><div class="val" id="ps-won">$0</div></div>
         <div class="pstat"><div class="lbl">JACKPOTS</div><div class="val" id="ps-jp">0</div></div>
@@ -1762,7 +2093,10 @@ function renderJackpots(list) {
     kraken: "Kraken's Depths",
     lucky7: 'Lucky Seven Saloon',
     blackjack: 'Blackjack',
+    multihandblackjack: 'Multi-Hand Blackjack',
     craplesscraps: 'Crapless Craps',
+    standardcraps: 'Bubble Craps',
+    easycraps:     'Easy Craps',
     plinko: 'Plinko',
   };
   const ago = ts => {

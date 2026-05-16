@@ -62,6 +62,14 @@ window.CasinoStats = {
   subscribeJackpots(fn) { try { fn([]); } catch (e) {} return () => {}; },
 };
 
+window.RocketLive = {
+  configured: false,
+  playerLabel: () => 'Player',
+  syncClock() { return Promise.resolve(0); },
+  subscribeCashouts(roundId, fn) { try { fn([]); } catch (e) {} return () => {}; },
+  recordCashout() { return Promise.resolve(); },
+};
+
 window.CasinoAccount = {
   configured: false,
   onAuthChange(fn) { try { fn(null); } catch (e) {} },
@@ -207,11 +215,98 @@ if (!CONFIGURED) {
         }, () => {});
       }
 
+      function subscribeRocketCashouts(roundId, fn, n = 80) {
+        const rid = String(roundId || '');
+        if (!rid) { try { fn([]); } catch (e) {} return () => {}; }
+        const q = query(collection(db, 'rocketRoundCashouts', rid, 'cashouts'), orderBy('ts', 'desc'), limit(n));
+        return onSnapshot(q, snap => {
+          const list = [];
+          snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+          fn(list);
+        }, () => {});
+      }
+
+      function waitForCurrentUser(timeout = 5000) {
+        if (currentUser) return Promise.resolve(currentUser);
+        return new Promise(resolve => {
+          let done = false;
+          const off = onAuthStateChanged(auth, u => {
+            if (done || !u) return;
+            done = true;
+            try { off(); } catch (e) {}
+            resolve(u);
+          });
+          setTimeout(() => {
+            if (done) return;
+            done = true;
+            try { off(); } catch (e) {}
+            resolve(null);
+          }, timeout);
+        });
+      }
+
+      async function syncRocketClock() {
+        const u = await waitForCurrentUser();
+        if (!u) return 0;
+        const ref = doc(db, 'rocketClock', u.uid);
+        const sentAt = Date.now();
+        await setDoc(ref, { ts: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+        return new Promise(resolve => {
+          let done = false;
+          let off = () => {};
+          const finish = (offset) => {
+            if (done) return;
+            done = true;
+            try { off(); } catch (e) {}
+            resolve(Number.isFinite(offset) ? offset : 0);
+          };
+          off = onSnapshot(ref, snap => {
+            const d = snap.data() || {};
+            if (!d.ts || typeof d.ts.toMillis !== 'function') return;
+            const receivedAt = Date.now();
+            const midpoint = sentAt + (receivedAt - sentAt) / 2;
+            finish(d.ts.toMillis() - midpoint);
+          }, () => finish(0));
+          setTimeout(() => finish(0), 5000);
+        });
+      }
+
+      function recordRocketCashout(data) {
+        data = data || {};
+        const roundId = String(data.roundId || '');
+        if (!roundId) return Promise.resolve();
+        const bet = Number(data.bet) || 0;
+        const payout = Number(data.payout) || 0;
+        const multiplier = Number(data.multiplier) || 0;
+        if (bet <= 0 || payout <= 0 || multiplier <= 0) return Promise.resolve();
+        if (!currentUser) {
+          return waitForCurrentUser().then(u => u ? recordRocketCashout(data) : undefined);
+        }
+        return addDoc(collection(db, 'rocketRoundCashouts', roundId, 'cashouts'), {
+          roundId,
+          bet,
+          payout,
+          multiplier,
+          player: playerLabel(currentUser),
+          uid: currentUser?.uid || null,
+          anonymous: !!currentUser?.isAnonymous,
+          ts: serverTimestamp(),
+        }).catch(() => {});
+      }
+
       window.CasinoStats = {
         configured: true,
         recordRound,
         subscribe,
         subscribeJackpots,
+      };
+
+      window.RocketLive = {
+        configured: true,
+        playerLabel: () => playerLabel(currentUser),
+        syncClock: syncRocketClock,
+        subscribeCashouts: subscribeRocketCashouts,
+        recordCashout: recordRocketCashout,
       };
 
       window.CasinoAccount = {
