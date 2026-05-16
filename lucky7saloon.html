@@ -513,13 +513,13 @@ button { border: 0; cursor: pointer; }
   display: grid;
   grid-auto-rows: var(--spin-cell-h, 48px);
   gap: var(--spin-gap, 6px);
-  transform: translateY(var(--spin-start-y, -1200px));
-  filter: blur(1.15px) saturate(1.24);
-  will-change: transform, opacity, filter;
+  transform: translate3d(0, var(--spin-start-y, -1200px), 0);
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .spin-strip.braking {
-  filter: blur(0.3px) saturate(1.14);
+  transform-style: preserve-3d;
 }
 
 .spin-strip .symbol {
@@ -528,13 +528,7 @@ button { border: 0; cursor: pointer; }
 }
 
 .spin-strip.final-lock .spin-final-symbol {
-  animation: symbolSeat 190ms cubic-bezier(.16,.9,.18,1) both;
-  animation-delay: var(--lock-delay, 0ms);
-}
-
-@keyframes symbolSeat {
-  0% { filter: brightness(1.34); transform: translateY(-3px) scale(1.01); }
-  100% { filter: brightness(1); transform: translateY(0) scale(1); }
+  animation: none;
 }
 
 .spin-token {
@@ -2314,7 +2308,7 @@ button { border: 0; cursor: pointer; }
     const startRows = 30 + reelIndex * 8 + rows * 2;
     const fillerRows = startRows + rows + 4;
     const startY = -Math.round((startRows + 0.42) * step);
-    const duration = 1280 + reelIndex * 220 + rows * 42;
+    const duration = 1640 + reelIndex * 260 + rows * 58;
     strip.style.setProperty('--spin-start-y', startY + 'px');
     strip.dataset.startY = String(startY);
     strip.dataset.step = String(step);
@@ -2342,65 +2336,45 @@ button { border: 0; cursor: pointer; }
     const rows = Number(strip.dataset.rows) || Math.max(1, reelEl.querySelectorAll(':scope > .symbol').length);
     const duration = Number(strip.dataset.duration) || (1300 + reelIndex * 180);
     const startY = Number(strip.dataset.startY) || -Math.round(step * 32);
-    const brakeY = -Math.max(step * (rows + 4.5), step * 9);
-    const nearY = -Math.max(step * 1.08, 24);
-    const tickCount = Math.min(8, rows + 3);
-    const tickStart = Math.max(120, duration - (tickCount * 74 + 150));
+    const landingEase = 'cubic-bezier(.05,.72,.10,1)';
+    const tickCount = Math.min(10, rows + 5);
+    const tickStart = Math.max(160, duration * 0.56);
+    const tickSpan = Math.max(240, duration - tickStart - 90);
 
     for (let tick = 0; tick < tickCount; tick++) {
-      window.setTimeout(() => AudioFX.reelTick(reelIndex, tick), tickStart + tick * 74);
+      const progress = tickCount <= 1 ? 1 : tick / (tickCount - 1);
+      const easedTime = Math.pow(progress, 1.58);
+      window.setTimeout(() => AudioFX.reelTick(reelIndex, tick), tickStart + tickSpan * easedTime);
     }
-    window.setTimeout(() => AudioFX.reelStop(reelIndex), Math.max(0, duration - 24));
+    window.setTimeout(() => AudioFX.reelStop(reelIndex), Math.max(0, duration - 34));
 
     strip.classList.add('braking');
     if (strip.animate) {
       const animation = strip.animate([
         {
-          transform: 'translateY(' + startY + 'px)',
-          filter: 'blur(1.2px) saturate(1.24)',
+          transform: 'translate3d(0,' + startY + 'px,0)',
           offset: 0,
-          easing: 'cubic-bezier(.16,.02,.28,1)',
         },
         {
-          transform: 'translateY(' + Math.round(startY * 0.82) + 'px)',
-          filter: 'blur(1px) saturate(1.24)',
-          offset: 0.12,
-          easing: 'linear',
-        },
-        {
-          transform: 'translateY(' + Math.round(brakeY) + 'px)',
-          filter: 'blur(.62px) saturate(1.16)',
-          offset: 0.78,
-          easing: 'cubic-bezier(.05,.68,.12,1)',
-        },
-        {
-          transform: 'translateY(' + Math.round(nearY) + 'px)',
-          filter: 'blur(.18px) saturate(1.08)',
-          offset: 0.94,
-          easing: 'cubic-bezier(.1,.86,.15,1)',
-        },
-        {
-          transform: 'translateY(0)',
-          filter: 'blur(0) saturate(1)',
+          transform: 'translate3d(0,0,0)',
           offset: 1,
         },
       ], {
         duration,
         fill: 'forwards',
-        easing: 'linear',
+        easing: landingEase,
       });
       try { await animation.finished; } catch (e) {}
     } else {
-      strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.08,.78,.12,1), filter ' + duration + 'ms ease';
-      strip.style.transform = 'translateY(' + startY + 'px)';
+      strip.style.transition = 'transform ' + duration + 'ms ' + landingEase;
+      strip.style.transform = 'translate3d(0,' + startY + 'px,0)';
       void strip.offsetHeight;
-      strip.style.transform = 'translateY(0)';
-      strip.style.filter = 'blur(0) saturate(1)';
+      strip.style.transform = 'translate3d(0,0,0)';
       await sleep(duration);
     }
 
     strip.classList.add('final-lock');
-    await sleep(230 + rows * 28);
+    await sleep(90);
     reelEl.classList.remove('spinning');
     await new Promise(resolve => requestAnimationFrame(resolve));
     if (strip) strip.remove();
