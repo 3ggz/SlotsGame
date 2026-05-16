@@ -588,29 +588,38 @@ function pegTick(velocity) {
   if (!ctx) return;
   const vol = (window.Settings ? Settings.sfxVolume() : 0.85);
   if (vol <= 0.001) return;
+  // Velocity gate — soft glancing hits don't tick. These contribute most
+  // of the chittering when multiple balls are in flight; you don't lose
+  // anything by skipping them since the strong bounces still register.
+  if (velocity < 120) return;
   const now = ctx.currentTime;
-  // Rate-limit to avoid an avalanche of identical clicks on hot frames
-  if (now - lastTickT < 0.012) return;
+  // Hard rate limit (was 12 ms → 45 ms). Across multiple in-flight balls,
+  // collisions cluster; capping at ~22 ticks/sec prevents the avalanche.
+  if (now - lastTickT < 0.045) return;
   lastTickT = now;
 
-  // Map velocity (0..1500ish) → pitch & gain
-  const v = Math.min(1, Math.max(0, velocity / 900));
-  const baseFreq = 1100 + Math.random() * 380 + v * 220;
+  // Map velocity (above the gate) → pitch & gain. Dropped pitch range
+  // from 1100-1700 Hz (piercing chirp) to 480-820 Hz (warm wooden "tok").
+  // Sine instead of triangle removes the harmonic bite.
+  const v = Math.min(1, Math.max(0, (velocity - 120) / 720));
+  const baseFreq = 480 + Math.random() * 160 + v * 180;
 
   const o = ctx.createOscillator();
-  o.type = 'triangle';
+  o.type = 'sine';
   o.frequency.setValueAtTime(baseFreq, now);
-  o.frequency.exponentialRampToValueAtTime(Math.max(180, baseFreq * 0.45), now + 0.05);
+  o.frequency.exponentialRampToValueAtTime(Math.max(110, baseFreq * 0.55), now + 0.04);
 
   const g = ctx.createGain();
-  const peak = 0.04 + v * 0.08;
+  // Quieter overall (peak 0.04-0.12 → 0.012-0.04). Reads as background
+  // wood-on-wood texture, not foreground percussion.
+  const peak = 0.012 + v * 0.030;
   g.gain.setValueAtTime(0.0001, now);
   g.gain.exponentialRampToValueAtTime(peak * vol, now + 0.003);
-  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
 
   o.connect(g).connect(ctx.destination);
   o.start(now);
-  o.stop(now + 0.09);
+  o.stop(now + 0.06);
 }
 function slotThud() {
   const ctx = ensureAudio();
