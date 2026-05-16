@@ -843,8 +843,8 @@ const slotFlash = [];   // parallel to slotXs; each holds a 0..1 fade
 const balls = [];
 const floaters = [];    // { x, y, vy, text, fontSize, color, life, maxLife, isLoss }
 const GRAVITY = 1500;
-const RESTITUTION = 0.55;
-const AIR_DRAG = 0.0007;
+const RESTITUTION = 0.45;   // was 0.55 — was bouncing balls back up too hard
+const AIR_DRAG = 0.0004;    // was 0.0007 — let balls fall through cleanly
 const MAX_BALLS = 50;
 const LAND_FADE_MS = 380; // how long a settled ball stays on screen before removal
 
@@ -1075,19 +1075,17 @@ function step(dt) {
           const overlap = r - d;
           b.x += nx * overlap;
           b.y += ny * overlap;
-          // Reflect velocity, then HARD-DAMP horizontal velocity so each
-          // peg starts a fresh deflection rather than carrying a
-          // sweep. Without this, a few unlucky bounces compound a ball
-          // toward the edge and there it stays — distribution becomes
-          // much wider than binomial and edge slots over-hit massively.
-          // Damping vx ~60% per bounce keeps the random walk tight.
+          // Reflect, damp horizontal sweep, then add a FRESH tangential
+          // kick (post-damp so it isn't reduced). Damp keeps the random
+          // walk tight; the kick guarantees the ball escapes the peg in
+          // one bounce instead of oscillating on top of it.
           const vn = b.vx * nx + b.vy * ny;
           if (vn < 0) {
             b.vx -= (1 + RESTITUTION) * vn * nx;
             b.vy -= (1 + RESTITUTION) * vn * ny;
-            b.vx *= 0.42;                          // <— the centering fix
+            b.vx *= 0.55;                          // less aggressive than 0.42 — gives escape velocity
             const tx = -ny, ty = nx;
-            const j = (Math.random() - 0.5) * 32;  // smaller jitter (was 75)
+            const j = (Math.random() - 0.5) * 60;  // bigger kick so ball clears peg radius in one cycle
             b.vx += tx * j;
             b.vy += ty * j;
             pegTick(Math.hypot(b.vx, b.vy));
