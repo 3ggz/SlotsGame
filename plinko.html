@@ -309,6 +309,15 @@ body::before {
   box-shadow: 0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.45);
   text-shadow: 0 1px 0 rgba(255,255,255,0.3);
 }
+.seg button:disabled,
+.bet-mod:disabled,
+#bet:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.55) brightness(0.78);
+  opacity: 0.55;
+}
+.seg button:disabled:hover,
+.bet-mod:disabled:hover { filter: grayscale(0.55) brightness(0.78); }
 
 /* Bet row */
 .bet-wrap {
@@ -549,7 +558,6 @@ const SFX_PATHS = {
   chipPayout: 'sfx/chip_payout.mp3',
   winChime:   'sfx/win_chime.mp3',
   fanfare:    'sfx/blackjack_fanfare.mp3',
-  loseLow:    'sfx/lose_low.mp3',
 };
 const sfxPool = {};
 Object.entries(SFX_PATHS).forEach(([key, path]) => {
@@ -621,6 +629,28 @@ function pegTick(velocity) {
   o.start(now);
   o.stop(now + 0.06);
 }
+/* Replaces the file SFX `lose_low.mp3` — that sample is jagged and too
+   loud for sub-1× hits, which fire constantly in plinko. A short, soft,
+   descending sine reads as "no win" without abrading the ear. */
+function softLoss() {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const vol = (window.Settings ? Settings.sfxVolume() : 0.85);
+  if (vol <= 0.001) return;
+  const now = ctx.currentTime;
+  const o = ctx.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(240, now);
+  o.frequency.exponentialRampToValueAtTime(150, now + 0.20);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.exponentialRampToValueAtTime(0.05 * vol, now + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+  o.connect(g).connect(ctx.destination);
+  o.start(now);
+  o.stop(now + 0.24);
+}
+
 function slotThud() {
   const ctx = ensureAudio();
   if (!ctx) return;
@@ -814,6 +844,12 @@ function spawnBall(bet) {
     vy: 0,
     r: ballRadius,
     bet: bet,
+    // Snapshot the risk + rows at spawn time. Resolving against the LIVE
+    // state would let a player switch risk mid-flight after seeing where
+    // the ball is heading — pure exploit. Snapshotting closes that door
+    // even before the UI lock is in place.
+    risk: state.risk,
+    rows: N,
     path: path,
     slotIdx: rights,                 // prerolled target slot (0..N)
     deflected: new Array(N).fill(false),
@@ -835,7 +871,7 @@ function settleBall(b) {
   b.landed = true;
   b.landedAt = performance.now();
   slotThud();
-  resolveDrop(idx, b.bet);
+  resolveDrop(idx, b.bet, b.risk, b.rows);
 }
 
 /* Resolve win for a ball that landed in slot `idx` */
@@ -887,8 +923,9 @@ function spawnFloater(slotIdx, mult, bet) {
   });
 }
 
-function resolveDrop(slotIdx, bet) {
-  const mults = MULTIPLIERS[state.rows][state.risk];
+function resolveDrop(slotIdx, bet, risk, rows) {
+  // Use the risk/rows snapshotted at spawn — NOT the live state.
+  const mults = MULTIPLIERS[rows || state.rows][risk || state.risk];
   const mult = mults[slotIdx];
   const winAmt = bet * mult;
   const net = winAmt - bet;
@@ -901,7 +938,7 @@ function resolveDrop(slotIdx, bet) {
   if (mult >= 10)       { playSfx('fanfare', 0.8); playSfx('chipPayout'); }
   else if (mult >= 2)   { playSfx('winChime'); playSfx('chipPayout', 0.7); }
   else if (mult >= 1)   { playSfx('chipPayout', 0.7); }
-  else                  { playSfx('loseLow', 0.55); }
+  else                  { softLoss(); }
 
   // Floater (+$X / -$X) rises out of the slot
   spawnFloater(slotIdx, mult, bet);
@@ -1296,12 +1333,27 @@ function roundRect(c, x, y, w, h, r) {
 
 /* ---------- main loop ---------- */
 let lastT = performance.now();
+let lastLockState = null;
+function ballsInFlight() {
+  for (const b of balls) if (!b.landed) return true;
+  return false;
+}
+function updateControlLocks() {
+  const locked = ballsInFlight();
+  if (locked === lastLockState) return;   // cheap: only touch DOM on edges
+  lastLockState = locked;
+  betInput.disabled = locked;
+  document.querySelectorAll('.bet-mod').forEach(b => b.disabled = locked);
+  document.querySelectorAll('#risk-seg button, #rows-seg button, #auto-seg button')
+    .forEach(b => b.disabled = locked);
+}
 function frame(now) {
   let dt = (now - lastT) / 1000;
   lastT = now;
   if (dt > 0.05) dt = 0.05;   // clamp big tab-switch deltas
   step(dt);
   renderBoard();
+  updateControlLocks();
   // Auto-drop scheduler
   if (state.pendingAuto > 0 && balance >= getBet() && now - state.lastDropTime > 240) {
     triggerDrop(/*fromAuto*/ true);
@@ -1406,10 +1458,10 @@ function triggerDrop(fromAuto) {
     if (balance < bet && state.pendingAuto > 0) {
       state.pendingAuto = 0;
       updateDropBtn();
-      playSfx('loseLow', 0.45);
+      softLoss();
       flashBetInput();
     } else if (balance < bet) {
-      playSfx('loseLow', 0.45);
+      softLoss();
       flashBetInput();
     }
     // Cap-hit case: silently throttle — the scheduler will retry next frame.
