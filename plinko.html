@@ -180,7 +180,7 @@ body::before {
 .board-frame {
   position: relative;
   width: min(560px, 100%);
-  aspect-ratio: 5 / 6;
+  aspect-ratio: 1 / 1;
   border-radius: 22px;
   padding: 12px;
   background:
@@ -702,24 +702,32 @@ function layoutBoard() {
   const N = state.rows;          // 8/12/16
   // Bottom row has N+2 pegs → N+1 slots. Top row has 3 pegs.
   const playMargin = 18;
-  const slotBandH = 60;          // bottom band for slot multipliers
+  const bottomPadding = 8;       // breathing room beneath the chip strip
   pegSpaceX = (LW - 2 * playMargin) / (N + 1);
-  pegSpaceY = pegSpaceX * 0.88;
-
-  topPegY = 56;
-  bottomPegY = topPegY + (N - 1) * pegSpaceY;
-  slotTopY = bottomPegY + pegSpaceY * 0.55;
-  slotBottomY = LH - 6;
-  const requiredH = topPegY + (N - 1) * pegSpaceY + pegSpaceY * 0.55 + slotBandH + 8;
-  if (requiredH > LH) {
-    const scale = (LH - topPegY - slotBandH - 14) / ((N - 1) * pegSpaceY + pegSpaceY * 0.55);
-    pegSpaceY *= scale;
-    bottomPegY = topPegY + (N - 1) * pegSpaceY;
-    slotTopY = bottomPegY + pegSpaceY * 0.55;
-  }
-
   pegRadius  = Math.max(3, pegSpaceX * 0.11);
   ballRadius = Math.max(4, pegSpaceX * 0.30);
+
+  // Chip geometry mirrors render — chip center sits at slotTopY + 22,
+  // height capped at 46. Anchor the chip strip to the bottom of the
+  // canvas so there's no dead band beneath it.
+  const chipH = Math.min(46, pegSpaceX * 1.30);
+  slotTopY = LH - bottomPadding - 22 - chipH / 2;
+  slotBottomY = LH - 4;
+
+  // Pegs: prefer the natural 0.88×pegSpaceX vertical spacing, but stretch
+  // up to a 1:1 cell ratio if the canvas can absorb it (small N), and
+  // compress below natural if the canvas is too short (mobile + N=16).
+  const topMargin = Math.max(24, ballRadius * 3.5);
+  const naturalPegSpaceY = pegSpaceX * 0.88;
+  const maxPegSpaceY     = pegSpaceX * 1.02;
+  const triangleAvail    = slotTopY - topMargin - naturalPegSpaceY * 0.55 - 4;
+  const fillPegSpaceY    = triangleAvail / Math.max(1, N - 1);
+  pegSpaceY = Math.min(maxPegSpaceY, Math.max(naturalPegSpaceY * 0.55, Math.max(naturalPegSpaceY, fillPegSpaceY)));
+  // If natural still doesn't fit (extreme small canvas), force-fit.
+  if ((N - 1) * pegSpaceY > triangleAvail) pegSpaceY = Math.max(naturalPegSpaceY * 0.55, fillPegSpaceY);
+
+  bottomPegY = slotTopY - pegSpaceY * 0.55;
+  topPegY = bottomPegY - (N - 1) * pegSpaceY;
 
   // Build pegs: row r has (r+3) pegs, centered horizontally.
   // Each peg is tagged with its row index — physics uses this to apply
