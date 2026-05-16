@@ -729,6 +729,10 @@ let slotBottomY = 0;     // bottom of the canvas / where balls vanish
 let leftWall  = { ax: 0, ay: 0, bx: 0, by: 0 };
 let rightWall = { ax: 0, ay: 0, bx: 0, by: 0 };
 let wallTopY  = 0;       // upper extent of the angled walls
+// Invisible vertical walls dropping from each bottom-row peg into the chip
+// area — physically seals each slot so a ball can't drift through the gap
+// between the last peg row and the chip strip into the wrong cup.
+let slotDividers = [];   // [{ ax, ay, bx, by }, ...]
 
 function layoutBoard() {
   const N = state.rows;          // 8/12/16
@@ -796,6 +800,22 @@ function layoutBoard() {
                 bx: botOuterX_L - margin, by: slotTopY - 2 };
   rightWall = { ax: (LW - topOuterX_L) + margin, ay: wallTopY,
                 bx: (LW - botOuterX_L) + margin, by: slotTopY - 2 };
+
+  // Slot dividers — vertical segments dropping from just below each
+  // bottom-row peg into the top of the chip strip. With these in place
+  // a ball that's exited the peg array can ONLY fall into the cup that
+  // physically contains its current x position — no more cross-slot drift.
+  slotDividers = [];
+  // Push the divider top well past the peg's bottom so a ball moving
+  // straight down off a peg has time to drift sideways into a slot
+  // column before encountering a divider (otherwise it can pin on the
+  // divider's top endpoint and bounce).
+  const dividerTopY = bottomPegY + pegSpaceY * 0.30;
+  const dividerBotY = slotTopY + 6;                    // a hair into chip face
+  for (let k = 0; k < bottomCount; k++) {
+    const px = bottomStartX + k * pegSpaceX;
+    slotDividers.push({ ax: px, ay: dividerTopY, bx: px, by: dividerBotY });
+  }
 }
 
 function resizeCanvas() {
@@ -959,9 +979,11 @@ function resolveDrop(slotIdx, bet, risk, rows) {
   }
 }
 
-/* Ball collision against an angled wall segment. Two segments per side
-   form a triangular funnel so balls can't slide a straight edge channel. */
-function collideLine(b, ax, ay, bx, by) {
+/* Ball collision against a line segment. Used for the angled outer walls
+   (restitution ~ 0.35) and the invisible slot-divider walls dropped from
+   each bottom-row peg into the chip area (restitution ~ 0.15 so the ball
+   doesn't ricochet back up). */
+function collideLine(b, ax, ay, bx, by, restitution) {
   const dx = bx - ax, dy = by - ay;
   const len2 = dx * dx + dy * dy;
   if (len2 < 1e-6) return;
@@ -979,7 +1001,7 @@ function collideLine(b, ax, ay, bx, by) {
     b.y += ny * overlap;
     const vn = b.vx * nx + b.vy * ny;
     if (vn < 0) {
-      const e = 0.35;       // softer than peg bounce — walls feel inert
+      const e = (typeof restitution === 'number') ? restitution : 0.35;
       b.vx -= (1 + e) * vn * nx;
       b.vy -= (1 + e) * vn * ny;
     }
@@ -1019,6 +1041,16 @@ function step(dt) {
       // Angled wall collisions (left + right funnels)
       collideLine(b, leftWall.ax,  leftWall.ay,  leftWall.bx,  leftWall.by);
       collideLine(b, rightWall.ax, rightWall.ay, rightWall.bx, rightWall.by);
+      // Invisible slot-divider walls (one per bottom-row peg). Low
+      // restitution so balls slide down into the cup instead of pinging
+      // back up. y-band gate is cheap — most balls aren't in the slot
+      // band, so we skip the loop entirely.
+      if (b.y > bottomPegY - b.r && b.y < slotTopY + 12) {
+        for (let di = 0; di < slotDividers.length; di++) {
+          const d = slotDividers[di];
+          collideLine(b, d.ax, d.ay, d.bx, d.by, 0.15);
+        }
+      }
       // Hard outer-canvas safety clamps (catch any escape from numerical drift)
       if (b.x < b.r + 2)        { b.x = b.r + 2;       b.vx = Math.abs(b.vx) * 0.3; }
       else if (b.x > LW - b.r - 2) { b.x = LW - b.r - 2; b.vx = -Math.abs(b.vx) * 0.3; }
