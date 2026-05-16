@@ -1,0 +1,4162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Diamond Deluxe — Hold & Win</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Outfit:wght@400;600;800&family=Geist+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-0: #0a0418;
+  --bg-1: #150828;
+  --bg-2: #1f0d3a;
+  --velvet: #2a0f4d;
+  --gold-0: #fff0a8;
+  --gold-1: #ffd24a;
+  --gold-2: #b8860b;
+  --gold-deep: #5c3d00;
+  --neon-pink: #ff2e93;
+  --neon-cyan: #22d3ee;
+  --neon-violet: #a855f7;
+  --neon-amber: #fb923c;
+  --ice: #e8f4ff;
+  --diamond-pink: #ff6ec7;
+  --diamond-blue: #4cc9ff;
+  --diamond-green: #5cffa1;
+  --diamond-yellow: #ffe066;
+  --diamond-purple: #c084fc;
+  --diamond-red: #ff5a5f;
+  --shadow-deep: 0 30px 60px -10px rgba(0,0,0,0.7), 0 18px 36px -18px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Outfit', sans-serif;
+  color: #fff;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(168,85,247,0.25) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(255,46,147,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(34,211,238,0.08) 0%, transparent 70%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%, var(--bg-0));
+  background-attachment: fixed;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* subtle noise overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>");
+}
+
+/* faint diagonal casino-carpet pattern */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.04;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 22px, rgba(255,210,74,0.4) 22px 23px),
+    repeating-linear-gradient(-45deg, transparent 0 22px, rgba(168,85,247,0.4) 22px 23px);
+}
+
+.stage {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 28px 16px 60px;
+}
+
+/* ---------- CABINET ---------- */
+.cabinet {
+  position: relative;
+  width: min(1080px, 100%);
+  border-radius: 36px;
+  padding: 22px;
+  background:
+    linear-gradient(180deg, #2c1456 0%, #1a0735 50%, #0f041e 100%);
+  box-shadow:
+    var(--shadow-deep),
+    inset 0 0 0 1px rgba(255,210,74,0.15),
+    inset 0 0 40px rgba(34,211,238,0.05);
+}
+
+/* gold filigree double border */
+.cabinet::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 30px;
+  pointer-events: none;
+  padding: 1.5px;
+  background: linear-gradient(135deg,
+    var(--gold-0) 0%,
+    var(--gold-1) 18%,
+    var(--gold-deep) 33%,
+    var(--gold-1) 50%,
+    var(--gold-0) 67%,
+    var(--gold-2) 84%,
+    var(--gold-1) 100%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.85;
+}
+
+/* ---------- TOPPER ---------- */
+.topper {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 18px 22px 22px;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at center top, rgba(255,210,74,0.18) 0%, transparent 60%),
+    linear-gradient(180deg, #1a0838 0%, #0a0319 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    inset 0 0 0 1px rgba(255,210,74,0.18),
+    0 8px 30px rgba(0,0,0,0.4);
+}
+
+.jackpots {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.jackpot {
+  position: relative;
+  padding: 12px 8px 10px;
+  border-radius: 12px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.4));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.06),
+    inset 0 -10px 30px rgba(0,0,0,0.4);
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+
+.jackpot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, var(--jp-glow, transparent) 0%, transparent 60%);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.jackpot[data-tier="MINI"]  { --jp-glow: #5cffa133; --jp-color: #5cffa1; }
+.jackpot[data-tier="MINOR"] { --jp-glow: #4cc9ff33; --jp-color: #4cc9ff; }
+.jackpot[data-tier="MAJOR"] { --jp-glow: #c084fc33; --jp-color: #c084fc; }
+.jackpot[data-tier="GRAND"] { --jp-glow: #ffd24a44; --jp-color: var(--gold-1); }
+
+.jackpot.flash {
+  animation: jpFlash 0.9s ease-out;
+}
+@keyframes jpFlash {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.08); box-shadow: 0 0 0 0 var(--jp-color), inset 0 0 0 2px var(--jp-color); }
+  100% { transform: scale(1); }
+}
+
+.jp-label {
+  font-family: 'Bungee', cursive;
+  font-size: clamp(11px, 1.4vw, 14px);
+  letter-spacing: 0.18em;
+  color: var(--jp-color);
+  text-shadow: 0 0 12px var(--jp-color);
+  margin-bottom: 4px;
+}
+
+.jp-amount {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: clamp(14px, 1.8vw, 19px);
+  color: #fff;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 8px rgba(255,255,255,0.45), 0 0 18px var(--jp-color);
+}
+
+/* TITLE */
+.title-wrap {
+  text-align: center;
+  position: relative;
+  padding-top: 4px;
+}
+.title-main {
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(34px, 5.8vw, 58px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #fff7d1 0%, var(--gold-1) 35%, #b8860b 60%, var(--gold-0) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 4px 0 rgba(0,0,0,0.6)) drop-shadow(0 0 14px rgba(255,210,74,0.35));
+}
+.title-sub {
+  margin-top: 6px;
+  font-family: 'Bungee', cursive;
+  font-size: clamp(11px, 1.4vw, 13px);
+  letter-spacing: 0.45em;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 10px rgba(34,211,238,0.65);
+}
+
+/* ---------- SCREEN (reels area) ---------- */
+.screen {
+  position: relative;
+  border-radius: 28px;
+  padding: 18px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(34,211,238,0.10), transparent 70%),
+    linear-gradient(180deg, #0a0218 0%, #06010f 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,210,74,0.22),
+    inset 0 0 60px rgba(168,85,247,0.10),
+    0 16px 40px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+
+.reels {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  height: 360px;
+}
+
+@media (max-width: 720px) {
+  .reels { height: 280px; }
+}
+
+.reel {
+  position: relative;
+  border-radius: 22px;            /* much rounder, soft pill-ish */
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(168,85,247,0.08), rgba(0,0,0,0.4)),
+    linear-gradient(180deg, #150832 0%, #0a0420 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,210,74,0.14),
+    inset 0 6px 16px rgba(0,0,0,0.55),
+    inset 0 -6px 16px rgba(0,0,0,0.55);
+}
+
+/* top/bottom shading on each reel — taller, softer gradient fade */
+.reel::before,
+.reel::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 42px;
+  z-index: 4;
+  pointer-events: none;
+}
+.reel::before { top: 0;    background: linear-gradient(180deg, rgba(0,0,0,0.65), transparent 90%); }
+.reel::after  { bottom: 0; background: linear-gradient(0deg,   rgba(0,0,0,0.65), transparent 90%); }
+
+.strip {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+
+.symbol {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  font-size: 0;             /* hide text glyph — we draw the gem via ::before */
+  line-height: 1;
+  height: 120px;
+  /* no cell divider — keeps each reel feeling like one smooth column */
+  transition: filter 0.4s ease;
+  perspective: 700px;        /* gives ::before some depth for tilt animations */
+}
+@media (max-width: 720px) {
+  .symbol { height: 93px; }
+}
+
+/* 3D gem renderings — generated via nano-banana, post-processed
+   to transparent PNGs in /images. Each gem is positioned by an
+   ::before pseudo so we can rotate/scale/glow it independently. */
+.symbol::before {
+  content: '';
+  width: 92%;
+  height: 92%;
+  max-width: 110px;
+  max-height: 110px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6));
+  transform-style: preserve-3d;
+  transition: transform 0.35s cubic-bezier(.2,.7,.3,1.2), filter 0.3s;
+  will-change: transform;
+}
+@media (max-width: 720px) {
+  .symbol::before { max-width: 86px; max-height: 86px; }
+}
+
+.sym-heart::before   { background-image: url('images/heart.png'); }
+.sym-clover::before  { background-image: url('images/clover.png'); }
+.sym-star::before    { background-image: url('images/star.png'); }
+.sym-bell::before    { background-image: url('images/bell.png'); }
+.sym-crown::before   { background-image: url('images/crown.png'); }
+.sym-bar::before     { background-image: url('images/bar.png'); }
+.sym-seven::before   { background-image: url('images/seven.png'); }
+.sym-diamond::before {
+  background-image: url('images/diamond.png');
+  animation: diamondPulse 3.2s ease-in-out infinite, diamondHueShift 8s linear infinite;
+  filter: drop-shadow(0 0 16px rgba(34,211,238,0.7)) drop-shadow(0 0 28px rgba(255,46,147,0.35)) drop-shadow(0 4px 10px rgba(0,0,0,0.6));
+}
+
+/* Diamond gently breathes + hue-shifts through casino colors */
+@keyframes diamondPulse {
+  0%, 100% { transform: scale(1) rotateY(0deg); }
+  50%      { transform: scale(1.08) rotateY(8deg); }
+}
+@keyframes diamondHueShift {
+  0%   { filter: drop-shadow(0 0 16px rgba(34,211,238,0.7))  drop-shadow(0 0 28px rgba(255,46,147,0.35)) drop-shadow(0 4px 10px rgba(0,0,0,0.6)) hue-rotate(0deg); }
+  50%  { filter: drop-shadow(0 0 18px rgba(168,85,247,0.7))  drop-shadow(0 0 30px rgba(34,211,238,0.4))  drop-shadow(0 4px 10px rgba(0,0,0,0.6)) hue-rotate(45deg); }
+  100% { filter: drop-shadow(0 0 16px rgba(34,211,238,0.7))  drop-shadow(0 0 28px rgba(255,46,147,0.35)) drop-shadow(0 4px 10px rgba(0,0,0,0.6)) hue-rotate(0deg); }
+}
+
+/* winning symbol pulse — bounces the gem image, animated glow halo behind it */
+.symbol.win::before {
+  animation: symbolWin 0.55s cubic-bezier(.5,0,.3,1.5) infinite alternate;
+  filter:
+    drop-shadow(0 0 18px rgba(255,210,74,0.95))
+    drop-shadow(0 0 30px rgba(255,46,147,0.55))
+    drop-shadow(0 4px 10px rgba(0,0,0,0.6))
+    brightness(1.25) saturate(1.3);
+  z-index: 3;
+}
+.symbol.win {
+  z-index: 3;
+}
+.symbol.win::after {
+  content: '';
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,210,74,0.55), rgba(255,46,147,0.3) 45%, transparent 70%);
+  pointer-events: none;
+  animation: winHalo 0.9s ease-out infinite;
+  z-index: -1;
+}
+@keyframes symbolWin {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.18); }
+  100% { transform: scale(1.08); }
+}
+@keyframes winHalo {
+  0%   { transform: scale(0.6); opacity: 0; }
+  40%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* dim non-winning */
+.symbol.dim { filter: brightness(0.32) saturate(0.35) blur(0.6px); }
+
+/* ---------- PAYLINES OVERLAY ---------- */
+.paylines {
+  position: absolute;
+  top: 16px; left: 16px; right: 16px; bottom: 16px;
+  pointer-events: none;
+  z-index: 5;
+}
+.payline {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+.payline.show {
+  animation: lineFlash 1.6s ease-out forwards;
+}
+@keyframes lineFlash {
+  0%   { opacity: 0; stroke-dasharray: 3000; stroke-dashoffset: 3000; }
+  20%  { opacity: 1; stroke-dashoffset: 0; }
+  60%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---------- CONTROLS ---------- */
+.controls {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr 0.9fr;
+  gap: 14px;
+  align-items: stretch;
+}
+
+@media (max-width: 720px) {
+  .controls {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.panel {
+  position: relative;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.4));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,210,74,0.16),
+    inset 0 -8px 22px rgba(0,0,0,0.45);
+}
+
+.panel-label {
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  color: rgba(255,210,74,0.8);
+  margin-bottom: 6px;
+}
+
+.panel-value {
+  font-family: 'Geist Mono', monospace;
+  font-size: clamp(22px, 2.8vw, 30px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 0 12px rgba(255,255,255,0.25);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel.balance { display: flex; flex-direction: column; }
+.balance-row { display: flex; align-items: center; gap: 8px; }
+.btn-add {
+  margin-left: auto;
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  border: 0;
+  font-family: 'Bungee', cursive;
+  font-size: 18px;
+  cursor: pointer;
+  color: #0a0418;
+  background: linear-gradient(180deg, #5cffa1, #14b85a);
+  box-shadow: 0 4px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.btn-add:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4); }
+.btn-add:hover { filter: brightness(1.08); }
+
+.bet-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bet-btn {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  font-family: 'Bungee', cursive;
+  font-size: 18px;
+  cursor: pointer;
+  background: linear-gradient(180deg, #2a124d, #15082a);
+  color: var(--gold-1);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.3), 0 3px 0 rgba(0,0,0,0.5);
+  transition: transform 0.08s;
+}
+.bet-btn:hover { filter: brightness(1.15); }
+.bet-btn:active { transform: translateY(2px); box-shadow: inset 0 0 0 1px rgba(255,210,74,0.3), 0 1px 0 rgba(0,0,0,0.5); }
+
+.bet-value { flex: 1; text-align: center; }
+
+.win-amount.glow { animation: winPulse 0.8s ease-out; }
+@keyframes winPulse {
+  0%   { transform: scale(1); color: #fff; text-shadow: 0 0 0 transparent; }
+  30%  { transform: scale(1.18); color: var(--gold-0); text-shadow: 0 0 20px var(--gold-1), 0 0 36px var(--neon-pink); }
+  100% { transform: scale(1); color: #fff; }
+}
+
+/* SPIN BUTTON */
+.spin-btn {
+  position: relative;
+  border: 0;
+  border-radius: 18px;
+  cursor: pointer;
+  font-family: 'Bungee', cursive;
+  font-size: clamp(20px, 2.4vw, 26px);
+  letter-spacing: 0.12em;
+  color: #fff;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.55), transparent 50%),
+    linear-gradient(180deg, #ff2e93 0%, #b91a6c 50%, #6a0d3e 100%);
+  box-shadow:
+    0 8px 0 rgba(80,4,40,0.9),
+    0 14px 30px rgba(255,46,147,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.3),
+    inset 0 -6px 16px rgba(0,0,0,0.4);
+  text-shadow: 0 2px 0 rgba(0,0,0,0.5);
+  transition: transform 0.08s, box-shadow 0.08s, filter 0.2s;
+}
+.spin-btn:hover:not(:disabled) {
+  filter: brightness(1.06) saturate(1.1);
+}
+.spin-btn:active:not(:disabled) {
+  transform: translateY(6px);
+  box-shadow:
+    0 2px 0 rgba(80,4,40,0.9),
+    0 6px 14px rgba(255,46,147,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.3),
+    inset 0 -4px 12px rgba(0,0,0,0.4);
+}
+.spin-btn:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.6) brightness(0.6);
+}
+
+.spin-btn.spinning {
+  animation: spinBtnPulse 0.45s ease-in-out infinite alternate;
+}
+@keyframes spinBtnPulse {
+  to {
+    transform: scale(1.04);
+    filter: hue-rotate(-12deg) brightness(1.18) saturate(1.25);
+    box-shadow:
+      0 8px 0 rgba(80,4,40,0.9),
+      0 16px 50px rgba(255,46,147,0.95),
+      0 0 80px rgba(168,85,247,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.4),
+      inset 0 -6px 16px rgba(0,0,0,0.4);
+  }
+}
+.spin-btn.spinning::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 22px;
+  border: 2px solid rgba(255,255,255,0.55);
+  box-shadow:
+    0 0 22px rgba(255,46,147,0.9),
+    inset 0 0 22px rgba(255,210,74,0.5);
+  opacity: 0.85;
+  animation: spinBtnRing 0.5s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes spinBtnRing {
+  from { transform: scale(0.97); opacity: 0.45; }
+  to   { transform: scale(1.05); opacity: 0.95; }
+}
+
+/* ---------- ADD FUNDS MODAL ---------- */
+.modal-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(5,1,15,0.78);
+  backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.modal-veil.show {
+  opacity: 1;
+  pointer-events: all;
+}
+.modal-card {
+  width: min(420px, 92vw);
+  padding: 26px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at top, rgba(168,85,247,0.25), transparent 60%),
+    linear-gradient(180deg, #1c0a3a, #0a0319);
+  box-shadow:
+    var(--shadow-deep),
+    inset 0 0 0 1.5px rgba(255,210,74,0.28);
+  transform: translateY(20px) scale(0.95);
+  transition: transform 0.3s cubic-bezier(.2,.9,.2,1.3);
+}
+.modal-veil.show .modal-card { transform: translateY(0) scale(1); }
+
+.modal-title {
+  font-family: 'Bungee', cursive;
+  font-size: 22px;
+  letter-spacing: 0.1em;
+  color: var(--gold-0);
+  text-shadow: 0 0 12px rgba(255,210,74,0.5);
+  margin-bottom: 4px;
+  text-align: center;
+}
+.modal-sub {
+  font-size: 12px;
+  text-align: center;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.18em;
+  margin-bottom: 18px;
+}
+
+.amount-input-wrap {
+  position: relative;
+  margin-bottom: 14px;
+}
+.amount-input-wrap::before {
+  content: '$';
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Geist Mono', monospace;
+  font-size: 26px;
+  color: var(--gold-1);
+  text-shadow: 0 0 8px rgba(255,210,74,0.5);
+}
+.amount-input {
+  width: 100%;
+  padding: 14px 16px 14px 40px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.5);
+  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.4);
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+.amount-input:focus {
+  box-shadow: inset 0 0 0 1.5px var(--neon-cyan), 0 0 18px rgba(34,211,238,0.4);
+}
+
+.quick-chips {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.quick-chip {
+  padding: 10px 4px;
+  border: 0;
+  border-radius: 10px;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.4));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.2);
+  transition: transform 0.1s, background 0.2s;
+}
+.quick-chip:hover { background: linear-gradient(180deg, rgba(168,85,247,0.25), rgba(0,0,0,0.5)); }
+.quick-chip:active { transform: translateY(2px); }
+
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+}
+.btn {
+  border: 0;
+  padding: 14px;
+  border-radius: 14px;
+  font-family: 'Bungee', cursive;
+  letter-spacing: 0.12em;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.1s, filter 0.15s;
+}
+.btn:active { transform: translateY(2px); }
+.btn-cancel {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.6);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+}
+.btn-cancel:hover { color: #fff; }
+.btn-confirm {
+  background: linear-gradient(180deg, #5cffa1, #14b85a);
+  color: #0a0418;
+  box-shadow: 0 5px 0 #0a4a23, inset 0 1px 0 rgba(255,255,255,0.3);
+}
+.btn-confirm:hover { filter: brightness(1.08); }
+
+/* ---------- RULES MODALS (intro + feature) ---------- */
+.rules-card {
+  max-height: 88vh;
+  overflow-y: auto;
+  width: min(540px, 92vw);
+}
+.rules-card::-webkit-scrollbar { width: 8px; }
+.rules-card::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 4px; }
+.rules-card::-webkit-scrollbar-thumb { background: rgba(255,210,74,0.4); border-radius: 4px; }
+.rules-section {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.28);
+  box-shadow: inset 0 0 0 1px rgba(34,211,238,0.18);
+}
+.rules-section h3 {
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(34,211,238,0.45);
+  margin-bottom: 8px;
+}
+.rules-section p,
+.rules-section li {
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(255,255,255,0.82);
+}
+.rules-section ul { list-style: none; }
+.rules-section li {
+  padding-left: 18px;
+  position: relative;
+  margin-bottom: 4px;
+}
+.rules-section li::before {
+  content: '◆';
+  position: absolute;
+  left: 0;
+  top: 1px;
+  color: var(--gold-1);
+  font-size: 9px;
+}
+.payout-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 16px;
+}
+.payout-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.payout-row .glyph {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  font-family: 'Bungee', cursive;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.payout-row .glyph.scatter-glyph {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 10px rgba(34,211,238,0.6);
+}
+.payout-row .pay {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  color: var(--gold-0);
+  margin-left: auto;
+  text-shadow: 0 0 8px rgba(255,210,74,0.45);
+}
+.payout-row .pay.scatter {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(34,211,238,0.55);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+.dont-show {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 16px;
+  cursor: pointer;
+  user-select: none;
+}
+.dont-show input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--gold-1);
+  cursor: pointer;
+}
+
+/* ---------- BONUS GAME SCREEN ---------- */
+.bonus-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background:
+    radial-gradient(ellipse at center, rgba(34,211,238,0.20), transparent 65%),
+    radial-gradient(ellipse at 20% 100%, rgba(255,46,147,0.25), transparent 60%),
+    radial-gradient(ellipse at 80% 0%, rgba(168,85,247,0.25), transparent 60%),
+    linear-gradient(180deg, #050010, #0c0224 60%, #050010);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: hidden;
+}
+.bonus-stage.show { display: flex; animation: bonusEnter 0.6s ease-out; }
+
+@keyframes bonusEnter {
+  0% { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.bonus-stage::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background:
+    repeating-conic-gradient(from 0deg,
+      rgba(255,210,74,0.04) 0deg 6deg,
+      transparent 6deg 12deg);
+  animation: rayRotate 80s linear infinite;
+  pointer-events: none;
+}
+@keyframes rayRotate { to { transform: rotate(360deg); } }
+
+/* in-feature mini jackpot strip — kept visible during the bonus */
+.bonus-jackpots {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: min(820px, 95%);
+  margin-bottom: 14px;
+}
+.bonus-jp {
+  position: relative;
+  padding: 8px 6px 6px;
+  border-radius: 10px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.5));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.08),
+    inset 0 -8px 18px rgba(0,0,0,0.4);
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+.bonus-jp::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, var(--jp-glow, transparent) 0%, transparent 60%);
+  opacity: 0.45;
+  pointer-events: none;
+}
+.bonus-jp[data-tier="MINI"]  { --jp-glow: #5cffa133; --jp-color: #5cffa1; }
+.bonus-jp[data-tier="MINOR"] { --jp-glow: #4cc9ff33; --jp-color: #4cc9ff; }
+.bonus-jp[data-tier="MAJOR"] { --jp-glow: #c084fc33; --jp-color: #c084fc; }
+.bonus-jp[data-tier="GRAND"] { --jp-glow: #ffd24a44; --jp-color: var(--gold-1); }
+.bonus-jp-label {
+  font-family: 'Bungee', cursive;
+  font-size: clamp(9px, 1.1vw, 11px);
+  letter-spacing: 0.18em;
+  color: var(--jp-color);
+  text-shadow: 0 0 8px var(--jp-color);
+  margin-bottom: 2px;
+}
+.bonus-jp-amount {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: clamp(12px, 1.5vw, 16px);
+  color: #fff;
+  text-shadow: 0 0 8px rgba(255,255,255,0.35), 0 0 14px var(--jp-color);
+}
+.bonus-jp.flash { animation: jpFlash 0.9s ease-out; }
+
+.bonus-header {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  margin-bottom: 18px;
+}
+.bonus-title {
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(28px, 4.5vw, 46px);
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #fff7d1, var(--gold-1) 45%, #b8860b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 4px 0 rgba(0,0,0,0.6)) drop-shadow(0 0 18px rgba(255,210,74,0.45));
+}
+.bonus-sub {
+  font-family: 'Bungee', cursive;
+  letter-spacing: 0.4em;
+  color: var(--neon-cyan);
+  font-size: 12px;
+  text-shadow: 0 0 10px rgba(34,211,238,0.7);
+}
+
+.bonus-board {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  padding: 18px;
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.4)),
+    radial-gradient(ellipse at center, rgba(168,85,247,0.18), transparent 70%);
+  box-shadow:
+    inset 0 0 0 2px rgba(255,210,74,0.32),
+    inset 0 0 60px rgba(34,211,238,0.1),
+    0 30px 80px rgba(0,0,0,0.5);
+  width: min(720px, 100%);
+}
+
+.cell {
+  aspect-ratio: 1;
+  border-radius: 20px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, rgba(0,0,0,0.5), rgba(20,5,45,0.85));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.04),
+    inset 0 4px 12px rgba(0,0,0,0.6);
+}
+
+.cell.locked {
+  background: linear-gradient(180deg, rgba(0,0,0,0.4), rgba(60,5,120,0.4));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,210,74,0.3),
+    inset 0 0 22px rgba(255,210,74,0.15);
+}
+
+.cell .gem {
+  position: relative;
+  width: 84%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,0.6));
+  transform: scale(1);
+  opacity: 1;
+}
+.gem.spawning {
+  animation: gemLand 0.38s cubic-bezier(.22,1.6,.36,1);
+}
+@keyframes gemLand {
+  0%   { transform: translateY(-120px) rotate(-18deg) scale(0); opacity: 0; }
+  50%  { opacity: 1; }
+  70%  { transform: translateY(0) rotate(0) scale(1.18); }
+  100% { transform: translateY(0) rotate(0) scale(1); opacity: 1; }
+}
+
+/* Bonus diamond gems — same 3D rendered image as the reel diamond,
+   color-shifted via hue-rotate per level so the player can tell at a
+   glance which gems are most valuable.                                  */
+
+/* Level 1 (base): cyan diamond — straight image, gentle glow */
+.gem[data-level="1"] .gem-shape {
+  filter: drop-shadow(0 0 8px rgba(76,201,255,0.7)) drop-shadow(0 4px 8px rgba(0,0,0,0.6));
+}
+
+/* Level 2: gold — cyan source rotated ~230° lands on warm amber/gold */
+.gem[data-level="2"] {
+  animation: gemHover 2.6s ease-in-out infinite;
+}
+.gem[data-level="2"].spawning {
+  animation: gemLand 0.38s cubic-bezier(.22,1.6,.36,1);
+}
+.gem[data-level="2"] .gem-shape {
+  filter:
+    hue-rotate(225deg) saturate(1.35) brightness(1.1)
+    drop-shadow(0 0 14px rgba(255,210,74,0.95))
+    drop-shadow(0 0 24px rgba(255,170,40,0.6))
+    drop-shadow(0 4px 8px rgba(0,0,0,0.6));
+}
+
+/* Level 3: gold / rainbow — base hue + animated cycle through the spectrum */
+.gem[data-level="3"] {
+  animation: gemHover 2.2s ease-in-out infinite;
+}
+.gem[data-level="3"].spawning {
+  animation: gemLand 0.38s cubic-bezier(.22,1.6,.36,1);
+}
+.gem[data-level="3"] .gem-shape {
+  animation: gemLvl3Shimmer 3.2s linear infinite;
+}
+@keyframes gemLvl3Shimmer {
+  0%   { filter: hue-rotate(120deg)  saturate(1.5) brightness(1.18) drop-shadow(0 0 16px #ffd24a) drop-shadow(0 0 28px #ff6ec7) drop-shadow(0 4px 8px rgba(0,0,0,0.6)); }
+  100% { filter: hue-rotate(480deg)  saturate(1.5) brightness(1.18) drop-shadow(0 0 16px #ffd24a) drop-shadow(0 0 28px #ff6ec7) drop-shadow(0 4px 8px rgba(0,0,0,0.6)); }
+}
+@keyframes gemHover {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
+.gem-badge {
+  position: absolute;
+  top: -6px;
+  right: -2px;
+  z-index: 3;
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 60%, var(--gold-2));
+  color: #2a0a00;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.5);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+  animation: badgePop 0.4s cubic-bezier(.2,1.7,.3,1);
+}
+@keyframes badgePop {
+  0% { transform: scale(0) rotate(-30deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.gem.upgrading {
+  animation: gemUpgrade 0.6s cubic-bezier(.2,1.5,.3,1);
+}
+@keyframes gemUpgrade {
+  0%   { transform: scale(1); filter: brightness(1); }
+  35%  { transform: scale(1.45) rotate(10deg); filter: brightness(1.8) drop-shadow(0 0 32px var(--gold-1)); }
+  70%  { transform: scale(0.95) rotate(-4deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+/* The actual gem visual — 3D rendered diamond.png centered, colored
+   per level via the hue-rotate filter rules above. */
+.gem-shape {
+  position: absolute;
+  inset: 0;
+  background-image: url('images/diamond.png');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  will-change: filter, transform;
+}
+
+.gem-value {
+  position: relative;
+  z-index: 2;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: clamp(11px, 1.6vw, 16px);
+  color: #fff;
+  text-shadow: 0 0 6px rgba(0,0,0,0.85), 0 2px 0 rgba(0,0,0,0.7);
+  letter-spacing: 0.02em;
+}
+/* Values are hidden during the bonus and revealed sequentially at the end */
+.gem-value.value-hidden {
+  opacity: 0;
+}
+.gem-value.revealing {
+  animation: gemValueReveal 0.45s cubic-bezier(.22,1.5,.36,1) forwards;
+}
+@keyframes gemValueReveal {
+  0%   { opacity: 0; transform: scale(0.4); }
+  55%  { opacity: 1; transform: scale(1.32); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.gem-value.jp {
+  font-family: 'Bungee', cursive;
+  font-size: clamp(9px, 1.2vw, 11px);
+  letter-spacing: 0.1em;
+}
+
+.gem.pulse {
+  animation: gemPulse 0.7s ease-in-out 0.55s 2 alternate;
+}
+@keyframes gemPulse {
+  to { transform: scale(1.08); filter: drop-shadow(0 0 18px var(--gem-color, #fff)); }
+}
+
+.cell.tease {
+  animation: cellTease 0.4s ease-in-out 3 alternate;
+}
+@keyframes cellTease {
+  to { box-shadow:
+    inset 0 0 0 2px var(--neon-cyan),
+    inset 0 0 22px rgba(34,211,238,0.55),
+    0 0 30px rgba(34,211,238,0.5); }
+}
+
+/* ---------- CELL SPINNER (mini slot inside each cell during respin) ---------- */
+.cell-spinner {
+  position: absolute;
+  inset: 4px;
+  overflow: hidden;
+  border-radius: 16px;
+  z-index: 4;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.55), rgba(20,5,50,0.6));
+  box-shadow:
+    inset 0 0 0 1px rgba(34,211,238,0.45),
+    inset 0 5px 10px rgba(0,0,0,0.7),
+    inset 0 -5px 10px rgba(0,0,0,0.7),
+    0 0 14px rgba(34,211,238,0.35);
+  animation: spinnerFadeIn 0.12s ease-out;
+}
+@keyframes spinnerFadeIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+
+.cell-spinner::before,
+.cell-spinner::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 10px;
+  z-index: 3;
+  pointer-events: none;
+}
+.cell-spinner::before { top: 0;    background: linear-gradient(180deg, rgba(0,0,0,0.85), transparent); }
+.cell-spinner::after  { bottom: 0; background: linear-gradient(0deg,   rgba(0,0,0,0.85), transparent); }
+
+.spinner-strip {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  flex-direction: column;
+  animation: stripScroll 0.34s linear infinite;
+  will-change: transform;
+}
+.spinner-slot {
+  width: 100%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.mini-gem {
+  width: 58%;
+  aspect-ratio: 1;
+  clip-path: polygon(50% 0%, 100% 35%, 50% 100%, 0% 35%);
+  background: var(--mc, #fff);
+  filter: drop-shadow(0 0 6px var(--mc, #fff));
+  position: relative;
+}
+.mini-gem::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: inherit;
+  background: linear-gradient(155deg, rgba(255,255,255,0.55) 0%, transparent 38%);
+}
+@keyframes stripScroll {
+  0%   { transform: translateY(-50%); }
+  100% { transform: translateY(0); }
+}
+
+.cell-spinner.stopping {
+  animation: spinnerStop 0.18s cubic-bezier(.4,.2,.5,1) forwards;
+}
+@keyframes spinnerStop {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.78); }
+}
+
+/* upgrade ring for locked cells trying to upgrade */
+.cell.upgrade-spinning {
+  animation: upgradeRing 0.18s steps(2) infinite;
+}
+@keyframes upgradeRing {
+  0% {
+    box-shadow:
+      inset 0 0 0 2px var(--gold-1),
+      inset 0 0 16px rgba(255,210,74,0.35),
+      0 0 22px rgba(255,210,74,0.6);
+  }
+  100% {
+    box-shadow:
+      inset 0 0 0 2px var(--neon-cyan),
+      inset 0 0 16px rgba(34,211,238,0.35),
+      0 0 22px rgba(34,211,238,0.6);
+  }
+}
+
+.bonus-hud {
+  position: relative;
+  z-index: 2;
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  width: min(720px, 100%);
+}
+.hud-card {
+  padding: 12px 14px;
+  border-radius: 14px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.45));
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.22);
+}
+.hud-label {
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: rgba(255,210,74,0.85);
+  margin-bottom: 4px;
+}
+.hud-value {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: clamp(20px, 3vw, 30px);
+  color: #fff;
+}
+
+.respins-value.flash {
+  animation: respinsFlash 0.5s ease-out;
+}
+@keyframes respinsFlash {
+  0%   { color: var(--neon-cyan); transform: scale(1.5); text-shadow: 0 0 20px var(--neon-cyan); }
+  100% { color: #fff; transform: scale(1); }
+}
+
+.bonus-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+}
+.btn-bonus-spin {
+  padding: 16px 36px;
+  border: 0;
+  border-radius: 16px;
+  cursor: pointer;
+  font-family: 'Bungee', cursive;
+  font-size: 18px;
+  letter-spacing: 0.18em;
+  color: #fff;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.5), transparent 50%),
+    linear-gradient(180deg, var(--neon-cyan) 0%, #0a7a99 100%);
+  box-shadow:
+    0 6px 0 rgba(2,40,52,0.9),
+    0 12px 30px rgba(34,211,238,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.4);
+  transition: transform 0.08s;
+}
+.btn-bonus-spin:active:not(:disabled) {
+  transform: translateY(5px);
+  box-shadow: 0 1px 0 rgba(2,40,52,0.9), 0 5px 14px rgba(34,211,238,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+}
+.btn-bonus-spin:disabled { filter: grayscale(0.6) brightness(0.6); cursor: not-allowed; }
+
+.bonus-final {
+  position: absolute;
+  inset: 0;
+  display: none;
+  place-items: center;
+  z-index: 5;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(6px);
+}
+.bonus-final.show { display: grid; }
+.final-card {
+  text-align: center;
+  padding: 32px 40px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at top, rgba(255,210,74,0.3), transparent 60%),
+    linear-gradient(180deg, #1f0843, #050015);
+  box-shadow: var(--shadow-deep), inset 0 0 0 2px rgba(255,210,74,0.4);
+  animation: finalPop 0.6s cubic-bezier(.2,1.6,.3,1);
+}
+@keyframes finalPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.final-label {
+  font-family: 'Bungee', cursive;
+  letter-spacing: 0.35em;
+  color: var(--neon-cyan);
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.final-amount {
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(40px, 8vw, 80px);
+  background: linear-gradient(180deg, #fff7d1, var(--gold-1) 50%, #b8860b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 4px 0 rgba(0,0,0,0.6)) drop-shadow(0 0 18px rgba(255,210,74,0.6));
+  margin-bottom: 18px;
+}
+.btn-collect {
+  padding: 14px 38px;
+  border: 0;
+  border-radius: 14px;
+  font-family: 'Bungee', cursive;
+  letter-spacing: 0.2em;
+  font-size: 16px;
+  cursor: pointer;
+  color: #0a0418;
+  background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 50%, var(--gold-2));
+  box-shadow: 0 6px 0 #3a2200, inset 0 1px 0 rgba(255,255,255,0.45);
+}
+.btn-collect:active { transform: translateY(4px); box-shadow: 0 2px 0 #3a2200, inset 0 1px 0 rgba(255,255,255,0.45); }
+
+/* ---------- BIG WIN OVERLAY ---------- */
+.bigwin {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  place-items: center;
+  background: rgba(5,0,15,0.4);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+.bigwin.show { display: grid; animation: bwIn 0.4s ease-out; }
+@keyframes bwIn { from { opacity: 0; } to { opacity: 1; } }
+
+.bigwin-text {
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(48px, 11vw, 120px);
+  background: linear-gradient(180deg, #fff7d1, var(--gold-1) 50%, var(--neon-pink));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 6px 0 rgba(0,0,0,0.7)) drop-shadow(0 0 28px rgba(255,210,74,0.8));
+  animation: bwBounce 0.6s cubic-bezier(.2,1.7,.3,1);
+}
+@keyframes bwBounce {
+  0% { transform: scale(0.4) rotate(-6deg); }
+  60% { transform: scale(1.15) rotate(2deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.bigwin-amount {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: clamp(28px, 6vw, 60px);
+  color: #fff;
+  text-shadow: 0 0 16px rgba(255,210,74,0.7);
+}
+
+/* ---------- PARTICLES ---------- */
+.particle-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 75;
+  overflow: hidden;
+}
+.particle {
+  position: absolute;
+  width: 14px; height: 14px;
+  border-radius: 4px;
+  opacity: 0;
+  animation: confettiFall 2.2s linear forwards;
+}
+@keyframes confettiFall {
+  0%   { transform: translate(0,0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--tx, 0), var(--ty, 0)) rotate(var(--tr, 0deg)); opacity: 0; }
+}
+
+.coin {
+  position: absolute;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, #fff7d1, var(--gold-1) 55%, #7a5500 100%);
+  box-shadow: 0 0 8px rgba(255,210,74,0.7), inset -2px -3px 4px rgba(0,0,0,0.5);
+  opacity: 0;
+  animation: coinShoot 1.8s cubic-bezier(.2,.7,.4,1) forwards;
+}
+@keyframes coinShoot {
+  0%   { transform: translate(0,0) scale(0.6); opacity: 1; }
+  100% { transform: translate(var(--tx,0), var(--ty,0)) scale(1) rotate(720deg); opacity: 0; }
+}
+
+/* buy-flash: gold/violet pulse over the cabinet when you press BUY */
+.cabinet.buy-flash {
+  animation: buyFlash 0.7s ease-out;
+}
+@keyframes buyFlash {
+  0% {
+    box-shadow:
+      var(--shadow-deep),
+      inset 0 0 0 1px rgba(255,210,74,0.15),
+      inset 0 0 40px rgba(34,211,238,0.05);
+    filter: brightness(1);
+  }
+  30% {
+    box-shadow:
+      var(--shadow-deep),
+      inset 0 0 0 3px var(--gold-1),
+      inset 0 0 80px rgba(255,210,74,0.5),
+      0 0 60px rgba(255,210,74,0.45);
+    filter: brightness(1.18) saturate(1.2);
+  }
+  60% {
+    box-shadow:
+      var(--shadow-deep),
+      inset 0 0 0 3px var(--neon-pink),
+      inset 0 0 80px rgba(255,46,147,0.4),
+      0 0 50px rgba(255,46,147,0.4);
+    filter: brightness(1.1) saturate(1.15);
+  }
+  100% {
+    box-shadow:
+      var(--shadow-deep),
+      inset 0 0 0 1px rgba(255,210,74,0.15),
+      inset 0 0 40px rgba(34,211,238,0.05);
+    filter: brightness(1);
+  }
+}
+
+/* ---------- REEL IMPACT FX ---------- */
+/* Gentle "land" — soft squish + subtle warm flash, no harsh snap */
+.reel.thud {
+  animation: reelThud 0.55s cubic-bezier(.25,.46,.45,.94);
+}
+@keyframes reelThud {
+  0%   { transform: translateY(0) scaleY(1); }
+  35%  { transform: translateY(1.5px) scaleY(0.985); }
+  70%  { transform: translateY(-0.5px) scaleY(1.008); }
+  100% { transform: translateY(0) scaleY(1); }
+}
+.reel.thud::before {
+  background: linear-gradient(180deg, rgba(255,210,74,0.30), transparent 80%) !important;
+  animation: reelFlash 0.55s ease-out;
+}
+@keyframes reelFlash {
+  0%   { opacity: 0; }
+  30%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---------- WIN LIGHT SWEEP (lens flare across the screen) ---------- */
+.screen.win-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(255,255,255,0.55) 50%,
+    rgba(255,210,74,0.35) 56%,
+    transparent 70%);
+  mix-blend-mode: screen;
+  transform: translateX(-100%);
+  animation: winSweep 0.9s cubic-bezier(.4,.1,.5,1) forwards;
+  z-index: 6;
+}
+@keyframes winSweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ---------- BIGWIN SHAKE (lighter than .shake-strong) ---------- */
+.cabinet.win-shake { animation: winShake 0.5s ease-out; }
+@keyframes winShake {
+  0%, 100% { transform: translate3d(0,0,0); }
+  20% { transform: translate3d(-3px, -1px, 0); }
+  40% { transform: translate3d(3px, 1px, 0); }
+  60% { transform: translate3d(-2px, 2px, 0); }
+  80% { transform: translate3d(2px, -2px, 0); }
+}
+
+/* ---------- ANTICIPATION HALO ---------- */
+.screen.antic-pulse {
+  animation: anticPulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes anticPulse {
+  to {
+    box-shadow:
+      inset 0 0 0 2px rgba(255,210,74,0.55),
+      inset 0 0 90px rgba(255,46,147,0.30),
+      0 0 50px rgba(255,210,74,0.45),
+      0 16px 40px rgba(0,0,0,0.5);
+  }
+}
+
+/* SHAKE */
+.shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97); }
+.shake-strong { animation: shake 0.6s cubic-bezier(.36,.07,.19,.97); }
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+/* ---------- BUY BONUS BUTTON ---------- */
+.buy-bonus-btn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+  border: 0;
+  padding: 7px 14px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  line-height: 1.3;
+  text-align: center;
+  color: #2a0a00;
+  background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 60%, var(--gold-2));
+  box-shadow:
+    0 0 18px rgba(255,210,74,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.45),
+    0 3px 0 #3a2200;
+  transition: transform 0.08s, filter 0.15s;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+}
+.buy-bonus-btn .buy-amt {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  display: block;
+  margin-top: 1px;
+  text-shadow: none;
+}
+.buy-bonus-btn:hover:not(:disabled) { filter: brightness(1.1) saturate(1.05); }
+.buy-bonus-btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow:
+    0 0 18px rgba(255,210,74,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.45),
+    0 1px 0 #3a2200;
+}
+.buy-bonus-btn:disabled {
+  filter: grayscale(0.7) brightness(0.6);
+  cursor: not-allowed;
+}
+
+/* ---------- AUTO MODAL ---------- */
+.auto-count-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.auto-count-chip {
+  padding: 18px 4px;
+  border: 0;
+  border-radius: 12px;
+  font-family: 'Bungee', cursive;
+  font-size: 20px;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.5));
+  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.38), 0 3px 0 rgba(0,0,0,0.5);
+  transition: transform 0.1s, background 0.2s, box-shadow 0.2s, color 0.2s;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.4);
+}
+.auto-count-chip:hover {
+  background: linear-gradient(180deg, rgba(34,211,238,0.18), rgba(0,0,0,0.5));
+  box-shadow: 0 0 18px rgba(34,211,238,0.4), inset 0 0 0 1.5px var(--neon-cyan), 0 3px 0 rgba(0,0,0,0.5);
+  color: var(--neon-cyan);
+}
+.auto-count-chip:active { transform: translateY(2px); box-shadow: inset 0 0 0 1.5px var(--neon-cyan), 0 1px 0 rgba(0,0,0,0.5); }
+
+.auto-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  background: rgba(0,0,0,0.45);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.2);
+}
+.toggle-label {
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: rgba(255,255,255,0.7);
+}
+.toggle-switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  display: inline-block;
+  cursor: pointer;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.toggle-knob {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.1);
+  border-radius: 999px;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+}
+.toggle-knob::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.22s cubic-bezier(.2,1.3,.4,1), background 0.2s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+.toggle-switch input:checked + .toggle-knob {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 14px rgba(34,211,238,0.65), inset 0 0 0 1px rgba(34,211,238,0.6);
+}
+.toggle-switch input:checked + .toggle-knob::before {
+  transform: translateX(20px);
+  background: #06181d;
+}
+
+/* ---------- BUY MODAL EXTRAS ---------- */
+.buy-details {
+  background: rgba(0,0,0,0.45);
+  border-radius: 12px;
+  padding: 4px 16px;
+  margin-bottom: 16px;
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.22);
+}
+.buy-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 0;
+}
+.buy-row + .buy-row {
+  border-top: 1px dashed rgba(255,255,255,0.1);
+}
+.buy-row > span:first-child {
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+}
+.buy-row > span:last-child {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  color: #fff;
+  font-size: 16px;
+}
+.buy-row .cost {
+  color: var(--gold-1);
+  text-shadow: 0 0 12px rgba(255,210,74,0.55);
+  font-size: 22px;
+}
+
+.buy-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.buy-features li {
+  position: relative;
+  padding-left: 22px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  color: rgba(255,255,255,0.75);
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+}
+.buy-features li::before {
+  content: '◆';
+  position: absolute;
+  left: 0;
+  top: 1px;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px var(--neon-cyan);
+}
+
+.btn-buy {
+  background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 50%, var(--gold-2));
+  color: #2a0a00;
+  box-shadow: 0 5px 0 #3a2200, inset 0 1px 0 rgba(255,255,255,0.4);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+}
+.btn-buy:hover:not(:disabled) { filter: brightness(1.08); }
+.btn-buy:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 2px 0 #3a2200, inset 0 1px 0 rgba(255,255,255,0.4); }
+.btn-buy:disabled {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.3);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+  text-shadow: none;
+  cursor: not-allowed;
+}
+
+/* ---------- ODDS BOOSTER ---------- */
+.boost-toggle {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 10;
+  border: 0;
+  padding: 8px 14px 7px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: rgba(255,255,255,0.72);
+  background: linear-gradient(180deg, #2a124d, #15082a);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(168,85,247,0.4),
+    0 3px 0 rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  transition: transform 0.08s, color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.boost-toggle .boost-bolt {
+  font-size: 13px;
+  color: var(--neon-violet);
+  text-shadow: 0 0 8px var(--neon-violet);
+  transition: color 0.2s, text-shadow 0.2s;
+}
+.boost-toggle:hover:not(.on) { filter: brightness(1.15); color: #fff; }
+.boost-toggle:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 0 0 1.5px rgba(168,85,247,0.4), 0 1px 0 rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.boost-toggle:disabled {
+  filter: grayscale(0.5) brightness(0.55);
+  cursor: not-allowed;
+}
+.boost-toggle.on {
+  color: #fff;
+  background: linear-gradient(180deg, var(--neon-pink) 0%, #b91a6c 60%, #6a0d3e 100%);
+  box-shadow:
+    0 0 24px rgba(255,46,147,0.7),
+    inset 0 1px 0 rgba(255,255,255,0.45),
+    0 3px 0 rgba(50,5,30,0.65);
+  text-shadow: 0 0 12px rgba(255,255,255,0.5);
+  animation: boostPulse 0.9s ease-in-out infinite alternate;
+}
+.boost-toggle.on .boost-bolt {
+  color: var(--gold-1);
+  text-shadow: 0 0 10px var(--gold-1), 0 0 18px #fff;
+}
+@keyframes boostPulse {
+  from { filter: brightness(1) saturate(1); }
+  to   { filter: brightness(1.18) saturate(1.25); }
+}
+
+/* ---------- AUTO-SPIN BUTTON ---------- */
+.auto-corner {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  padding: 9px 16px 8px;
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--gold-1);
+  background: linear-gradient(180deg, #2a124d, #15082a);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,210,74,0.35),
+    0 3px 0 rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  transition: transform 0.08s, color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.auto-corner::before {
+  content: '';
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  opacity: 0.5;
+}
+.auto-corner:hover:not(.on) { filter: brightness(1.18); }
+.auto-corner:active { transform: translateY(2px); box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 1px 0 rgba(0,0,0,0.6); }
+
+.auto-corner.on {
+  color: #06181d;
+  background: linear-gradient(180deg, var(--neon-cyan), #0e7a99);
+  box-shadow:
+    0 0 22px rgba(34,211,238,0.65),
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    0 3px 0 rgba(0,30,50,0.6);
+  animation: autoBtnPulse 0.9s ease-in-out infinite alternate;
+}
+.auto-corner.on::before { opacity: 1; }
+@keyframes autoBtnPulse {
+  from { filter: brightness(1); }
+  to   { filter: brightness(1.18) saturate(1.2); }
+}
+
+/* anticipation veil */
+.anticipation {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at center, rgba(255,46,147,0.16), transparent 70%);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 6;
+  transition: opacity 0.4s;
+}
+.anticipation.on { opacity: 1; animation: anticipPulse 0.7s ease-in-out infinite alternate; }
+@keyframes anticipPulse {
+  to { background: radial-gradient(circle at center, rgba(34,211,238,0.22), transparent 70%); }
+}
+
+/* ---------- BONUS REVEAL ---------- */
+.bonus-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 88;
+  display: none;
+  place-items: center;
+  background: radial-gradient(ellipse at center, rgba(34,211,238,0.40), rgba(0,0,0,0.94) 70%);
+  overflow: hidden;
+}
+.bonus-reveal.show {
+  display: grid;
+  animation: revealFade 0.5s ease-out;
+}
+.bonus-reveal.hide { animation: revealOut 0.5s ease-in forwards; }
+@keyframes revealFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes revealOut { from { opacity: 1; } to { opacity: 0; } }
+
+.reveal-rays {
+  position: absolute;
+  inset: -50%;
+  z-index: 1;
+  background:
+    conic-gradient(from 0deg,
+      rgba(255,210,74,0.18) 0deg 6deg,
+      transparent 6deg 18deg);
+  animation: rayRotate 16s linear infinite, raysIn 0.6s ease-out;
+  pointer-events: none;
+}
+@keyframes raysIn { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+
+.reveal-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+.reveal-pre {
+  font-family: 'Bungee', cursive;
+  font-size: clamp(13px, 1.8vw, 18px);
+  letter-spacing: 0.6em;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 16px var(--neon-cyan), 0 0 32px rgba(34,211,238,0.6);
+  margin-bottom: 14px;
+  opacity: 0;
+  animation: revealPreIn 0.5s 0.2s cubic-bezier(.2,1.4,.3,1) forwards;
+}
+@keyframes revealPreIn {
+  from { transform: translateY(-20px); opacity: 0; letter-spacing: 1.4em; }
+  to   { transform: translateY(0); opacity: 1; letter-spacing: 0.6em; }
+}
+.reveal-title {
+  font-family: 'Bungee Shade', cursive;
+  font-size: clamp(40px, 9vw, 110px);
+  line-height: 0.96;
+  background: linear-gradient(180deg, #fff7d1 0%, var(--gold-1) 45%, #b8860b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 6px 0 rgba(0,0,0,0.6)) drop-shadow(0 0 36px rgba(255,210,74,0.65));
+  opacity: 0;
+  transform: scale(0.4) rotate(-6deg);
+  animation: revealTitleIn 0.9s 0.5s cubic-bezier(.2,1.7,.25,1) forwards;
+}
+@keyframes revealTitleIn {
+  0%   { opacity: 0; transform: scale(0.4) rotate(-8deg); }
+  60%  { opacity: 1; transform: scale(1.12) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+.reveal-post {
+  font-family: 'Bungee', cursive;
+  font-size: clamp(11px, 1.4vw, 14px);
+  letter-spacing: 0.32em;
+  color: var(--gold-0);
+  text-shadow: 0 0 12px rgba(255,210,74,0.5);
+  margin-top: 18px;
+  opacity: 0;
+  animation: revealPostIn 0.4s 1.3s ease-out forwards;
+}
+@keyframes revealPostIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+/* trigger pulse on diamond symbols when bonus is detected */
+.symbol.trigger {
+  animation: triggerPulse 0.32s ease-in-out 4 alternate;
+  filter: brightness(1.7) saturate(1.4);
+  z-index: 3;
+}
+@keyframes triggerPulse {
+  to { transform: scale(1.32); }
+}
+
+/* auto-spin status badge */
+.auto-status {
+  font-family: 'Bungee', cursive;
+  letter-spacing: 0.25em;
+  font-size: 12px;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 12px rgba(34,211,238,0.7);
+  padding: 14px 28px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(20,5,60,0.55));
+  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.35);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.auto-status::before {
+  content: '';
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--neon-cyan);
+  box-shadow: 0 0 12px var(--neon-cyan);
+  animation: autoPulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes autoPulse {
+  from { opacity: 0.3; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1.2); }
+}
+
+/* lobby back button */
+.lobby-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px 8px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--gold-1);
+  background: linear-gradient(180deg, rgba(42,18,77,0.85), rgba(15,4,30,0.85));
+  backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,210,74,0.35),
+    0 3px 0 rgba(0,0,0,0.5);
+  transition: transform 0.1s, filter 0.15s;
+}
+.lobby-link::before {
+  content: '←';
+  font-size: 14px;
+}
+.lobby-link:hover { filter: brightness(1.15); }
+.lobby-link:active { transform: translateY(2px); }
+
+/* HISTORY BUTTON — sits right of lobby link */
+.history-btn {
+  position: fixed;
+  top: 12px; left: 116px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px 8px;
+  border: 0;
+  border-radius: 12px;
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  color: var(--neon-cyan);
+  background: linear-gradient(180deg, rgba(42,18,77,0.85), rgba(15,4,30,0.85));
+  backdrop-filter: blur(8px);
+  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.4), 0 3px 0 rgba(0,0,0,0.5);
+  transition: transform 0.1s, filter 0.15s;
+}
+.history-btn::before { content: '⌛'; font-size: 12px; line-height: 1; }
+.history-btn:hover { filter: brightness(1.15); }
+.history-btn:active { transform: translateY(2px); }
+
+@media (max-width: 720px) {
+  .lobby-link { top: 8px; left: 8px; padding: 7px 12px 6px; font-size: 10px; letter-spacing: 0.16em; }
+  .history-btn { top: 8px; left: 86px; padding: 7px 10px 6px; font-size: 9px; letter-spacing: 0.12em; }
+  .history-btn::before { font-size: 10px; }
+}
+
+/* footnote */
+.footnote {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  color: rgba(255,255,255,0.35);
+  font-family: 'Bungee', cursive;
+}
+
+/* =========================================================
+   MOBILE LAYOUT
+   ========================================================= */
+@media (max-width: 720px) {
+  .stage { padding: 10px 6px 28px; }
+  .cabinet { padding: 12px; border-radius: 18px; }
+  .cabinet::before { inset: 6px; border-radius: 14px; }
+
+  .topper { padding: 12px 12px 14px; margin-bottom: 10px; border-radius: 14px; }
+  .jackpots { gap: 6px; margin-bottom: 6px; }
+  .jackpot { padding: 8px 4px 7px; border-radius: 10px; }
+  .jp-label { font-size: 9px; letter-spacing: 0.12em; }
+  .jp-amount { font-size: 12px; }
+  .title-main { font-size: clamp(26px, 8.5vw, 42px); }
+  .title-sub { font-size: 9px; letter-spacing: 0.32em; }
+
+  .screen { padding: 12px; border-radius: 14px; }
+  .reels { gap: 6px; height: 240px; }
+  .symbol { height: 80px; }
+  .paylines { top: 12px; left: 12px; right: 12px; bottom: 12px; }
+
+  /* Screen-corner buttons: compact, no overlap with first symbol */
+  .auto-corner { top: 6px; right: 6px; padding: 6px 11px 5px; font-size: 9px; letter-spacing: 0.18em; }
+  .buy-bonus-btn { top: 6px; left: 6px; padding: 5px 11px 4px; font-size: 8px; letter-spacing: 0.16em; }
+  .buy-bonus-btn .buy-amt { font-size: 11px; }
+  .boost-toggle { bottom: 6px; left: 6px; padding: 6px 11px 5px; font-size: 9px; letter-spacing: 0.18em; gap: 6px; }
+  .boost-toggle .boost-bolt { font-size: 11px; }
+
+  .controls {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .panel { padding: 8px 10px; border-radius: 10px; }
+  .panel-label { font-size: 9px; letter-spacing: 0.2em; margin-bottom: 4px; }
+  .panel-value { font-size: clamp(16px, 4.2vw, 22px); }
+  .balance-row { gap: 6px; }
+  .btn-add { width: 30px; height: 30px; font-size: 16px; }
+  .bet-btn { width: 30px; height: 30px; font-size: 16px; }
+
+  /* Spin button spans both columns on mobile for a bigger tap target */
+  .spin-btn {
+    grid-column: 1 / -1;
+    padding: 16px;
+    font-size: 22px;
+    border-radius: 14px;
+  }
+
+  .footnote { margin-top: 10px; font-size: 9px; letter-spacing: 0.18em; }
+
+  /* Bonus board — tighten the 6×4 grid */
+  .bonus-stage { padding: 12px 8px; }
+  .bonus-header { margin-bottom: 12px; }
+  .bonus-title { font-size: clamp(24px, 7.5vw, 38px); }
+  .bonus-sub { font-size: 10px; letter-spacing: 0.3em; }
+  .bonus-board { padding: 10px; gap: 6px; border-radius: 20px; }
+  .bonus-hud { gap: 6px; margin-top: 10px; }
+  .hud-card { padding: 8px 6px; border-radius: 10px; }
+  .hud-label { font-size: 9px; letter-spacing: 0.2em; }
+  .hud-value { font-size: clamp(16px, 4.2vw, 22px); }
+  .auto-status { padding: 10px 18px; font-size: 10px; }
+  .final-card { padding: 22px 24px; }
+  .final-amount { font-size: clamp(34px, 11vw, 60px); }
+
+  /* Gem text & badge sizing */
+  .gem-value { font-size: clamp(10px, 2.8vw, 14px); }
+  .gem-value.jp { font-size: clamp(8px, 2.2vw, 10px); }
+  .gem-badge { font-size: 9px; padding: 2px 5px; top: -4px; right: -2px; }
+
+  /* Modals */
+  .modal-card { padding: 20px 18px; border-radius: 18px; }
+  .modal-title { font-size: 18px; letter-spacing: 0.08em; }
+  .modal-sub { font-size: 10px; letter-spacing: 0.14em; margin-bottom: 14px; }
+  .quick-chips { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .quick-chip { padding: 10px 2px; font-size: 12px; }
+  .amount-input { font-size: 22px; padding: 12px 14px 12px 36px; }
+  .amount-input-wrap::before { font-size: 22px; left: 14px; }
+  .btn { padding: 12px; font-size: 12px; }
+  .buy-details { padding: 2px 14px; margin-bottom: 12px; }
+  .buy-row { padding: 8px 0; }
+  .buy-row > span:last-child { font-size: 14px; }
+  .buy-row .cost { font-size: 18px; }
+  .buy-features li { font-size: 11px; }
+  .auto-count-chip { padding: 14px 4px; font-size: 18px; }
+  .auto-toggle-row { padding: 12px 14px; margin-bottom: 12px; }
+  .toggle-label { font-size: 10px; letter-spacing: 0.16em; }
+
+  /* Big win overlay */
+  .bigwin-text { font-size: clamp(40px, 12vw, 80px); }
+  .bigwin-amount { font-size: clamp(24px, 7vw, 44px); }
+
+  /* Reveal overlay */
+  .reveal-title { font-size: clamp(34px, 11vw, 70px); }
+  .reveal-pre, .reveal-post { font-size: 10px; letter-spacing: 0.32em; }
+}
+
+@media (max-width: 420px) {
+  .reels { height: 200px; }
+  .symbol { height: 66px; }
+  .symbol::before { max-width: 70px; max-height: 70px; }
+
+  .jp-amount { font-size: 11px; }
+  .title-main { font-size: clamp(22px, 8.5vw, 34px); }
+
+  /* Corner buttons go even smaller */
+  .buy-bonus-btn { padding: 4px 9px 3px; font-size: 7px; }
+  .buy-bonus-btn .buy-amt { font-size: 10px; }
+  .auto-corner, .boost-toggle { padding: 5px 9px 4px; font-size: 8px; }
+}
+</style>
+</head>
+<body>
+<script src="casino-audio.js"></script>
+
+<a class="lobby-link" href="index.html">LOBBY</a>
+<button class="history-btn" id="btn-history" title="History">HISTORY</button>
+
+<div class="stage">
+  <div class="cabinet" id="cabinet">
+
+    <!-- TOPPER -->
+    <div class="topper">
+      <div class="jackpots" id="jackpots">
+        <div class="jackpot" data-tier="MINI">
+          <div class="jp-label">MINI</div>
+          <div class="jp-amount" id="jp-mini">$50</div>
+        </div>
+        <div class="jackpot" data-tier="MINOR">
+          <div class="jp-label">MINOR</div>
+          <div class="jp-amount" id="jp-minor">$250</div>
+        </div>
+        <div class="jackpot" data-tier="MAJOR">
+          <div class="jp-label">MAJOR</div>
+          <div class="jp-amount" id="jp-major">$1,250</div>
+        </div>
+        <div class="jackpot" data-tier="GRAND">
+          <div class="jp-label">GRAND</div>
+          <div class="jp-amount" id="jp-grand">$12,500</div>
+        </div>
+      </div>
+      <div class="title-wrap">
+        <div class="title-main">DIAMOND DELUXE</div>
+        <div class="title-sub">HOLD &nbsp;·&nbsp; SPIN &nbsp;·&nbsp; WIN</div>
+      </div>
+    </div>
+
+    <!-- REELS SCREEN -->
+    <div class="screen" id="screen">
+      <div class="reels" id="reels">
+        <!-- reels injected by JS -->
+      </div>
+      <svg class="paylines" id="paylines"></svg>
+      <div class="anticipation" id="anticipation"></div>
+      <button class="auto-corner" id="btn-auto" title="Auto-spin">AUTO</button>
+      <button class="buy-bonus-btn" id="btn-buy-bonus" title="Buy the bonus directly">
+        BUY BONUS
+        <span class="buy-amt" id="buy-bonus-display">$250</span>
+      </button>
+      <button class="boost-toggle" id="btn-boost" title="+50% bet for 2× trigger chance">
+        <span class="boost-bolt">⚡</span>
+        <span class="boost-label" id="boost-label">+50% ODDS BOOST</span>
+      </button>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="controls">
+      <div class="panel balance">
+        <div class="panel-label">BALANCE</div>
+        <div class="balance-row">
+          <div class="panel-value">$<span id="balance">1,000</span></div>
+          <button class="btn-add" id="btn-add" title="Add funds">+</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">BET</div>
+        <div class="bet-row">
+          <button class="bet-btn" id="bet-down">−</button>
+          <div class="panel-value bet-value">$<span id="bet">5</span></div>
+          <button class="bet-btn" id="bet-up">+</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">WIN</div>
+        <div class="panel-value"><span class="win-amount" id="win">$0</span></div>
+      </div>
+      <button class="spin-btn" id="spin-btn">SPIN</button>
+    </div>
+
+    <div class="footnote">VIRTUAL CURRENCY · NOT REAL MONEY</div>
+  </div>
+</div>
+
+<!-- ADD FUNDS MODAL -->
+<div class="modal-veil" id="modal-veil">
+  <div class="modal-card">
+    <div class="modal-title">ADD CHIPS</div>
+    <div class="modal-sub">VIRTUAL CURRENCY · INSTANT</div>
+    <div class="amount-input-wrap">
+      <input class="amount-input" id="amount-input" type="number" min="1" placeholder="0" />
+    </div>
+    <div class="quick-chips">
+      <button class="quick-chip" data-amt="100">+100</button>
+      <button class="quick-chip" data-amt="500">+500</button>
+      <button class="quick-chip" data-amt="1000">+1,000</button>
+      <button class="quick-chip" data-amt="10000">+10K</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" id="btn-cancel">CANCEL</button>
+      <button class="btn btn-confirm" id="btn-confirm">ADD CHIPS</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTO SPIN MODAL -->
+<div class="modal-veil" id="auto-modal-veil">
+  <div class="modal-card">
+    <div class="modal-title">AUTO SPIN</div>
+    <div class="modal-sub">SELECT A SPIN COUNT</div>
+
+    <div class="auto-count-grid">
+      <button class="auto-count-chip" data-count="10">10</button>
+      <button class="auto-count-chip" data-count="25">25</button>
+      <button class="auto-count-chip" data-count="50">50</button>
+    </div>
+
+    <div class="auto-toggle-row">
+      <span class="toggle-label">STOP AT FEATURE</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="auto-stop-feature" checked>
+        <span class="toggle-knob"></span>
+      </label>
+    </div>
+
+    <div class="modal-actions" style="grid-template-columns: 1fr;">
+      <button class="btn btn-cancel" id="btn-auto-cancel">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- BUY BONUS MODAL -->
+<div class="modal-veil" id="buy-modal-veil">
+  <div class="modal-card">
+    <div class="modal-title">BUY BONUS</div>
+    <div class="modal-sub">DIAMOND HOLD &amp; WIN</div>
+
+    <div class="buy-details">
+      <div class="buy-row"><span>Current bet</span><span id="buy-bonus-bet">$5</span></div>
+      <div class="buy-row"><span>Cost · 50× bet</span><span class="cost" id="buy-bonus-cost">$250</span></div>
+    </div>
+
+    <ul class="buy-features">
+      <li>5 seed diamonds placed on the board</li>
+      <li>3 respins · reset on every new diamond or upgrade</li>
+      <li>Same paytable &amp; odds as a natural trigger</li>
+    </ul>
+
+    <div class="modal-actions">
+      <button class="btn btn-cancel" id="btn-buy-cancel">CANCEL</button>
+      <button class="btn btn-buy" id="btn-buy-confirm">BUY · $500</button>
+    </div>
+  </div>
+</div>
+
+<!-- BONUS REVEAL OVERLAY -->
+<div class="bonus-reveal" id="bonus-reveal">
+  <div class="reveal-rays"></div>
+  <div class="reveal-content">
+    <div class="reveal-pre">FEATURE UNLOCKED</div>
+    <div class="reveal-title">DIAMOND<br/>HOLD &amp; WIN</div>
+    <div class="reveal-post">5 RESPINS · UPGRADE TO WIN BIG</div>
+  </div>
+</div>
+
+<!-- INTRO RULES MODAL -->
+<div class="modal-veil" id="intro-rules-veil">
+  <div class="modal-card rules-card">
+    <div class="modal-title">DIAMOND DELUXE</div>
+    <div class="modal-sub">HOLD &amp; WIN SLOT</div>
+
+    <div class="rules-section">
+      <h3>HOW TO PLAY</h3>
+      <ul>
+        <li>5 reels × 3 rows · 20 paylines, left to right</li>
+        <li>Match 3 or more identical symbols on a payline to win</li>
+        <li>Tap SPIN or press SPACE to play</li>
+      </ul>
+    </div>
+
+    <div class="rules-section">
+      <h3>SYMBOL PAYOUTS · 5 OF A KIND × BET</h3>
+      <div class="payout-grid">
+        <div class="payout-row"><span class="glyph sym-heart">♥</span><span>Cherry</span><span class="pay">14×</span></div>
+        <div class="payout-row"><span class="glyph sym-clover">♣</span><span>Clover</span><span class="pay">18×</span></div>
+        <div class="payout-row"><span class="glyph sym-star">★</span><span>Star</span><span class="pay">24×</span></div>
+        <div class="payout-row"><span class="glyph sym-bell">⌬</span><span>Bell</span><span class="pay">35×</span></div>
+        <div class="payout-row"><span class="glyph sym-crown">♛</span><span>Crown</span><span class="pay">60×</span></div>
+        <div class="payout-row"><span class="glyph sym-bar" style="font-size:11px;letter-spacing:0.02em">BAR</span><span>Bar</span><span class="pay">100×</span></div>
+        <div class="payout-row"><span class="glyph sym-seven">7</span><span>Seven</span><span class="pay">250×</span></div>
+        <div class="payout-row"><span class="glyph scatter-glyph">◆</span><span>Diamond</span><span class="pay scatter">SCATTER</span></div>
+      </div>
+    </div>
+
+    <div class="rules-section">
+      <h3>FEATURE · DIAMOND HOLD &amp; WIN</h3>
+      <ul>
+        <li>Land 5 Diamonds anywhere on the reels to trigger</li>
+        <li>3 respins to fill a 6×4 grid · respins reset on each diamond or upgrade</li>
+        <li>Diamonds can upgrade to II (×2.5) or III (×6) for bigger payouts</li>
+        <li>Fill all 24 cells → GRAND JACKPOT</li>
+      </ul>
+    </div>
+
+    <div class="rules-section">
+      <h3>BOOST &amp; BUY BONUS</h3>
+      <ul>
+        <li>⚡ BOOST: +50% bet for 2× bonus trigger chance</li>
+        <li>BUY BONUS: 50× base bet to skip directly to the feature</li>
+      </ul>
+    </div>
+
+    <label class="dont-show">
+      <input type="checkbox" id="intro-dont-show">
+      <span>Don't show this again</span>
+    </label>
+
+    <div class="modal-actions" style="grid-template-columns: 1fr;">
+      <button class="btn btn-confirm" id="intro-play-btn">PLAY</button>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURE RULES MODAL — gates the bonus behind a START click -->
+<div class="modal-veil" id="feature-rules-veil">
+  <div class="modal-card rules-card">
+    <div class="modal-title">FEATURE UNLOCKED</div>
+    <div class="modal-sub">DIAMOND HOLD &amp; WIN</div>
+
+    <div id="feature-rules-content">
+      <div class="rules-section">
+        <h3>THE FEATURE</h3>
+        <ul>
+          <li>5 trigger diamonds seed the 6×4 grid with cash values</li>
+          <li>3 respins — landing a diamond OR upgrading one resets them</li>
+          <li>Diamonds can level up to II (×2.5) or III (×6) for huge multipliers</li>
+        </ul>
+      </div>
+      <div class="rules-section">
+        <h3>JACKPOTS</h3>
+        <ul>
+          <li>MINI · 10× bet</li>
+          <li>MINOR · 50× bet</li>
+          <li>MAJOR · 250× bet</li>
+          <li>GRAND · 2,500× bet — fill all 24 cells to win</li>
+        </ul>
+      </div>
+      <label class="dont-show">
+        <input type="checkbox" id="feature-dont-show">
+        <span>Don't show these rules again</span>
+      </label>
+    </div>
+
+    <div class="modal-actions" style="grid-template-columns: 1fr;">
+      <button class="btn btn-confirm" id="feature-start-btn">START</button>
+    </div>
+  </div>
+</div>
+
+<!-- BONUS STAGE -->
+<div class="bonus-stage" id="bonus-stage">
+  <div class="bonus-jackpots">
+    <div class="bonus-jp" data-tier="MINI">
+      <div class="bonus-jp-label">MINI</div>
+      <div class="bonus-jp-amount" id="bonus-jp-mini">$50</div>
+    </div>
+    <div class="bonus-jp" data-tier="MINOR">
+      <div class="bonus-jp-label">MINOR</div>
+      <div class="bonus-jp-amount" id="bonus-jp-minor">$250</div>
+    </div>
+    <div class="bonus-jp" data-tier="MAJOR">
+      <div class="bonus-jp-label">MAJOR</div>
+      <div class="bonus-jp-amount" id="bonus-jp-major">$1,250</div>
+    </div>
+    <div class="bonus-jp" data-tier="GRAND">
+      <div class="bonus-jp-label">GRAND</div>
+      <div class="bonus-jp-amount" id="bonus-jp-grand">$12,500</div>
+    </div>
+  </div>
+  <div class="bonus-header">
+    <div class="bonus-title">DIAMOND HOLD &amp; WIN</div>
+    <div class="bonus-sub">LAND DIAMONDS · LOCK FOREVER</div>
+  </div>
+  <div class="bonus-board" id="bonus-board">
+    <!-- 6x4 cells injected -->
+  </div>
+  <div class="bonus-hud">
+    <div class="hud-card">
+      <div class="hud-label">RESPINS</div>
+      <div class="hud-value respins-value" id="respins-value">3</div>
+    </div>
+    <div class="hud-card">
+      <div class="hud-label">DIAMONDS</div>
+      <div class="hud-value" id="diamonds-count">0 / 24</div>
+    </div>
+    <div class="hud-card">
+      <div class="hud-label">TOTAL</div>
+      <div class="hud-value">$<span id="bonus-total">0</span></div>
+    </div>
+  </div>
+  <div class="bonus-actions">
+    <div class="auto-status" id="auto-status">RESPINNING</div>
+  </div>
+  <div class="bonus-final" id="bonus-final">
+    <div class="final-card">
+      <div class="final-label">BONUS COMPLETE</div>
+      <div class="final-amount">$<span id="final-amount">0</span></div>
+      <button class="btn-collect" id="btn-collect">COLLECT</button>
+    </div>
+  </div>
+</div>
+
+<!-- BIG WIN OVERLAY -->
+<div class="bigwin" id="bigwin">
+  <div style="text-align:center;">
+    <div class="bigwin-text" id="bigwin-text">BIG WIN!</div>
+    <div class="bigwin-amount" id="bigwin-amount">$0</div>
+  </div>
+</div>
+
+<!-- PARTICLE LAYER -->
+<div class="particle-layer" id="particles"></div>
+
+<script>
+/* ============================================================
+   AUDIO ENGINE — HTMLAudioElement sample pool (ElevenLabs SFX)
+   ============================================================
+   - Loads via <audio> + <source> so file:// works (no fetch CORS)
+   - Each sound has a pool of clones for rapid repeat plays
+   - Tries .wav → .mp3 → .ogg → .m4a in priority order so you can
+     swap any individual sound to a higher-quality format any time
+   ============================================================ */
+const Audio = (() => {
+  const SFX = [
+    // reels
+    'reel_start', 'reel_loop',
+    'reel_stop_1', 'reel_stop_2', 'reel_stop_3', 'reel_stop_final',
+    // anticipation
+    'anticipation_build', 'anticipation_high',
+    // wins
+    'win_small', 'win_medium', 'win_big', 'jackpot_grand',
+    // bonus / diamond
+    'bonus_trigger', 'diamond_land', 'gem_upgrade', 'respin_reset', 'scatter_thud',
+    // mini-game
+    'cell_spin_start', 'cell_tick',
+    // reveal / misc
+    'reveal_shine', 'coin_drop', 'bonus_tally',
+    // ui
+    'button_press', 'bet_up', 'bet_down', 'add_cash',
+  ];
+  const EXTS = [
+    { ext: 'wav', mime: 'audio/wav' },
+    { ext: 'mp3', mime: 'audio/mpeg' },
+    { ext: 'ogg', mime: 'audio/ogg' },
+    { ext: 'm4a', mime: 'audio/mp4' },
+  ];
+  const POOL_SIZE = 4;
+  const pools = {};
+  const loops = {};
+  let loaded = false;
+
+  function sfxGain() {
+    return window.Settings ? Settings.sfxVolume() : 1;
+  }
+
+  function makeAudioEl(name) {
+    const a = document.createElement('audio');
+    a.preload = 'auto';
+    EXTS.forEach(({ ext, mime }) => {
+      const s = document.createElement('source');
+      s.src = `sfx/slots/${name}.${ext}`;
+      s.type = mime;
+      a.appendChild(s);
+    });
+    return a;
+  }
+
+  function load() {
+    if (loaded) return;
+    loaded = true;
+    let ready = 0, failed = 0;
+    SFX.forEach(name => {
+      pools[name] = [];
+      for (let i = 0; i < POOL_SIZE; i++) {
+        const a = makeAudioEl(name);
+        if (i === 0) {
+          a.addEventListener('canplaythrough', () => { ready++; }, { once: true });
+          a.addEventListener('error', () => { failed++; console.warn('SFX load failed:', name); }, { once: true });
+        }
+        a.load();
+        pools[name].push(a);
+      }
+    });
+    setTimeout(() => {
+      console.log(`[Audio] Slots SFX pool: ${SFX.length} sounds, ${ready} ready, ${failed} failed, sfxVol=${sfxGain().toFixed(2)}`);
+    }, 1500);
+  }
+
+  function pick(...names) {
+    return names[Math.floor(Math.random() * names.length)];
+  }
+
+  function fire(name, opts) {
+    const pool = pools[name];
+    if (!pool) return null;
+    let el = pool.find(a => a.paused || a.ended);
+    if (!el) { el = pool[0].cloneNode(); pool.push(el); }
+    const { gain = 1, pitch = 1, pitchVariance = 0.05, loop = false, maxMs = 0 } = opts || {};
+    const v = (Math.random() * 2 - 1) * pitchVariance;
+    el.playbackRate = Math.max(0.5, Math.min(4, pitch + v));
+    el.loop = loop;
+    el.volume = Math.max(0, Math.min(1, gain * sfxGain()));
+    try { el.currentTime = 0; } catch (e) {}
+    const p = el.play();
+    if (p && p.catch) p.catch(() => {});
+    if (maxMs > 0) {
+      setTimeout(() => { try { el.pause(); el.currentTime = 0; } catch (e) {} }, maxMs);
+    }
+    return el;
+  }
+
+  function play(name, opts = {}) {
+    const { delay = 0 } = opts;
+    if (delay > 0) setTimeout(() => fire(name, opts), delay * 1000);
+    else fire(name, opts);
+  }
+
+  function startLoop(name, opts = {}) {
+    if (loops[name]) return;
+    loops[name] = fire(name, { ...opts, loop: true });
+  }
+  function stopLoop(name, fadeMs = 120) {
+    const el = loops[name];
+    if (!el) return;
+    loops[name] = null;
+    if (fadeMs <= 0) { try { el.pause(); el.currentTime = 0; } catch (e) {} return; }
+    const startVol = el.volume;
+    const steps = 6;
+    const stepMs = fadeMs / steps;
+    let i = 0;
+    const tick = () => {
+      i++;
+      el.volume = Math.max(0, startVol * (1 - i / steps));
+      if (i >= steps) { try { el.pause(); el.currentTime = 0; el.volume = startVol; } catch (e) {} }
+      else setTimeout(tick, stepMs);
+    };
+    setTimeout(tick, stepMs);
+  }
+
+  /* ---------- LEVEL CALIBRATION ----------
+     Spin chain is audible (not whispered) but wins/bonus still
+     clearly dominate. Spin "woosh" removed — just the ambient
+     reel loop + per-reel-stop clicks during the spin.
+  ----------------------------------------- */
+  return {
+    init: load,
+
+    // Silence between spin-click and reel landings — the button click
+    // sells the action, the reel-stops punctuate, and only interesting
+    // events (wins, scatters, bonus) get sound. Cleaner than a hum.
+    spinStart() {
+      stopLoop('reel_loop', 0); // safety in case it was started elsewhere
+    },
+
+    reelStop() {
+      const counter = (this._reelIdx = ((this._reelIdx || 0) + 1) % 5);
+      if (counter === 4) {
+        play('reel_stop_final', { gain: 0.75, pitchVariance: 0.04, maxMs: 600 });
+      } else {
+        const variants = ['reel_stop_1', 'reel_stop_2', 'reel_stop_3'];
+        play(variants[counter % variants.length], { gain: 0.60, pitchVariance: 0.06, maxMs: 500 });
+      }
+    },
+
+    reelLand(strength = 0.85) {
+      const name = strength > 0.9 ? 'reel_stop_final' : pick('reel_stop_1', 'reel_stop_2', 'reel_stop_3');
+      play(name, { gain: 0.60 + 0.15 * strength, pitch: 0.95 + 0.1 * strength, pitchVariance: 0.05, maxMs: 550 });
+    },
+
+    // MEDIUM — UI / supplementary (bumped from previous whisper levels)
+    click()           { play('button_press', { gain: 0.55, pitchVariance: 0.04, maxMs: 220 }); },
+    betUp()           { play('bet_up',   { gain: 0.70, maxMs: 350 }); },
+    betDown()         { play('bet_down', { gain: 0.70, maxMs: 350 }); },
+    coin()            { play('coin_drop',    { gain: 0.55, pitch: 0.95, pitchVariance: 0.18, maxMs: 350 }); },
+    cellTick()        { play('cell_tick',    { gain: 0.65, pitchVariance: 0.12, maxMs: 200 }); },
+    cellSpinStart()   { play('cell_spin_start', { gain: 0.80 }); },
+    respinReset()     { play('respin_reset', { gain: 0.85 }); },
+    anticipation()    { play('anticipation_build', { gain: 0.90 }); },
+    anticipationHigh(){ play('anticipation_high',  { gain: 0.95 }); },
+    addCash()         { play('add_cash',     { gain: 0.95 }); },
+
+    // LOUD — wins & bonus moments
+    smallWin()        { play('win_small',   { gain: 1.0 }); },
+    bigWin()          { play('win_big',     { gain: 1.0 }); },
+    upgradeGem()      { play('gem_upgrade', { gain: 1.0 }); },
+    diamondLand()     { play('diamond_land', { gain: 1.0, pitchVariance: 0.03 }); },
+    reveal()          { play('reveal_shine', { gain: 0.80 }); },     // toned down — was 1.0
+    bonusTrigger()    { play('bonus_trigger', { gain: 0.80 }); },    // toned down — was 1.0
+    grandJackpot()    { play('jackpot_grand', { gain: 0.85 }); },    // toned down — was 1.0
+    tallyRace()       { play('bonus_tally',  { gain: 0.95 }); },     // accompanies the count-up animation
+
+    /* Diamond/scatter landing thud, escalating in pitch + gain with each
+       additional diamond visible so far. count: 1..5+ */
+    scatterLand(count = 1) {
+      const c = Math.max(1, Math.min(5, count));
+      const gain  = 0.65 + 0.08 * c;   // 0.73 .. 1.05 (clamped to 1)
+      const pitch = 0.85 + 0.08 * c;   // 0.93 .. 1.25
+      play('scatter_thud', { gain: Math.min(1, gain), pitch, pitchVariance: 0.02, maxMs: 700 });
+    },
+  };
+})();
+
+/* ============================================================
+   STATE
+   ============================================================ */
+/* shared balance across casino games */
+const BALANCE_KEY = 'casino.balance';
+function loadBalance() {
+  const v = parseFloat(localStorage.getItem(BALANCE_KEY));
+  return isNaN(v) || v < 0 ? 1000 : v;
+}
+function persistBalance(v) {
+  try { localStorage.setItem(BALANCE_KEY, String(v)); } catch (e) {}
+}
+
+const State = {
+  balance: loadBalance(),
+  bet: 5,
+  betSteps: [1, 2, 5, 10, 25, 50, 100, 250],
+  spinning: false,
+  inBonus: false,
+  lastWin: 0,
+  autoSpin: false,
+  autoCount: 0,
+  stopAtFeature: true,
+  bigWinShowing: false,
+  boost: false,
+};
+
+/* Boost mechanics: +50% bet cost, 2× bonus trigger chance, all wins scaled to effective bet. */
+const BOOST_BET_MULT = 1.5;
+const BOOST_TRIGGER_MULT = 2.0;
+function getEffectiveBet() {
+  return State.boost ? State.bet * BOOST_BET_MULT : State.bet;
+}
+
+const SYMBOLS = [
+  { id: 'cherry',  cls: 'sym-heart', glyph: '♥',  weight: 26, pay: [0, 0, 2, 5, 14] },
+  { id: 'clover',  cls: 'sym-clover',glyph: '♣',  weight: 24, pay: [0, 0, 2, 6, 18] },
+  { id: 'star',    cls: 'sym-star',  glyph: '★',  weight: 22, pay: [0, 0, 2, 8, 24] },
+  { id: 'bell',    cls: 'sym-bell',  glyph: '⌬',  weight: 18, pay: [0, 0, 3, 12, 35] },
+  { id: 'crown',   cls: 'sym-crown', glyph: '♛',  weight: 14, pay: [0, 0, 5, 18, 60] },
+  { id: 'bar',     cls: 'sym-bar',   glyph: 'BAR',weight: 10, pay: [0, 0, 8, 30, 100] },
+  { id: 'seven',   cls: 'sym-seven', glyph: '7',  weight: 6,  pay: [0, 0, 15, 60, 250] },
+  { id: 'diamond', cls: 'sym-diamond', glyph: '◆',weight: 4,  bonus: true, pay: [0, 0, 0, 0, 0] },
+];
+
+// 20 paylines (rows are 0=top, 1=mid, 2=bottom) — standard mobile-casino set
+const PAYLINES = [
+  [1,1,1,1,1], //  1 middle row
+  [0,0,0,0,0], //  2 top row
+  [2,2,2,2,2], //  3 bottom row
+  [0,1,2,1,0], //  4 V down
+  [2,1,0,1,2], //  5 V up
+  [0,0,1,2,2], //  6 slope down
+  [2,2,1,0,0], //  7 slope up
+  [1,0,0,0,1], //  8 hill from mid (top)
+  [1,2,2,2,1], //  9 valley from mid (bottom)
+  [0,1,1,1,0], // 10 top dip
+  [2,1,1,1,2], // 11 bottom dip
+  [1,2,1,0,1], // 12 zigzag mid-low
+  [1,0,1,2,1], // 13 zigzag mid-high
+  [0,0,1,0,0], // 14 shallow top notch
+  [2,2,1,2,2], // 15 shallow bottom notch
+  [1,1,0,1,1], // 16 mid notch up
+  [1,1,2,1,1], // 17 mid notch down
+  [0,1,0,1,0], // 18 top zigzag
+  [2,1,2,1,2], // 19 bottom zigzag
+  [1,0,2,0,1], // 20 peak-valley-peak
+];
+
+const PAYLINE_COLORS = [
+  '#22d3ee', '#ff2e93', '#5cffa1', '#a855f7', '#ffd24a',
+  '#ff6ec7', '#4cc9ff', '#fde047', '#fb923c', '#ef4444',
+  '#84cc16', '#06b6d4', '#d946ef', '#10b981', '#3b82f6',
+  '#f59e0b', '#ec4899', '#14b8a6', '#8b5cf6', '#f97316',
+];
+
+/* derived: jackpot values shown in topper (multipliers × bet) */
+const JACKPOT_MULTS = { MINI: 10, MINOR: 50, MAJOR: 250, GRAND: 2500 };
+
+/* buy-bonus cost: 50× effective bet */
+const BUY_BONUS_COST_MULT = 50;
+// Buy cost uses the base bet so toggling boost doesn't make the feature
+// more expensive; a bought feature pays out at the base bet too.
+const getBuyBonusCost = () => State.bet * BUY_BONUS_COST_MULT;
+
+/* ============================================================
+   FORMAT HELPERS
+   ============================================================ */
+/* Round to cents, then show 2 decimals only when there's a fractional component
+   so $1,000 stays clean while $7.50 reads as $7.50, never $8. */
+const fmt = n => {
+  const cents = Math.round(n * 100) / 100;
+  if (Number.isInteger(cents)) return cents.toLocaleString('en-US');
+  return cents.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+function setBalance(n) {
+  State.balance = Math.max(0, n);
+  persistBalance(State.balance);
+  document.getElementById('balance').textContent = fmt(State.balance);
+  updateBuyBonusButton();
+}
+function setWin(n, opts = {}) {
+  State.lastWin = n;
+  const el = document.getElementById('win');
+  el.textContent = '$' + fmt(n);
+  if (opts.glow) {
+    el.parentElement.classList.remove('glow');
+    void el.parentElement.offsetWidth;
+    el.parentElement.classList.add('glow');
+  }
+}
+function setBet(n) {
+  State.bet = n;
+  document.getElementById('bet').textContent = fmt(State.bet);
+  updateJackpotDisplay();
+  updateBuyBonusDisplay();
+  updateBuyBonusButton();
+  updateBoostUI();
+}
+
+function updateBuyBonusDisplay() {
+  const el = document.getElementById('buy-bonus-display');
+  if (el) el.textContent = '$' + fmt(getBuyBonusCost());
+}
+function updateJackpotDisplay() {
+  // During a feature, jackpot amounts reflect the bet snapshot taken at trigger.
+  // Outside, they reflect the current bet (boosted if applicable).
+  const bet = (State.inBonus && BonusState && BonusState.bet) ? BonusState.bet : getEffectiveBet();
+  const tiers = { mini: 'MINI', minor: 'MINOR', major: 'MAJOR', grand: 'GRAND' };
+  Object.entries(tiers).forEach(([key, t]) => {
+    const v = '$' + fmt(bet * JACKPOT_MULTS[t]);
+    const top = document.getElementById('jp-' + key);
+    const bonus = document.getElementById('bonus-jp-' + key);
+    if (top) top.textContent = v;
+    if (bonus) bonus.textContent = v;
+  });
+}
+
+/* ============================================================
+   REELS — build + spin
+   ============================================================ */
+const REEL_COUNT = 5;
+const ROW_COUNT = 3;
+const STRIP_LEN = 30; // logical symbols per reel strip
+
+function pickSymbol(extraDiamondBoost = 0) {
+  const totalW = SYMBOLS.reduce((s, x) => s + x.weight + (x.bonus ? extraDiamondBoost : 0), 0);
+  let r = Math.random() * totalW;
+  for (const s of SYMBOLS) {
+    const w = s.weight + (s.bonus ? extraDiamondBoost : 0);
+    if ((r -= w) <= 0) return s;
+  }
+  return SYMBOLS[0];
+}
+
+/* Spin DOWN: target triple sits at the TOP of the strip (indices 0,1,2),
+   followed by random filler. Strip starts shifted up, slides down to rest. */
+function makeStrip(finalTriple) {
+  const list = [];
+  for (const s of finalTriple) list.push(s);
+  for (let i = 0; i < STRIP_LEN - 3; i++) list.push(pickSymbol(0));
+  return list;
+}
+
+function symbolEl(sym) {
+  const el = document.createElement('div');
+  el.className = 'symbol ' + sym.cls;
+  el.dataset.symbol = sym.id;
+  el.textContent = sym.id === 'diamond' ? '' : sym.glyph;
+  return el;
+}
+
+function buildReels() {
+  const reelsEl = document.getElementById('reels');
+  reelsEl.innerHTML = '';
+  for (let r = 0; r < REEL_COUNT; r++) {
+    const reelEl = document.createElement('div');
+    reelEl.className = 'reel';
+    reelEl.dataset.reel = r;
+    const strip = document.createElement('div');
+    strip.className = 'strip';
+    // initial random 3 visible
+    for (let i = 0; i < 3; i++) strip.appendChild(symbolEl(pickSymbol()));
+    reelEl.appendChild(strip);
+    reelsEl.appendChild(reelEl);
+  }
+}
+
+/* Spin a single reel DOWNWARD; reels start in parallel and stop in staggered succession.
+   Target triple is at items[0..2]; strip begins shifted up by (len-3) and slides to 0. */
+function spinReel(reelIndex, finalTriple, duration, onStop) {
+  return new Promise(resolve => {
+    const reel = document.querySelector(`.reel[data-reel="${reelIndex}"]`);
+    const oldStrip = reel.querySelector('.strip');
+    const strip = document.createElement('div');
+    strip.className = 'strip';
+
+    const symbolH = reel.clientHeight / 3;
+    const items = makeStrip(finalTriple);
+    items.forEach(s => strip.appendChild(symbolEl(s)));
+    reel.replaceChild(strip, oldStrip);
+
+    const startY = -(symbolH * (items.length - 3));
+
+    strip.style.transition = 'none';
+    strip.style.transform = `translateY(${startY}px)`;
+    void strip.offsetWidth;
+
+    strip.style.transition = `transform ${duration}ms cubic-bezier(0.22, 0.78, 0.18, 1)`;
+    strip.style.transform = `translateY(0px)`;
+
+    setTimeout(() => {
+      // Soft overshoot — a gentle dip then settle, no springy snap
+      strip.style.transition = 'transform 220ms cubic-bezier(.25,.46,.45,.94)';
+      strip.style.transform = `translateY(6px)`;
+      setTimeout(() => {
+        strip.style.transition = 'transform 280ms cubic-bezier(.25,.46,.45,.94)';
+        strip.style.transform = `translateY(0px)`;
+      }, 200);
+
+      // Impact effects: gentle squish + soft flash overlay
+      reel.classList.remove('thud');
+      void reel.offsetWidth;
+      reel.classList.add('thud');
+      setTimeout(() => reel.classList.remove('thud'), 560);
+
+      Audio.reelStop();
+      if (onStop) onStop(reelIndex, finalTriple);
+      resolve();
+    }, duration);
+  });
+}
+
+/* get the final triple (the 3 visible rows) of a reel after spin */
+function getReelVisible(reelIndex) {
+  const reel = document.querySelector(`.reel[data-reel="${reelIndex}"]`);
+  const symbols = reel.querySelectorAll('.symbol');
+  // first 3 children correspond to top/mid/bottom visible (spin DOWN)
+  const first3 = Array.from(symbols).slice(0, 3);
+  return first3.map(el => SYMBOLS.find(s => s.id === el.dataset.symbol));
+}
+
+/* clear win highlights */
+function clearWinHighlights() {
+  document.querySelectorAll('.symbol').forEach(s => {
+    s.classList.remove('win', 'dim');
+  });
+  const svg = document.getElementById('paylines');
+  svg.innerHTML = '';
+}
+
+/* evaluate paylines after spin, return total win + list of winning lines */
+function evaluateWin(grid) {
+  // grid[reel][row] = SymbolDef
+  const wins = [];
+  PAYLINES.forEach((line, lineIdx) => {
+    const firstSym = grid[0][line[0]];
+    if (firstSym.bonus) return; // diamonds don't form paylines
+    let count = 1;
+    for (let r = 1; r < REEL_COUNT; r++) {
+      if (grid[r][line[r]].id === firstSym.id) count++;
+      else break;
+    }
+    if (count >= 3) {
+      const pay = firstSym.pay[count - 1] || 0;
+      if (pay > 0) {
+        wins.push({ lineIdx, symbol: firstSym, count, amount: pay * getEffectiveBet(), line });
+      }
+    }
+  });
+  // count diamonds anywhere
+  let diamondCount = 0;
+  for (let r = 0; r < REEL_COUNT; r++) {
+    for (let rw = 0; rw < ROW_COUNT; rw++) {
+      if (grid[r][rw].bonus) diamondCount++;
+    }
+  }
+  return { wins, diamondCount };
+}
+
+/* draw payline through actual symbol DOM centers — pixel-accurate, no stretching distortion */
+function drawPayline(line, color, count) {
+  const svg = document.getElementById('paylines');
+  if (!svg) return;
+  const svgRect = svg.getBoundingClientRect();
+  if (svgRect.width === 0 || svgRect.height === 0) return;
+
+  // Lock SVG coordinate system to actual pixel dimensions so polyline points map 1:1
+  svg.setAttribute('viewBox', `0 0 ${svgRect.width.toFixed(0)} ${svgRect.height.toFixed(0)}`);
+
+  const pts = [];
+  for (let r = 0; r < count; r++) {
+    const reel = document.querySelector(`.reel[data-reel="${r}"]`);
+    if (!reel) continue;
+    const symbols = reel.querySelectorAll('.symbol');
+    const visible = Array.from(symbols).slice(0, 3);
+    const targetSym = visible[line[r]];
+    if (!targetSym) continue;
+    const symRect = targetSym.getBoundingClientRect();
+    const cx = symRect.left + symRect.width / 2 - svgRect.left;
+    const cy = symRect.top + symRect.height / 2 - svgRect.top;
+    pts.push(`${cx.toFixed(1)},${cy.toFixed(1)}`);
+  }
+  if (pts.length < 2) return;
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  path.setAttribute('points', pts.join(' '));
+  path.setAttribute('class', 'payline show');
+  path.setAttribute('stroke', color);
+  path.style.color = color;
+  svg.appendChild(path);
+}
+
+function highlightWinSymbols(line, count) {
+  for (let r = 0; r < count; r++) {
+    const reel = document.querySelector(`.reel[data-reel="${r}"]`);
+    const syms = reel.querySelectorAll('.symbol');
+    const visible = Array.from(syms).slice(0, 3);
+    visible[line[r]].classList.add('win');
+  }
+}
+
+function dimNonWinning(allWinningCells) {
+  document.querySelectorAll('.reel').forEach(reel => {
+    const syms = reel.querySelectorAll('.symbol');
+    const visible = Array.from(syms).slice(0, 3);
+    visible.forEach(sym => {
+      if (!sym.classList.contains('win')) sym.classList.add('dim');
+    });
+  });
+}
+
+/* trigger a one-shot light-sweep across the reels area */
+function fireWinSweep() {
+  const screen = document.getElementById('screen');
+  if (!screen) return;
+  screen.classList.remove('win-sweep');
+  void screen.offsetWidth;
+  screen.classList.add('win-sweep');
+  setTimeout(() => screen.classList.remove('win-sweep'), 950);
+}
+
+/* impact pulse: a quick burst at the cabinet — for landing wins/feature triggers */
+function fireCabinetImpact() {
+  const cab = document.getElementById('cabinet');
+  if (!cab) return;
+  cab.classList.remove('win-shake');
+  void cab.offsetWidth;
+  cab.classList.add('win-shake');
+  setTimeout(() => cab.classList.remove('win-shake'), 520);
+}
+
+/* ============================================================
+   PARTICLES
+   ============================================================ */
+function spawnConfetti(x, y, count = 30) {
+  const layer = document.getElementById('particles');
+  const colors = ['#ff2e93','#22d3ee','#a855f7','#ffd24a','#5cffa1','#ffffff'];
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 60 + Math.random() * 220;
+    const tx = Math.cos(angle) * dist;
+    const ty = Math.sin(angle) * dist + 300; // fall
+    p.style.setProperty('--tx', tx + 'px');
+    p.style.setProperty('--ty', ty + 'px');
+    p.style.setProperty('--tr', (Math.random()*720 - 360) + 'deg');
+    p.style.animationDuration = (1.4 + Math.random() * 1.2) + 's';
+    layer.appendChild(p);
+    setTimeout(() => p.remove(), 2600);
+  }
+}
+
+function spawnCoinShower(originEl, count = 40) {
+  const rect = originEl.getBoundingClientRect();
+  const layer = document.getElementById('particles');
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  for (let i = 0; i < count; i++) {
+    const c = document.createElement('div');
+    c.className = 'coin';
+    c.style.left = cx + 'px';
+    c.style.top = cy + 'px';
+    const angle = Math.random() * Math.PI - Math.PI / 2;
+    const dist = 200 + Math.random() * 340;
+    const tx = Math.cos(angle) * dist + (Math.random() - 0.5) * 200;
+    const ty = -Math.abs(Math.sin(angle)) * dist - 60;
+    c.style.setProperty('--tx', tx + 'px');
+    c.style.setProperty('--ty', (ty + 600) + 'px'); // shoot up then fall
+    c.style.animationDuration = (1.4 + Math.random() * 0.8) + 's';
+    setTimeout(() => Audio.coin(), i * 35);
+    layer.appendChild(c);
+    setTimeout(() => c.remove(), 2400);
+  }
+}
+
+/* ============================================================
+   WIN COUNTUP
+   ============================================================ */
+function countUp(from, to, duration, onUpdate, onDone) {
+  const start = performance.now();
+  function tick(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const v = from + (to - from) * eased;
+    onUpdate(v);
+    if (t < 1) requestAnimationFrame(tick);
+    else if (onDone) onDone();
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ============================================================
+   BIG WIN OVERLAY
+   ============================================================ */
+function showBigWin(amount, tier) {
+  const overlay = document.getElementById('bigwin');
+  const textEl = document.getElementById('bigwin-text');
+  const amtEl = document.getElementById('bigwin-amount');
+  const labels = { big: 'BIG WIN!', huge: 'HUGE WIN!', mega: 'MEGA WIN!', epic: 'EPIC WIN!' };
+  textEl.textContent = labels[tier] || 'BIG WIN!';
+  amtEl.textContent = '$0';
+  overlay.classList.add('show');
+  State.bigWinShowing = true;
+  // Block spin spamming while the overlay is up
+  const spinBtn = document.getElementById('spin-btn');
+  if (spinBtn) spinBtn.disabled = true;
+  Audio.bigWin();
+
+  // Cascade of confetti from the top — escalates with tier
+  const tierCounts = { big: 6, huge: 10, mega: 16, epic: 24 };
+  const bursts = tierCounts[tier] || 6;
+  for (let i = 0; i < bursts; i++) {
+    setTimeout(() => spawnConfetti(window.innerWidth * Math.random(), -10, 22), i * 90);
+  }
+  // Extra coin shower for mega/epic
+  if (tier === 'mega' || tier === 'epic') {
+    setTimeout(() => spawnCoinShower(overlay, 50), 200);
+  }
+
+  countUp(0, amount, 1400, v => { amtEl.textContent = '$' + fmt(v); }, () => {
+    setTimeout(() => {
+      overlay.classList.remove('show');
+      State.bigWinShowing = false;
+      if (spinBtn) spinBtn.disabled = false;
+      tryAutoSpin();
+    }, 1600);
+  });
+}
+
+/* ============================================================
+   ANTICIPATION
+   ============================================================ */
+function maybeAnticipation(scatterSoFar) {
+  // scatterSoFar = how many diamonds in already-stopped reels
+  // Trigger anticipation if we have 2+ diamonds after reel 2 stops (3 needed total)
+  if (scatterSoFar >= 2) {
+    document.getElementById('anticipation').classList.add('on');
+    Audio.anticipation();
+    return true;
+  }
+  return false;
+}
+
+/* ============================================================
+   SPIN LOGIC
+   ============================================================ */
+async function doSpin(opts = {}) {
+  if (State.spinning || State.inBonus || State.bigWinShowing) return;
+  if (document.querySelector('.modal-veil.show, .casino-settings-veil.show')) return;
+  if (!opts.boughtBonus && State.balance < getEffectiveBet()) {
+    flashLowFunds();
+    return;
+  }
+
+  State.spinning = true;
+  document.getElementById('spin-btn').classList.add('spinning');
+  document.getElementById('spin-btn').disabled = true;
+  updateBuyBonusButton();
+  updateBoostUI();
+  clearWinHighlights();
+  setWin(0);
+  document.getElementById('anticipation').classList.remove('on');
+  document.getElementById('screen').classList.remove('antic-pulse');
+
+  if (!opts.boughtBonus) setBalance(State.balance - getEffectiveBet());
+  Audio.spinStart();
+
+  // History tracking — record at end of spin, OR defer until collectBonus
+  // so a bonus-trigger spin records ONE combined entry (line + bonus).
+  State.spinBet = opts.boughtBonus ? getBuyBonusCost() : getEffectiveBet();
+  State.spinLineWin = 0;
+  State.spinNote = opts.boughtBonus ? 'BOUGHT BONUS' : '';
+
+  const willTriggerBonus = opts.boughtBonus || (Math.random() < 0.016 * (State.boost ? BOOST_TRIGGER_MULT : 1));
+  const grid = generateOutcome(willTriggerBonus);
+
+  // Diamond counts as reels stop
+  const dPerReel = grid.map(col => col.filter(s => s.bonus).length);
+  const after3 = dPerReel[0] + dPerReel[1] + dPerReel[2];
+  const after4 = after3 + dPerReel[3];
+
+  // Trigger anticipation tiers
+  const anticipate4and5 = after3 >= 3 && after3 < 5; // 3+ diamonds visible after reel 3
+  const anticipate5     = after4 >= 4 && after4 < 5; // 4 diamonds after reel 4 → ultra suspense on reel 5
+
+  // Reel durations — slower base, dramatic anticipation when threshold met
+  const baseDur = [520, 720, 920, 1120, 1340];
+  const dur = [...baseDur];
+  if (anticipate4and5) {
+    dur[3] += 950;
+    dur[4] += 950;
+  }
+  if (anticipate5) {
+    dur[4] += 750;
+  }
+
+  // Kick all reels off in parallel; each stops at its scheduled time.
+  // As each reel lands, count visible diamonds and fire a satisfying
+  // escalating scatter thud while the bonus is still attainable.
+  let diamondsLanded = 0;
+  const onReelStopped = (idx, triple) => {
+    const here = triple.filter(s => s.bonus).length;
+    if (here === 0) return;
+    const newTotal = diamondsLanded + here;
+    // Slightly delayed after the reel-stop click so the thud feels layered
+    setTimeout(() => Audio.scatterLand(newTotal), 60);
+    diamondsLanded = newTotal;
+  };
+  const reelPromises = [];
+  for (let r = 0; r < REEL_COUNT; r++) {
+    reelPromises.push(spinReel(r, [grid[r][0], grid[r][1], grid[r][2]], dur[r], onReelStopped));
+  }
+
+  // Anticipation visuals — fire when reel 3 stops
+  if (anticipate4and5) {
+    setTimeout(() => {
+      if (State.spinning) {
+        document.getElementById('anticipation').classList.add('on');
+        document.getElementById('screen').classList.add('antic-pulse');
+        Audio.anticipation();
+      }
+    }, baseDur[2] + 40);
+  }
+  // Second tier — fire when reel 4 stops, ratchet up
+  if (anticipate5) {
+    setTimeout(() => {
+      if (State.spinning) {
+        document.getElementById('anticipation').classList.add('on');
+        document.getElementById('screen').classList.add('antic-pulse');
+        Audio.anticipationHigh();
+      }
+    }, dur[3] + 60);
+  }
+
+  await Promise.all(reelPromises);
+
+  // Evaluate
+  const { wins, diamondCount: dc } = evaluateWin(grid);
+
+  // Show payline wins
+  let totalWin = 0;
+  for (let i = 0; i < wins.length; i++) {
+    totalWin += wins[i].amount;
+  }
+
+  if (wins.length > 0) {
+    wins.forEach(w => {
+      drawPayline(w.line, PAYLINE_COLORS[w.lineIdx], w.count);
+      highlightWinSymbols(w.line, w.count);
+    });
+    dimNonWinning();
+    Audio.smallWin();
+    fireWinSweep();
+    // confetti burst at each winning symbol
+    document.querySelectorAll('.symbol.win').forEach((sym, i) => {
+      const r = sym.getBoundingClientRect();
+      setTimeout(() => spawnConfetti(r.left + r.width/2, r.top + r.height/2, 10), i * 35);
+    });
+    // counter rollup
+    countUp(0, totalWin, 900, v => { document.getElementById('win').textContent = '$' + fmt(v); });
+    setBalance(State.balance + totalWin);
+    setWin(totalWin, { glow: true });
+
+    // Big win tier
+    const ratio = totalWin / getEffectiveBet();
+    if (ratio >= 200) { fireCabinetImpact(); showBigWin(totalWin, 'epic'); }
+    else if (ratio >= 80) { fireCabinetImpact(); showBigWin(totalWin, 'mega'); }
+    else if (ratio >= 30) { fireCabinetImpact(); showBigWin(totalWin, 'huge'); }
+    else if (ratio >= 15) showBigWin(totalWin, 'big');
+
+    // Particles from screen center if big enough
+    if (ratio >= 10) {
+      spawnCoinShower(document.getElementById('screen'), 30);
+    }
+  }
+
+  // Bonus trigger — 5 diamonds anywhere
+  document.getElementById('anticipation').classList.remove('on');
+  document.getElementById('screen').classList.remove('antic-pulse');
+  State.spinLineWin = totalWin;
+  if (dc >= 5) {
+    // Defer history record until the bonus is collected so we log ONE
+    // combined entry (line + bonus payout) per spin.
+    triggerBonusReveal(!!opts.boughtBonus);
+  } else {
+    // No bonus — record this spin's result right away
+    if (window.History) {
+      const note = State.spinNote || (totalWin > 0 ? (totalWin >= State.spinBet * 30 ? 'BIG WIN' : 'WIN') : '');
+      History.record('slots', State.spinBet, totalWin - State.spinBet, note || null);
+    }
+    State.spinBet = 0; State.spinLineWin = 0;
+  }
+
+  State.spinning = false;
+  document.getElementById('spin-btn').classList.remove('spinning');
+  // Leave the button disabled if a Big Win overlay is up — it'll re-enable itself when it closes.
+  if (!State.bigWinShowing) document.getElementById('spin-btn').disabled = false;
+  updateBuyBonusButton();
+  updateBoostUI();
+
+  tryAutoSpin();
+}
+
+/* ---------- AUTO-SPIN ---------- */
+function handleAutoButton() {
+  if (State.autoSpin) {
+    stopAutoSpin();
+  } else {
+    openAutoModal();
+  }
+}
+
+function openAutoModal() {
+  Audio.click();
+  document.getElementById('auto-stop-feature').checked = State.stopAtFeature;
+  document.getElementById('auto-modal-veil').classList.add('show');
+}
+
+function closeAutoModal() {
+  document.getElementById('auto-modal-veil').classList.remove('show');
+}
+
+function startAutoSpin(count) {
+  State.stopAtFeature = document.getElementById('auto-stop-feature').checked;
+  State.autoSpin = true;
+  State.autoCount = count;
+  Audio.click();
+  closeAutoModal();
+  updateAutoSpinUI();
+  tryAutoSpin();
+}
+
+function stopAutoSpin() {
+  Audio.click();
+  State.autoSpin = false;
+  State.autoCount = 0;
+  updateAutoSpinUI();
+}
+
+function updateAutoSpinUI() {
+  const btn = document.getElementById('btn-auto');
+  if (!btn) return;
+  if (State.autoSpin) {
+    btn.classList.add('on');
+    btn.textContent = `STOP · ${State.autoCount}`;
+  } else {
+    btn.classList.remove('on');
+    btn.textContent = 'AUTO';
+  }
+}
+
+/* called whenever the game becomes idle to maybe queue the next auto spin */
+function tryAutoSpin() {
+  if (!State.autoSpin) return;
+  if (State.spinning || State.inBonus || State.bigWinShowing) return;
+  if (State.autoCount <= 0) {
+    stopAutoSpin();
+    return;
+  }
+  if (State.balance < getEffectiveBet()) {
+    stopAutoSpin();
+    flashLowFunds();
+    return;
+  }
+  setTimeout(() => {
+    if (State.autoSpin && !State.spinning && !State.inBonus && !State.bigWinShowing && State.autoCount > 0) {
+      State.autoCount--;
+      updateAutoSpinUI();
+      doSpin();
+    }
+  }, 600);
+}
+
+/* Pre-generate grid outcome.
+   Forced bonus: exactly 5 diamonds spread across reels (at least one in reel 3 for the anticipation moment).
+   Otherwise: cap diamonds at 4 to allow near-miss tension without triggering. */
+function generateOutcome(forceBonus) {
+  const grid = [];
+  const diamondSym = SYMBOLS.find(s => s.bonus);
+  const nonBonus = SYMBOLS.filter(s => !s.bonus);
+
+  // Build a base grid of non-bonus symbols
+  for (let r = 0; r < REEL_COUNT; r++) {
+    const col = [];
+    for (let rw = 0; rw < ROW_COUNT; rw++) col.push(pickSymbol(0));
+    grid.push(col);
+  }
+  // Clear any naturally-occurring diamonds for predictability
+  for (let r = 0; r < REEL_COUNT; r++) {
+    for (let rw = 0; rw < ROW_COUNT; rw++) {
+      if (grid[r][rw].bonus) grid[r][rw] = nonBonus[Math.floor(Math.random()*nonBonus.length)];
+    }
+  }
+
+  if (forceBonus) {
+    // Always 3-in-first-3-reels + 2-in-last-2-reels, one diamond per reel
+    // → after-reel-3 anticipation always fires, after-reel-4 ultra-anticipation always fires
+    const positions = [];
+    for (let r = 0; r < REEL_COUNT; r++) {
+      const rw = Math.floor(Math.random() * ROW_COUNT);
+      positions.push({ r, rw });
+    }
+    positions.forEach(({ r, rw }) => { grid[r][rw] = diamondSym; });
+  } else {
+    // Sprinkle 0-4 diamonds for occasional near-misses (~35% chance of 1+)
+    const sprinkle = Math.random();
+    let dTarget;
+    if (sprinkle < 0.62) dTarget = 0;
+    else if (sprinkle < 0.84) dTarget = 1;
+    else if (sprinkle < 0.95) dTarget = 2;
+    else if (sprinkle < 0.99) dTarget = 3; // anticipation tease
+    else dTarget = 4; // deep tease
+    const placed = new Set();
+    while (placed.size < dTarget) {
+      const r = Math.floor(Math.random() * REEL_COUNT);
+      const rw = Math.floor(Math.random() * ROW_COUNT);
+      const key = r + ',' + rw;
+      if (!placed.has(key)) {
+        placed.add(key);
+        grid[r][rw] = diamondSym;
+      }
+    }
+  }
+  return grid;
+}
+
+function flashLowFunds() {
+  const bal = document.querySelector('.balance');
+  bal.classList.add('shake');
+  setTimeout(() => bal.classList.remove('shake'), 500);
+  // little buzz
+  Audio.reelStop();
+}
+
+/* ============================================================
+   BONUS GAME — Hold & Win
+   ============================================================ */
+const BONUS_COLS = 6;
+const BONUS_ROWS = 4;
+const BONUS_TOTAL = BONUS_COLS * BONUS_ROWS;
+
+const BonusState = {
+  cells: [],   // {locked, gem: {value, color, jp: 'MINI'|null}}
+  respins: 3,
+  total: 0,
+  active: false,
+};
+
+const DIAMOND_COLORS = [
+  '#ff6ec7', // pink
+  '#4cc9ff', // blue
+  '#5cffa1', // green
+  '#ffe066', // yellow
+  '#c084fc', // purple
+  '#ff5a5f', // red
+  '#ffffff', // white
+];
+
+const UPGRADE_MULTS = { 2: 2.5, 3: 6 };
+
+/* generate a random gem — bumped values so the feature pays meaningfully. Level starts at 1. */
+function rollGemValue() {
+  const r = Math.random();
+  // Use the bet snapshot taken at trigger time so bought-bonuses (which pay
+  // base × 50 regardless of boost) also pay out at the base bet.
+  const bet = BonusState.bet || getEffectiveBet();
+  let jp = null, value;
+  if (r < 0.003)       { jp = 'MAJOR'; value = bet * JACKPOT_MULTS.MAJOR; }
+  else if (r < 0.015)  { jp = 'MINOR'; value = bet * JACKPOT_MULTS.MINOR; }
+  else if (r < 0.055)  { jp = 'MINI';  value = bet * JACKPOT_MULTS.MINI; }
+  else {
+    const tier = Math.random();
+    let mult;
+    if (tier < 0.50)      mult = 2 + Math.floor(Math.random() * 3);   // 2-4x  (most common, no more 1x flameouts)
+    else if (tier < 0.80) mult = 5 + Math.floor(Math.random() * 4);   // 5-8x
+    else if (tier < 0.95) mult = 9 + Math.floor(Math.random() * 7);   // 9-15x
+    else                  mult = 16 + Math.floor(Math.random() * 15); // 16-30x (rare)
+    value = bet * mult;
+  }
+  return { jp, value, baseValue: value, level: 1 };
+}
+
+/* Full bonus entry flow: pulse trigger diamonds → reveal overlay → seed + auto-run.
+   Diamonds are always on the reels (natural trigger OR bought spin), so pulse always plays. */
+async function triggerBonusReveal(bought = false) {
+  BonusState._pendingBought = !!bought;
+  State.inBonus = true;
+  if (State.autoSpin && State.stopAtFeature) stopAutoSpin();
+  updateBuyBonusButton();
+  updateBoostUI();
+
+  document.querySelectorAll('.symbol[data-symbol="diamond"]').forEach(el => {
+    el.classList.remove('dim');
+    el.classList.add('trigger');
+  });
+  document.getElementById('cabinet').classList.add('shake-strong');
+  Audio.bonusTrigger();
+  await sleep(1100);
+  document.getElementById('cabinet').classList.remove('shake-strong');
+
+  const overlay = document.getElementById('bonus-reveal');
+  overlay.classList.remove('hide');
+  overlay.classList.add('show');
+  Audio.reveal();
+
+  for (let i = 0; i < 10; i++) {
+    setTimeout(() => {
+      spawnConfetti(window.innerWidth * Math.random(), -10, 24);
+    }, i * 140);
+  }
+
+  await sleep(2400);
+
+  overlay.classList.remove('show');
+  overlay.classList.add('hide');
+  setTimeout(() => overlay.classList.remove('hide'), 500);
+
+  document.querySelectorAll('.symbol[data-symbol="diamond"]').forEach(el => el.classList.remove('trigger'));
+
+  // Always gate the feature behind a START click (rules content
+  // collapses once the player has dismissed it with "don't show again").
+  await showFeatureRules();
+  startBonus();
+}
+
+/* ---------- BUY BONUS ---------- */
+function openBuyBonusModal() {
+  if (State.spinning || State.inBonus) return;
+  Audio.click();
+  const cost = getBuyBonusCost();
+  document.getElementById('buy-bonus-bet').textContent = '$' + fmt(State.bet);
+  document.getElementById('buy-bonus-cost').textContent = '$' + fmt(cost);
+  const confirm = document.getElementById('btn-buy-confirm');
+  if (State.balance >= cost) {
+    confirm.disabled = false;
+    confirm.textContent = 'BUY · $' + fmt(cost);
+  } else {
+    confirm.disabled = true;
+    confirm.textContent = 'INSUFFICIENT FUNDS';
+  }
+  document.getElementById('buy-modal-veil').classList.add('show');
+}
+
+function closeBuyBonusModal() {
+  document.getElementById('buy-modal-veil').classList.remove('show');
+  Audio.click();
+}
+
+function confirmBuyBonus() {
+  const cost = getBuyBonusCost();
+  if (State.balance < cost) return;
+  setBalance(State.balance - cost);
+  document.getElementById('buy-modal-veil').classList.remove('show');
+  // Intensification flash overlaps the spin for added drama
+  flashCabinetForBuy();
+  doSpin({ boughtBonus: true });
+}
+
+function flashCabinetForBuy() {
+  const cab = document.getElementById('cabinet');
+  cab.classList.remove('buy-flash');
+  void cab.offsetWidth;
+  cab.classList.add('buy-flash');
+  Audio.reveal();
+  setTimeout(() => cab.classList.remove('buy-flash'), 700);
+}
+
+function updateBuyBonusButton() {
+  const btn = document.getElementById('btn-buy-bonus');
+  if (!btn) return;
+  btn.disabled = State.spinning || State.inBonus || State.balance < getBuyBonusCost();
+}
+
+/* ---------- ODDS BOOSTER ---------- */
+function toggleBoost() {
+  if (State.spinning || State.inBonus) return;
+  State.boost = !State.boost;
+  Audio.click();
+  updateBoostUI();
+  updateJackpotDisplay();
+  updateBuyBonusDisplay();
+  updateBuyBonusButton();
+}
+
+function updateBoostUI() {
+  const btn = document.getElementById('btn-boost');
+  const label = document.getElementById('boost-label');
+  if (!btn || !label) return;
+  if (State.boost) {
+    btn.classList.add('on');
+    label.textContent = `BOOST ON · $${fmt(getEffectiveBet())}/SPIN`;
+  } else {
+    btn.classList.remove('on');
+    label.textContent = '+50% ODDS BOOST';
+  }
+  btn.disabled = State.spinning || State.inBonus;
+}
+
+async function startBonus() {
+  BonusState.cells = Array(BONUS_TOTAL).fill(null).map(() => ({ locked: false, gem: null }));
+  BonusState.respins = 3;
+  BonusState.total = 0;
+  BonusState.active = true;
+  BonusState.hideValues = true; // suspense! revealed sequentially in finishBonus
+  // Snapshot the bet so the entire feature pays out at one stable rate.
+  // Bought bonuses pay at base bet; natural triggers at the effective (boosted) bet.
+  BonusState.bet = BonusState._pendingBought ? State.bet : getEffectiveBet();
+  BonusState._pendingBought = false;
+  // Refresh the jackpot strips to match the bet that will actually be used.
+  updateJackpotDisplay();
+
+  // Build the empty board
+  const board = document.getElementById('bonus-board');
+  board.innerHTML = '';
+  for (let i = 0; i < BONUS_TOTAL; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.idx = i;
+    board.appendChild(cell);
+  }
+
+  document.getElementById('respins-value').textContent = BonusState.respins;
+  document.getElementById('diamonds-count').textContent = `0 / ${BONUS_TOTAL}`;
+  // Hide the live total during the feature — revealed during finishBonus
+  document.getElementById('bonus-total').textContent = '???';
+  document.getElementById('bonus-final').classList.remove('show');
+  document.getElementById('bonus-stage').classList.add('show');
+  setAutoStatus('SEEDING');
+
+  await sleep(500);
+
+  // Seed the 5 trigger diamonds, landing one by one
+  await placeSeedDiamonds(5);
+  await sleep(900);
+
+  // Begin auto-respin loop
+  runBonusLoop();
+}
+
+async function placeSeedDiamonds(count) {
+  const positions = [];
+  while (positions.length < count) {
+    const p = Math.floor(Math.random() * BONUS_TOTAL);
+    if (!positions.includes(p)) positions.push(p);
+  }
+  for (const idx of positions) {
+    const gem = rollGemValue();
+    const color = DIAMOND_COLORS[Math.floor(Math.random()*DIAMOND_COLORS.length)];
+    BonusState.cells[idx] = { locked: true, gem: { ...gem, color } };
+    renderCell(idx);
+    Audio.diamondLand();
+    const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+    const r = cellEl.getBoundingClientRect();
+    spawnConfetti(r.left + r.width/2, r.top + r.height/2, 14);
+    await sleep(220);
+  }
+  recalcBonusTotal();
+  document.getElementById('diamonds-count').textContent = `${count} / ${BONUS_TOTAL}`;
+}
+
+async function runBonusLoop() {
+  while (BonusState.active) {
+    if (BonusState.respins <= 0) {
+      finishBonus(false);
+      return;
+    }
+    setAutoStatus(`RESPINNING — ${BonusState.respins} LEFT`);
+    await sleep(700);
+    await doBonusRespin();
+
+    const filled = BonusState.cells.filter(c => c.locked).length;
+    if (filled === BONUS_TOTAL) {
+      awardGrand();
+      return;
+    }
+    if (!BonusState.active) return;
+    if (BonusState.respins <= 0) {
+      finishBonus(false);
+      return;
+    }
+    await sleep(900);
+  }
+}
+
+function setAutoStatus(text) {
+  const el = document.getElementById('auto-status');
+  if (el) el.textContent = text;
+}
+
+/* one respin:
+   - empty cells can spawn a new diamond
+   - locked cells at level<3 can be UPGRADED
+   - 0 events  → respins -= 1
+   - 1-2 events → respins reset to 3
+   - 3+ events → respins reset to 3 AND +1 bonus respin (rare, exciting)   */
+async function doBonusRespin() {
+  if (!BonusState.active) return;
+
+  const newDiamondChance = 0.022;
+  const upgradeChance    = 0.018;
+  let eventsThisSpin = 0;
+
+  // cells eligible for an event
+  const idxs = BonusState.cells
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => !c.locked || (c.gem && c.gem.level < 3))
+    .map(({ i }) => i);
+
+  if (idxs.length === 0) return;
+
+  // Pre-decide outcomes
+  const outcomes = idxs.map(idx => {
+    const cell = BonusState.cells[idx];
+    const chance = !cell.locked ? newDiamondChance : upgradeChance;
+    return { idx, hit: Math.random() < chance, isUpgrade: !!cell.locked };
+  });
+
+  // Start all spinners simultaneously
+  for (const o of outcomes) {
+    if (o.isUpgrade) startUpgradeSpinner(o.idx);
+    else             startCellSpinner(o.idx);
+  }
+  Audio.cellSpinStart();
+
+  // Spin for a moment so the motion registers
+  await sleep(620);
+
+  // Stop spinners in succession; hits reveal a gem or upgrade
+  for (let i = 0; i < outcomes.length; i++) {
+    const { idx, hit, isUpgrade } = outcomes[i];
+
+    if (isUpgrade) stopUpgradeSpinner(idx);
+    else           stopCellSpinner(idx);
+    Audio.cellTick();
+
+    if (hit) {
+      if (isUpgrade) {
+        applyUpgrade(idx);
+        Audio.upgradeGem();
+      } else {
+        const gem = rollGemValue();
+        const color = DIAMOND_COLORS[Math.floor(Math.random() * DIAMOND_COLORS.length)];
+        BonusState.cells[idx] = { locked: true, gem: { ...gem, color } };
+        renderCell(idx);
+        Audio.diamondLand();
+      }
+      eventsThisSpin++;
+      const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+      const r = cellEl.getBoundingClientRect();
+      spawnConfetti(r.left + r.width/2, r.top + r.height/2, 12);
+      await sleep(110);
+    } else {
+      await sleep(38 + Math.random() * 22);
+    }
+  }
+
+  recalcBonusTotal();
+  const filledCount = BonusState.cells.filter(c => c.locked).length;
+  document.getElementById('diamonds-count').textContent = `${filledCount} / ${BONUS_TOTAL}`;
+
+  // Respin rule — any event resets to 3, otherwise -1
+  if (eventsThisSpin >= 1) {
+    BonusState.respins = 3;
+    Audio.respinReset();
+  } else {
+    BonusState.respins--;
+  }
+
+  const rv = document.getElementById('respins-value');
+  rv.classList.remove('flash'); void rv.offsetWidth; rv.classList.add('flash');
+  rv.textContent = BonusState.respins;
+}
+
+/* ---------- Cell spinner helpers ---------- */
+function startCellSpinner(idx) {
+  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  if (!cellEl || cellEl.querySelector('.cell-spinner')) return;
+
+  const spinner = document.createElement('div');
+  spinner.className = 'cell-spinner';
+  const strip = document.createElement('div');
+  strip.className = 'spinner-strip';
+
+  // 3 unique slots (mix of gems and blanks), duplicated for seamless loop
+  const symbols = [];
+  for (let i = 0; i < 3; i++) {
+    if (Math.random() < 0.6) symbols.push(DIAMOND_COLORS[Math.floor(Math.random() * DIAMOND_COLORS.length)]);
+    else symbols.push(null);
+  }
+  // jitter the per-cell speed slightly so the grid doesn't feel mechanical
+  const speed = 0.28 + Math.random() * 0.12;
+  strip.style.animationDuration = speed + 's';
+
+  for (let pass = 0; pass < 2; pass++) {
+    for (const color of symbols) {
+      const slot = document.createElement('div');
+      slot.className = 'spinner-slot';
+      if (color) {
+        const gem = document.createElement('div');
+        gem.className = 'mini-gem';
+        gem.style.setProperty('--mc', color);
+        slot.appendChild(gem);
+      }
+      strip.appendChild(slot);
+    }
+  }
+
+  spinner.appendChild(strip);
+  cellEl.appendChild(spinner);
+}
+
+function stopCellSpinner(idx) {
+  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const spinner = cellEl && cellEl.querySelector('.cell-spinner');
+  if (spinner) {
+    spinner.classList.add('stopping');
+    setTimeout(() => spinner.remove(), 200);
+  }
+}
+
+function startUpgradeSpinner(idx) {
+  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  if (cellEl) cellEl.classList.add('upgrade-spinning');
+}
+
+function stopUpgradeSpinner(idx) {
+  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  if (cellEl) cellEl.classList.remove('upgrade-spinning');
+}
+
+/* level up an existing gem in place (no re-render of element) */
+function applyUpgrade(idx) {
+  const data = BonusState.cells[idx];
+  if (!data || !data.gem || data.gem.level >= 3) return false;
+  data.gem.level++;
+  data.gem.value = Math.round(data.gem.baseValue * UPGRADE_MULTS[data.gem.level] * 100) / 100;
+
+  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const gem = cellEl.querySelector('.gem');
+  if (!gem) return true;
+
+  gem.dataset.level = data.gem.level;
+  const val = gem.querySelector('.gem-value');
+  if (val) {
+    val.classList.remove('jp'); // upgraded jp gems show their dollar value
+    val.textContent = '$' + fmt(data.gem.value);
+  }
+  let badge = gem.querySelector('.gem-badge');
+  if (!badge) {
+    badge = document.createElement('div');
+    badge.className = 'gem-badge';
+    gem.appendChild(badge);
+  } else {
+    badge.style.animation = 'none';
+    void badge.offsetWidth;
+    badge.style.animation = '';
+  }
+  badge.textContent = data.gem.level === 2 ? 'II' : 'III';
+
+  gem.classList.remove('upgrading');
+  void gem.offsetWidth;
+  gem.classList.add('upgrading');
+  setTimeout(() => gem.classList.remove('upgrading'), 620);
+
+  // burst at the cell
+  const r = cellEl.getBoundingClientRect();
+  spawnConfetti(r.left + r.width/2, r.top + r.height/2, 18);
+  return true;
+}
+
+
+function renderCell(idx) {
+  const el = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const data = BonusState.cells[idx];
+  el.classList.add('locked');
+  el.innerHTML = '';
+  if (!data || !data.gem) return;
+  const gem = document.createElement('div');
+  gem.className = 'gem spawning';
+  gem.dataset.level = data.gem.level;
+  gem.style.setProperty('--gem-color', data.gem.color);
+  setTimeout(() => gem.classList.remove('spawning'), 420);
+  const shape = document.createElement('div');
+  shape.className = 'gem-shape';
+  gem.appendChild(shape);
+  const val = document.createElement('div');
+  if (data.gem.jp && data.gem.level === 1) {
+    val.className = 'gem-value jp';
+    val.textContent = data.gem.jp;
+  } else {
+    val.className = 'gem-value';
+    val.textContent = '$' + fmt(data.gem.value);
+  }
+  // Values stay hidden during the feature — revealed sequentially in finishBonus
+  if (BonusState.hideValues) val.classList.add('value-hidden');
+  gem.appendChild(val);
+  if (data.gem.level > 1) {
+    const badge = document.createElement('div');
+    badge.className = 'gem-badge';
+    badge.textContent = data.gem.level === 2 ? 'II' : 'III';
+    gem.appendChild(badge);
+  }
+  el.appendChild(gem);
+}
+
+function recalcBonusTotal() {
+  BonusState.total = BonusState.cells.reduce((s, c) => s + (c.gem ? c.gem.value : 0), 0);
+  if (!BonusState.hideValues) {
+    document.getElementById('bonus-total').textContent = fmt(BonusState.total);
+  }
+}
+
+function awardGrand() {
+  // Add GRAND on top of all collected values (uses the bet snapshot so
+  // bought-bonus GRANDs pay at base bet × GRAND).
+  const grandAmount = (BonusState.bet || State.bet) * JACKPOT_MULTS.GRAND;
+  BonusState.total += grandAmount;
+  Audio.grandJackpot();
+  // jackpot flash on topper
+  document.querySelectorAll('.jackpot[data-tier="GRAND"], .bonus-jp[data-tier="GRAND"]').forEach(el => {
+    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+  });
+  spawnCoinShower(document.getElementById('bonus-board'), 80);
+  setTimeout(() => finishBonus(true), 1500);
+}
+
+async function finishBonus(isGrand) {
+  BonusState.active = false;
+  setAutoStatus(isGrand ? 'REVEALING...' : 'REVEALING...');
+
+  // Reveal each locked gem's value in turn, building up the running total.
+  await revealAllGemValues();
+
+  setAutoStatus(isGrand ? 'GRAND!' : 'BONUS COMPLETE');
+  // animate final total counter
+  const fin = document.getElementById('bonus-final');
+  fin.classList.add('show');
+  const finalEl = document.getElementById('final-amount');
+  finalEl.textContent = '0';
+  Audio.tallyRace();
+  countUp(0, BonusState.total, 1800, v => {
+    finalEl.textContent = fmt(v);
+  });
+  if (isGrand) {
+    setTimeout(() => spawnCoinShower(fin, 60), 300);
+  }
+}
+
+/* Sequentially reveal every filled cell's value with a pop + chime,
+   updating the running TOTAL HUD as we go. Returns once all are revealed. */
+async function revealAllGemValues() {
+  BonusState.hideValues = false;
+  const totalEl = document.getElementById('bonus-total');
+  totalEl.textContent = '0';
+
+  // Walk cells in DOM order (top-left → bottom-right) so the wave is visible
+  let running = 0;
+  for (let idx = 0; idx < BonusState.cells.length; idx++) {
+    const data = BonusState.cells[idx];
+    if (!data || !data.gem) continue;
+    const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+    if (!cellEl) continue;
+    const valEl = cellEl.querySelector('.gem-value');
+    if (!valEl) continue;
+    // Trigger the reveal pop
+    valEl.classList.remove('value-hidden', 'revealing');
+    void valEl.offsetWidth;
+    valEl.classList.add('revealing');
+    Audio.coin();
+    running += data.gem.value;
+    totalEl.textContent = fmt(running);
+    // Small cell pop in addition
+    const gemEl = cellEl.querySelector('.gem');
+    if (gemEl) {
+      gemEl.classList.remove('upgrading');
+      void gemEl.offsetWidth;
+    }
+    await sleep(95);
+  }
+  await sleep(500);
+}
+
+function collectBonus() {
+  setBalance(State.balance + BonusState.total);
+  setWin(BonusState.total, { glow: true });
+  Audio.addCash();
+  // Record the deferred spin entry now that the bonus is settled —
+  // bet = the original spin bet, win = line wins + bonus payout - bet
+  if (window.History && State.spinBet) {
+    const totalReturn = (State.spinLineWin || 0) + (BonusState.total || 0);
+    const net = totalReturn - State.spinBet;
+    let note = State.spinNote || 'BONUS';
+    if (BonusState.total >= State.spinBet * JACKPOT_MULTS.GRAND * 0.9) note = 'GRAND';
+    else if (BonusState.total >= State.spinBet * JACKPOT_MULTS.MAJOR * 0.9) note = 'MAJOR';
+    else if (BonusState.total >= State.spinBet * JACKPOT_MULTS.MINOR * 0.9) note = 'MINOR';
+    History.record('slots', State.spinBet, net, note);
+    State.spinBet = 0; State.spinLineWin = 0; State.spinNote = '';
+  }
+  document.getElementById('bonus-stage').classList.remove('show');
+  State.inBonus = false;
+  updateJackpotDisplay();
+  updateBuyBonusButton();
+  updateBoostUI();
+  tryAutoSpin();
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ============================================================
+   ADD FUNDS MODAL
+   ============================================================ */
+function openAddFunds() {
+  const modal = document.getElementById('modal-veil');
+  modal.classList.add('show');
+  const inp = document.getElementById('amount-input');
+  inp.value = '';
+  setTimeout(() => inp.focus(), 100);
+  Audio.click();
+}
+function closeAddFunds() {
+  document.getElementById('modal-veil').classList.remove('show');
+  Audio.click();
+}
+function confirmAddFunds() {
+  const inp = document.getElementById('amount-input');
+  const amt = parseFloat(inp.value);
+  if (isNaN(amt) || amt <= 0) {
+    inp.focus();
+    return;
+  }
+  setBalance(State.balance + amt);
+  Audio.addCash();
+  // tiny confetti from + button
+  const btn = document.getElementById('btn-add');
+  const r = btn.getBoundingClientRect();
+  spawnConfetti(r.left + r.width/2, r.top + r.height/2, 24);
+  closeAddFunds();
+}
+
+/* ============================================================
+   WIRING
+   ============================================================ */
+/* ============================================================
+   RULES MODALS (intro + feature)
+   ============================================================ */
+const RULES_INTRO_KEY = 'casino.rules.slots.intro';
+const RULES_FEATURE_KEY = 'casino.rules.slots.feature';
+const hasFlag = k => { try { return localStorage.getItem(k) === '1'; } catch (e) { return false; } };
+const setFlag = k => { try { localStorage.setItem(k, '1'); } catch (e) {} };
+
+function showIntroRules() {
+  document.getElementById('intro-rules-veil').classList.add('show');
+}
+function closeIntroRules() {
+  if (document.getElementById('intro-dont-show').checked) setFlag(RULES_INTRO_KEY);
+  document.getElementById('intro-rules-veil').classList.remove('show');
+}
+
+function showFeatureRules() {
+  return new Promise(resolve => {
+    const veil = document.getElementById('feature-rules-veil');
+    const content = document.getElementById('feature-rules-content');
+    const seen = hasFlag(RULES_FEATURE_KEY);
+    // After "don't show again" is set, hide the full content block and just
+    // present the START interstitial — feature still doesn't auto-start.
+    if (content) content.style.display = seen ? 'none' : 'block';
+    const dont = document.getElementById('feature-dont-show');
+    if (dont) dont.parentElement.style.display = seen ? 'none' : 'flex';
+    veil.classList.add('show');
+    const startBtn = document.getElementById('feature-start-btn');
+    const handler = () => {
+      if (!seen && dont && dont.checked) setFlag(RULES_FEATURE_KEY);
+      veil.classList.remove('show');
+      startBtn.removeEventListener('click', handler);
+      Audio.click();
+      resolve();
+    };
+    startBtn.addEventListener('click', handler);
+  });
+}
+
+function init() {
+  buildReels();
+  if (window.SettingsUI) SettingsUI.mount();
+  if (window.Music) Music.init('Music/Diamond%20Spin.m4a');
+  document.getElementById('balance').textContent = fmt(State.balance);
+  updateJackpotDisplay();
+  updateBuyBonusDisplay();
+  updateBuyBonusButton();
+  updateBoostUI();
+
+  // Eagerly preload SFX (HTMLAudioElement loads while AudioContext can stay
+  // suspended). On any user gesture we re-call init which is a no-op except
+  // it ensures the elements have started fetching.
+  Audio.init();
+  const sfxResume = () => { Audio.init(); };
+  window.addEventListener('pointerdown', sfxResume, { capture: true });
+  window.addEventListener('keydown',     sfxResume, { capture: true });
+  window.addEventListener('touchstart',  sfxResume, { capture: true, passive: true });
+
+  document.getElementById('spin-btn').addEventListener('click', () => {
+    Audio.click();
+    doSpin();
+  });
+
+  document.getElementById('bet-up').addEventListener('click', () => {
+    const i = State.betSteps.indexOf(State.bet);
+    if (i < State.betSteps.length - 1) {
+      setBet(State.betSteps[i+1]);
+      Audio.betUp();
+    }
+  });
+  document.getElementById('bet-down').addEventListener('click', () => {
+    const i = State.betSteps.indexOf(State.bet);
+    if (i > 0) {
+      setBet(State.betSteps[i-1]);
+      Audio.betDown();
+    }
+  });
+
+  document.getElementById('btn-history').addEventListener('click', () => {
+    Audio.click();
+    if (window.HistoryUI) HistoryUI.open({ scope: 'session', game: 'slots' });
+  });
+
+  document.getElementById('btn-auto').addEventListener('click', handleAutoButton);
+  document.getElementById('btn-auto-cancel').addEventListener('click', closeAutoModal);
+  document.getElementById('auto-modal-veil').addEventListener('click', e => {
+    if (e.target.id === 'auto-modal-veil') closeAutoModal();
+  });
+  document.querySelectorAll('.auto-count-chip').forEach(chip => {
+    chip.addEventListener('click', () => startAutoSpin(parseInt(chip.dataset.count, 10)));
+  });
+  document.getElementById('btn-boost').addEventListener('click', toggleBoost);
+  document.getElementById('btn-buy-bonus').addEventListener('click', openBuyBonusModal);
+  document.getElementById('btn-buy-cancel').addEventListener('click', closeBuyBonusModal);
+  document.getElementById('btn-buy-confirm').addEventListener('click', confirmBuyBonus);
+  document.getElementById('buy-modal-veil').addEventListener('click', e => {
+    if (e.target.id === 'buy-modal-veil') closeBuyBonusModal();
+  });
+  document.getElementById('btn-add').addEventListener('click', openAddFunds);
+  document.getElementById('btn-cancel').addEventListener('click', closeAddFunds);
+  document.getElementById('btn-confirm').addEventListener('click', confirmAddFunds);
+  document.getElementById('modal-veil').addEventListener('click', e => {
+    if (e.target.id === 'modal-veil') closeAddFunds();
+  });
+  document.querySelectorAll('.quick-chip').forEach(b => {
+    b.addEventListener('click', () => {
+      const cur = parseFloat(document.getElementById('amount-input').value) || 0;
+      document.getElementById('amount-input').value = cur + parseInt(b.dataset.amt, 10);
+      Audio.click();
+    });
+  });
+  document.getElementById('amount-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmAddFunds();
+    if (e.key === 'Escape') closeAddFunds();
+  });
+
+  document.getElementById('btn-collect').addEventListener('click', () => {
+    Audio.click();
+    collectBonus();
+  });
+
+  // Intro Rules — shown on first visit unless dismissed
+  document.getElementById('intro-play-btn').addEventListener('click', () => {
+    Audio.click();
+    closeIntroRules();
+  });
+  if (!hasFlag(RULES_INTRO_KEY)) showIntroRules();
+
+  // Spacebar spins the base game (bonus respins are automatic)
+  window.addEventListener('keydown', e => {
+    if (e.code === 'Space' && !State.spinning && !State.inBonus && !State.bigWinShowing &&
+        !document.querySelector('.modal-veil.show, .casino-settings-veil.show')) {
+      e.preventDefault();
+      doSpin();
+    }
+  });
+}
+
+init();
+</script>
+</body>
+</html>

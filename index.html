@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Diamond Casino — Lobby</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Outfit:wght@400;600;800&family=Geist+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-0: #0a0418;
+  --bg-1: #150828;
+  --gold-0: #fff0a8;
+  --gold-1: #ffd24a;
+  --gold-2: #b8860b;
+  --gold-deep: #5c3d00;
+  --neon-pink: #ff2e93;
+  --neon-cyan: #22d3ee;
+  --neon-violet: #a855f7;
+  --neon-green: #5cffa1;
+  --felt: #0d4a2a;
+  --shadow-deep: 0 30px 60px -10px rgba(0,0,0,0.7), 0 18px 36px -18px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Outfit', sans-serif;
+  color: #fff;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(168,85,247,0.25) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(255,46,147,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(34,211,238,0.08) 0%, transparent 70%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%, var(--bg-0));
+  background-attachment: fixed;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>");
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.04;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 22px, rgba(255,210,74,0.4) 22px 23px),
+    repeating-linear-gradient(-45deg, transparent 0 22px, rgba(168,85,247,0.4) 22px 23px);
+}
+
+.lobby {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* HEADER */
+.header {
+  text-align: center;
+  position: relative;
+}
+.header::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 480px; height: 480px;
+  background: radial-gradient(circle, rgba(255,210,74,0.12), transparent 60%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: -1;
+}
+.brand-pre {
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.6em;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 12px rgba(34,211,238,0.6);
+  margin-bottom: 8px;
+}
+.brand {
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(40px, 7vw, 76px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #fff7d1 0%, var(--gold-1) 45%, #b8860b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 4px 0 rgba(0,0,0,0.6)) drop-shadow(0 0 18px rgba(255,210,74,0.4));
+}
+.brand-sub {
+  margin-top: 6px;
+  font-family: 'Bungee', cursive;
+  font-size: clamp(10px, 1.4vw, 13px);
+  letter-spacing: 0.5em;
+  color: rgba(255,255,255,0.5);
+}
+
+/* BALANCE BAR */
+.balance-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 22px;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at center top, rgba(255,210,74,0.12), transparent 70%),
+    linear-gradient(180deg, #1a0838, #0a0319);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,210,74,0.28),
+    0 16px 40px rgba(0,0,0,0.45);
+  width: min(420px, 100%);
+  margin: 0 auto;
+}
+.balance-bar .label {
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: rgba(255,210,74,0.75);
+}
+.balance-bar .value {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: clamp(22px, 3.5vw, 30px);
+  color: #fff;
+  text-shadow: 0 0 14px rgba(255,255,255,0.25);
+  letter-spacing: 0.02em;
+}
+.btn-add {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  border: 0;
+  font-family: 'Bungee', cursive;
+  font-size: 20px;
+  cursor: pointer;
+  color: #0a0418;
+  background: linear-gradient(180deg, #5cffa1, #14b85a);
+  box-shadow: 0 4px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+  transition: transform 0.1s;
+}
+.btn-add:hover { filter: brightness(1.08); }
+.btn-add:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4); }
+
+/* HISTORY BUTTON — fixed top-left, symmetric with the settings gear top-right */
+.btn-history {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 80;
+  border: 0;
+  cursor: pointer;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--neon-cyan, #22d3ee);
+  background: rgba(2,8,18,0.7);
+  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.45), 0 4px 16px rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: filter 0.15s, transform 0.1s;
+}
+.btn-history::before { content: '⌛'; font-size: 14px; line-height: 1; }
+.btn-history:hover { filter: brightness(1.15); }
+.btn-history:active { transform: translateY(2px); }
+@media (max-width: 720px) {
+  .btn-history { top: 8px; left: 8px; height: 34px; padding: 0 12px; font-size: 9px; letter-spacing: 0.14em; gap: 6px; }
+  .btn-history::before { font-size: 12px; }
+}
+
+/* GAME GRID */
+.games {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 22px;
+}
+
+.game-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 0;
+  border-radius: 22px;
+  padding: 22px;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+  font-family: inherit;
+  color: #fff;
+  background: linear-gradient(180deg, #2c1456 0%, #1a0735 50%, #0f041e 100%);
+  box-shadow:
+    var(--shadow-deep),
+    inset 0 0 0 1.5px rgba(255,210,74,0.2);
+  overflow: hidden;
+  transition: transform 0.18s cubic-bezier(.2,1.4,.4,1), box-shadow 0.18s, filter 0.2s;
+}
+.game-card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    var(--shadow-deep),
+    inset 0 0 0 1.5px rgba(255,210,74,0.4),
+    0 0 36px rgba(255,210,74,0.18);
+}
+.game-card:active { transform: translateY(-1px); }
+
+.game-card::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 16px;
+  pointer-events: none;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--gold-0), var(--gold-1) 30%, var(--gold-deep) 50%, var(--gold-1) 70%, var(--gold-0));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.45;
+}
+
+.preview {
+  position: relative;
+  height: 200px;
+  border-radius: 14px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+/* SLOTS PREVIEW: row of glowing symbols */
+.preview.slots {
+  background:
+    radial-gradient(ellipse at center, rgba(34,211,238,0.18), transparent 70%),
+    linear-gradient(180deg, #0a0218, #1a0838 100%);
+  box-shadow: inset 0 0 0 1px rgba(34,211,238,0.25);
+}
+.preview.slots .reel-strip {
+  display: flex;
+  gap: 8px;
+}
+.preview.slots .reel-sym {
+  width: 60px; height: 76px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(168,85,247,0.18), rgba(0,0,0,0.5));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.22), inset 0 0 20px rgba(0,0,0,0.5);
+  font-family: 'Bungee', cursive;
+  font-size: 32px;
+}
+.preview.slots .reel-sym.diamond {
+  font-size: 0;
+}
+.preview.slots .reel-sym.diamond::after {
+  content: '';
+  width: 36px; height: 36px;
+  background: conic-gradient(from 0deg, #00e5ff, #b388ff, #ff80ab, #ffd54f, #69f0ae, #40c4ff, #00e5ff);
+  clip-path: polygon(50% 0%, 100% 35%, 50% 100%, 0% 35%);
+  filter: drop-shadow(0 0 8px rgba(34,211,238,0.6));
+  animation: spin 5s linear infinite;
+}
+@keyframes spin { to { filter: drop-shadow(0 0 8px rgba(34,211,238,0.6)) hue-rotate(360deg); } }
+
+.sl-seven { color: #ff2e58; text-shadow: 0 0 10px rgba(255,46,88,0.5); }
+.sl-bell  { color: #ffbf00; text-shadow: 0 0 10px rgba(255,191,0,0.55); }
+.sl-crown { color: #ffd24a; text-shadow: 0 0 10px rgba(255,210,74,0.55); }
+.sl-star  { color: #fde047; text-shadow: 0 0 10px rgba(253,224,71,0.55); }
+.sl-heart { color: var(--neon-pink); text-shadow: 0 0 10px rgba(255,46,147,0.55); }
+
+/* KRAKEN PREVIEW — abyssal kraken-eye centerpiece + anchor + trident */
+.preview.kraken {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(255,60,95,0.18), transparent 55%),
+    radial-gradient(ellipse at 20% 100%, rgba(34,211,238,0.20), transparent 65%),
+    radial-gradient(ellipse at 80% 0%, rgba(106,58,175,0.30), transparent 60%),
+    linear-gradient(180deg, #02060d 0%, #061528 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,60,95,0.32);
+  overflow: hidden;
+}
+.preview.kraken::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(165deg, transparent 0 18px, rgba(77,255,226,0.05) 18px 19px),
+    repeating-linear-gradient(195deg, transparent 0 26px, rgba(106,58,175,0.04) 26px 27px);
+  pointer-events: none;
+}
+.preview.kraken .kraken-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  z-index: 1;
+}
+.preview.kraken .kr-anchor {
+  font-size: 56px;
+  color: #ffd24a;
+  text-shadow: 0 0 16px rgba(255,210,74,0.7), 0 2px 0 #4a2a00;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));
+  animation: krAnchor 3s ease-in-out infinite alternate;
+}
+@keyframes krAnchor {
+  0%   { transform: rotate(-5deg); }
+  100% { transform: rotate(5deg); }
+}
+.preview.kraken .kr-eye {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 15% 55% at 50% 50%, #18000a 0%, #2a0010 40%, transparent 65%),
+    radial-gradient(circle at 50% 50%, #ff3c5f 0%, #b51036 20%, #6a3aaf 55%, #1a0640 100%);
+  filter:
+    drop-shadow(0 0 14px rgba(255,60,95,0.6))
+    drop-shadow(0 0 28px rgba(106,58,175,0.45));
+  animation: krEye 2.4s ease-in-out infinite alternate;
+}
+@keyframes krEye {
+  0% { transform: scale(0.96); }
+  100% { transform: scale(1.08); }
+}
+.preview.kraken .kr-trident {
+  font-size: 50px;
+  color: #4dffe2;
+  text-shadow: 0 0 16px rgba(77,255,226,0.7), 0 2px 0 #003a3a;
+}
+
+/* SALOON PREVIEW: sunset sign, six reels, and multiplier trail */
+.preview.saloon {
+  background:
+    radial-gradient(circle at 50% 16%, rgba(255,210,74,0.34), transparent 24%),
+    radial-gradient(ellipse at 50% 100%, rgba(255,46,88,0.20), transparent 66%),
+    linear-gradient(180deg, #35140a 0%, #170718 58%, #08030f 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,170,64,0.34);
+}
+.preview.saloon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent 0 12%, rgba(255,210,74,0.08) 12% 13%, transparent 13% 24%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 16px);
+  opacity: 0.8;
+}
+.preview.saloon .saloon-scene {
+  position: relative;
+  z-index: 1;
+  width: min(260px, 92%);
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+.preview.saloon .saloon-sign {
+  padding: 7px 18px 8px;
+  border-radius: 999px;
+  font-family: 'Bungee', cursive;
+  font-size: 18px;
+  letter-spacing: 0.2em;
+  color: #371300;
+  background: linear-gradient(180deg, #fff0a8, #ffbf3f 52%, #b85b16);
+  box-shadow:
+    0 7px 0 rgba(66,24,0,0.85),
+    0 0 24px rgba(255,154,46,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.7);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.45);
+}
+.preview.saloon .saloon-reels {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(12,2,12,0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,210,74,0.22),
+    inset 0 0 24px rgba(0,0,0,0.7);
+}
+.preview.saloon .saloon-reel {
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  font-family: 'Bungee', cursive;
+  font-size: 24px;
+  color: #ffd24a;
+  background: linear-gradient(180deg, rgba(255,210,74,0.16), rgba(88,23,10,0.76));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+  text-shadow: 0 0 10px rgba(255,210,74,0.65);
+}
+.preview.saloon .saloon-trail {
+  display: flex;
+  gap: 7px;
+}
+.preview.saloon .saloon-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ff2e58;
+  box-shadow: 0 0 12px rgba(255,46,88,0.78);
+}
+.preview.saloon .saloon-dot:nth-child(2) {
+  background: #ffd24a;
+  box-shadow: 0 0 12px rgba(255,210,74,0.78);
+}
+.preview.saloon .saloon-dot:nth-child(3) {
+  background: #5cffa1;
+  box-shadow: 0 0 12px rgba(92,255,161,0.78);
+}
+
+/* BLACKJACK PREVIEW: cards fanned out */
+.preview.blackjack {
+  background:
+    radial-gradient(ellipse at center, rgba(92,255,161,0.12), transparent 65%),
+    radial-gradient(circle at 50% 100%, #1a6e44 0%, transparent 70%),
+    linear-gradient(180deg, #062a18 0%, #021006 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.3);
+}
+.preview.blackjack .card-fan {
+  position: relative;
+  width: 220px; height: 150px;
+}
+.preview.blackjack .pcard {
+  position: absolute;
+  width: 80px; height: 116px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.05);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 7px 8px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+}
+.preview.blackjack .pcard .rank {
+  font-size: 19px;
+  line-height: 1;
+}
+.preview.blackjack .pcard .suit-center {
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  line-height: 1;
+}
+.preview.blackjack .pcard .bot {
+  font-size: 19px;
+  text-align: right;
+  transform: rotate(180deg);
+  line-height: 1;
+}
+.preview.blackjack .pcard.red { color: #d62433; }
+.preview.blackjack .pcard.black { color: #111; }
+.preview.blackjack .c1 { left: 0; top: 16px; transform: rotate(-12deg); }
+.preview.blackjack .c2 { left: 70px; top: 8px; transform: rotate(0deg); }
+.preview.blackjack .c3 { left: 140px; top: 16px; transform: rotate(12deg); }
+
+/* CRAPS PREVIEW — mini bubble dome with two dice */
+.preview.craps {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(255,210,74,0.14), transparent 65%),
+    radial-gradient(ellipse at 20% 0%, rgba(168,85,247,0.30), transparent 70%),
+    linear-gradient(180deg, #0a0418, #1a0838 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.32);
+  overflow: hidden;
+}
+.preview.craps .cr-dome {
+  position: relative;
+  width: 130px;
+  height: 100px;
+  border-radius: 50% 50% 46% 46% / 56% 56% 44% 44%;
+  background:
+    radial-gradient(ellipse 60% 28% at 50% 14%, rgba(255,255,255,0.45), transparent 70%),
+    radial-gradient(circle at 50% 60%, rgba(168,85,247,0.18), rgba(10,4,24,0.6) 70%);
+  box-shadow:
+    inset 0 0 22px rgba(168,85,247,0.3),
+    inset 0 -6px 14px rgba(0,0,0,0.5),
+    inset 0 3px 8px rgba(255,255,255,0.18),
+    0 0 28px rgba(255,210,74,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  animation: craprBob 3s ease-in-out infinite alternate;
+}
+.preview.craps .cr-dome::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(from 220deg, #fff0a8, #ffd24a 25%, #5c3d00 40%, #ffd24a 55%, #fff0a8);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none;
+}
+@keyframes craprBob {
+  0%   { transform: translateY(-2px); }
+  100% { transform: translateY(2px); }
+}
+.preview.craps .cr-die {
+  width: 28px; height: 28px;
+  border-radius: 5px;
+  background: linear-gradient(160deg, #f5f0e2, #d8d1bf);
+  box-shadow: inset 0 -2px 4px rgba(0,0,0,0.18), inset 0 1px 2px rgba(255,255,255,0.5), 0 3px 6px rgba(0,0,0,0.4);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  padding: 3px;
+}
+.preview.craps .cr-die .pip {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: #1a0608;
+  align-self: center; justify-self: center;
+}
+.preview.craps .cr-die .pip.a1 { grid-area: 1 / 1; }
+.preview.craps .cr-die .pip.a3 { grid-area: 1 / 3; }
+.preview.craps .cr-die .pip.b2 { grid-area: 2 / 2; }
+.preview.craps .cr-die .pip.c1 { grid-area: 3 / 1; }
+.preview.craps .cr-die .pip.c3 { grid-area: 3 / 3; }
+
+/* card meta */
+.game-title {
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(22px, 3vw, 28px);
+  line-height: 1;
+  background: linear-gradient(180deg, #fff7d1, var(--gold-1) 50%, #b8860b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 rgba(0,0,0,0.5));
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+.game-tagline {
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(34,211,238,0.5);
+  margin-bottom: 12px;
+}
+.game-desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 18px;
+  min-height: 40px;
+}
+.game-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.meta-pill {
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.4);
+  color: var(--gold-0);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.3);
+}
+.meta-pill.hot { color: #fff; background: linear-gradient(180deg, var(--neon-pink), #6a0d3e); box-shadow: 0 0 12px rgba(255,46,147,0.5); }
+.play-cta {
+  margin-top: auto;
+  padding: 14px;
+  border-radius: 14px;
+  font-family: 'Bungee', cursive;
+  letter-spacing: 0.2em;
+  font-size: 14px;
+  text-align: center;
+  color: #0a0418;
+  background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 50%, var(--gold-2));
+  box-shadow: 0 5px 0 #3a2200, inset 0 1px 0 rgba(255,255,255,0.4);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+}
+
+/* COMING SOON */
+.coming-soon {
+  filter: grayscale(0.8) brightness(0.7);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.coming-soon::after {
+  content: 'COMING SOON';
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  padding: 5px 10px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 999px;
+  color: var(--gold-1);
+  z-index: 2;
+}
+
+/* PHONE SHARE BUTTON */
+.phone-link {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 22px;
+  border-radius: 14px;
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-decoration: none;
+  color: rgba(255,255,255,0.85);
+  background: linear-gradient(180deg, rgba(168,85,247,0.25), rgba(15,4,30,0.85));
+  box-shadow: inset 0 0 0 1.5px rgba(168,85,247,0.45), 0 3px 0 rgba(0,0,0,0.5);
+  transition: filter 0.2s, transform 0.1s;
+}
+.phone-link::before { content: '📱'; font-size: 16px; }
+.phone-link:hover { filter: brightness(1.15); }
+.phone-link:active { transform: translateY(2px); }
+
+/* FOOTER */
+.footer {
+  text-align: center;
+  margin-top: 20px;
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: rgba(255,255,255,0.3);
+}
+
+/* ADD FUNDS MODAL — same as in games */
+.modal-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(5,1,15,0.78);
+  backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.modal-veil.show { opacity: 1; pointer-events: all; }
+.modal-card {
+  width: min(420px, 92vw);
+  padding: 26px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at top, rgba(168,85,247,0.25), transparent 60%),
+    linear-gradient(180deg, #1c0a3a, #0a0319);
+  box-shadow: var(--shadow-deep), inset 0 0 0 1.5px rgba(255,210,74,0.28);
+  transform: translateY(20px) scale(0.95);
+  transition: transform 0.3s cubic-bezier(.2,.9,.2,1.3);
+}
+.modal-veil.show .modal-card { transform: translateY(0) scale(1); }
+
+.modal-title {
+  font-family: 'Bungee', cursive;
+  font-size: 22px;
+  letter-spacing: 0.1em;
+  color: var(--gold-0);
+  text-shadow: 0 0 12px rgba(255,210,74,0.5);
+  margin-bottom: 4px;
+  text-align: center;
+}
+.modal-sub {
+  font-size: 12px;
+  text-align: center;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.18em;
+  margin-bottom: 18px;
+}
+.amount-input-wrap { position: relative; margin-bottom: 14px; }
+.amount-input-wrap::before {
+  content: '$';
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Geist Mono', monospace;
+  font-size: 26px;
+  color: var(--gold-1);
+  text-shadow: 0 0 8px rgba(255,210,74,0.5);
+}
+.amount-input {
+  width: 100%;
+  padding: 14px 16px 14px 40px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.5);
+  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.4);
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+.amount-input:focus { box-shadow: inset 0 0 0 1.5px var(--neon-cyan), 0 0 18px rgba(34,211,238,0.4); }
+.quick-chips {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.quick-chip {
+  padding: 10px 4px;
+  border: 0;
+  border-radius: 10px;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.4));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.2);
+  transition: transform 0.1s, background 0.2s;
+}
+.quick-chip:hover { background: linear-gradient(180deg, rgba(168,85,247,0.25), rgba(0,0,0,0.5)); }
+.quick-chip:active { transform: translateY(2px); }
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+}
+.btn {
+  border: 0;
+  padding: 14px;
+  border-radius: 14px;
+  font-family: 'Bungee', cursive;
+  letter-spacing: 0.12em;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.1s, filter 0.15s;
+}
+.btn:active { transform: translateY(2px); }
+.btn-cancel {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.6);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+}
+.btn-cancel:hover { color: #fff; }
+.btn-confirm {
+  background: linear-gradient(180deg, #5cffa1, #14b85a);
+  color: #0a0418;
+  box-shadow: 0 5px 0 #0a4a23, inset 0 1px 0 rgba(255,255,255,0.3);
+}
+.btn-confirm:hover { filter: brightness(1.08); }
+
+@media (max-width: 720px) {
+  .lobby { padding: 22px 14px 40px; gap: 20px; }
+  .games { grid-template-columns: 1fr; gap: 16px; }
+  .game-card { padding: 16px; border-radius: 18px; }
+  .preview { height: 140px; margin-bottom: 12px; }
+  .preview.slots .reel-sym { width: 44px; height: 56px; font-size: 22px; }
+  .preview.slots .reel-sym.diamond::after { width: 26px; height: 26px; }
+  .preview.kraken .kr-anchor { font-size: 40px; }
+  .preview.kraken .kr-eye { width: 54px; height: 54px; }
+  .preview.kraken .kr-trident { font-size: 36px; }
+  .preview.kraken .kraken-row { gap: 10px; }
+  .preview.blackjack .card-fan { width: 180px; height: 130px; }
+  .preview.blackjack .pcard { width: 64px; height: 92px; padding: 6px; }
+  .preview.blackjack .pcard .rank, .preview.blackjack .pcard .bot { font-size: 15px; }
+  .preview.blackjack .pcard .suit-center { font-size: 22px; }
+  .preview.blackjack .c2 { left: 56px; }
+  .preview.blackjack .c3 { left: 112px; }
+  .preview.craps .cr-dome { width: 96px; height: 74px; gap: 6px; }
+  .preview.craps .cr-die { width: 22px; height: 22px; padding: 2px; }
+  .preview.craps .cr-die .pip { width: 3px; height: 3px; }
+  .balance-bar { padding: 12px 16px; gap: 10px; width: 100%; }
+  .game-desc { min-height: auto; font-size: 12px; }
+  .play-cta { padding: 13px; font-size: 13px; }
+  .game-title { font-size: 22px; }
+  .modal-card { padding: 20px 18px; }
+}
+</style>
+</head>
+<body>
+<script src="casino-audio.js"></script>
+
+<button class="btn-history" id="btn-history" title="View history">HISTORY</button>
+
+<div class="lobby">
+
+  <div class="header">
+    <div class="brand-pre">WELCOME TO</div>
+    <div class="brand">DIAMOND CASINO</div>
+    <div class="brand-sub">YOUR CASINO · YOUR TABLES</div>
+  </div>
+
+  <div class="balance-bar">
+    <span class="label">BALANCE</span>
+    <span class="value">$<span id="balance">1,000</span></span>
+    <button class="btn-add" id="btn-add" title="Add chips">+</button>
+  </div>
+
+  <div class="games">
+
+    <a class="game-card" href="slots.html">
+      <div class="preview slots">
+        <div class="reel-strip">
+          <div class="reel-sym sl-seven">7</div>
+          <div class="reel-sym sl-bell">⌬</div>
+          <div class="reel-sym diamond"></div>
+          <div class="reel-sym sl-crown">♛</div>
+          <div class="reel-sym sl-star">★</div>
+        </div>
+      </div>
+      <div class="game-title">DIAMOND DELUXE</div>
+      <div class="game-tagline">HOLD &amp; WIN SLOT</div>
+      <div class="game-desc">5×3 reels with 20 paylines. Trigger the Diamond Hold &amp; Win feature for cash drops, upgrades, and four jackpot tiers.</div>
+      <div class="game-meta">
+        <span class="meta-pill">20 LINES</span>
+        <span class="meta-pill">HOLD &amp; WIN</span>
+        <span class="meta-pill hot">BUY BONUS</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="kraken.html">
+      <div class="preview kraken">
+        <div class="kraken-row">
+          <div class="kr-anchor">⚓</div>
+          <div class="kr-eye"></div>
+          <div class="kr-trident">♆</div>
+        </div>
+      </div>
+      <div class="game-title">KRAKEN'S DEPTHS</div>
+      <div class="game-tagline">PLUNDER · GRAND</div>
+      <div class="game-desc">Anchors trigger Kraken's Hoard — ships rise from the abyss, two side wheels grant upgrades, harpoons strike, cannons fire. Fill the deck for the KRAKEN GRAND.</div>
+      <div class="game-meta">
+        <span class="meta-pill">20 LINES</span>
+        <span class="meta-pill">TWO WHEELS</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="lucky7saloon.html">
+      <div class="preview saloon">
+        <div class="saloon-scene">
+          <div class="saloon-sign">LUCKY 7</div>
+          <div class="saloon-reels">
+            <div class="saloon-reel">7</div>
+            <div class="saloon-reel">A</div>
+            <div class="saloon-reel">K</div>
+            <div class="saloon-reel">Q</div>
+            <div class="saloon-reel">J</div>
+            <div class="saloon-reel">7</div>
+          </div>
+          <div class="saloon-trail">
+            <span class="saloon-dot"></span>
+            <span class="saloon-dot"></span>
+            <span class="saloon-dot"></span>
+          </div>
+        </div>
+      </div>
+      <div class="game-title">LUCKY SEVEN SALOON</div>
+      <div class="game-tagline">MEGAWAYS &middot; HIGH NOON</div>
+      <div class="game-desc">6-reel Megaways with tumbling wins. Trigger High Noon Free Spins and ride the multiplier trail for bigger frontier payouts.</div>
+      <div class="game-meta">
+        <span class="meta-pill">MEGAWAYS</span>
+        <span class="meta-pill">FREE SPINS</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="blackjack.html">
+      <div class="preview blackjack">
+        <div class="card-fan">
+          <div class="pcard black c1">
+            <div class="rank">A<br><span style="font-size: 0.7em">♠</span></div>
+            <div class="suit-center">♠</div>
+            <div class="bot">A<br><span style="font-size: 0.7em">♠</span></div>
+          </div>
+          <div class="pcard red c2">
+            <div class="rank">K<br><span style="font-size: 0.7em">♥</span></div>
+            <div class="suit-center">♥</div>
+            <div class="bot">K<br><span style="font-size: 0.7em">♥</span></div>
+          </div>
+          <div class="pcard red c3">
+            <div class="rank">Q<br><span style="font-size: 0.7em">♦</span></div>
+            <div class="suit-center">♦</div>
+            <div class="bot">Q<br><span style="font-size: 0.7em">♦</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="game-title">BLACKJACK</div>
+      <div class="game-tagline">CLASSIC · 3:2 PAYOUT</div>
+      <div class="game-desc">6-deck shoe, dealer stands on soft 17. Double, split, insurance. Perfect Pairs and 21+3 side bets pay up to 100:1.</div>
+      <div class="game-meta">
+        <span class="meta-pill">3:2 BJ</span>
+        <span class="meta-pill">S17</span>
+        <span class="meta-pill">SIDE BETS</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="craplesscraps.html">
+      <div class="preview craps">
+        <div class="cr-dome">
+          <div class="cr-die">
+            <span class="pip a1"></span>
+            <span class="pip a3"></span>
+            <span class="pip b2"></span>
+            <span class="pip c1"></span>
+            <span class="pip c3"></span>
+          </div>
+          <div class="cr-die">
+            <span class="pip a1"></span>
+            <span class="pip a3"></span>
+            <span class="pip c1"></span>
+            <span class="pip c3"></span>
+          </div>
+        </div>
+      </div>
+      <div class="game-title">CRAPLESS CRAPS</div>
+      <div class="game-tagline">BUBBLE · NEVER LOSE THE COME-OUT</div>
+      <div class="game-desc">Plaza-style bubble craps. Every number is a point. Pass, place, field, hardways, props, plus Fire Bet and All-Tall/Small bonus bets.</div>
+      <div class="game-meta">
+        <span class="meta-pill">CRAPLESS</span>
+        <span class="meta-pill">BUBBLE</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+  </div>
+
+  <a class="phone-link" href="launcher.html">PLAY ON YOUR PHONE</a>
+
+  <div class="footer">VIRTUAL CURRENCY · NOT REAL MONEY</div>
+
+</div>
+
+<!-- ADD FUNDS MODAL -->
+<div class="modal-veil" id="modal-veil">
+  <div class="modal-card">
+    <div class="modal-title">ADD CHIPS</div>
+    <div class="modal-sub">VIRTUAL CURRENCY · INSTANT</div>
+    <div class="amount-input-wrap">
+      <input class="amount-input" id="amount-input" type="number" min="1" placeholder="0" />
+    </div>
+    <div class="quick-chips">
+      <button class="quick-chip" data-amt="100">+100</button>
+      <button class="quick-chip" data-amt="500">+500</button>
+      <button class="quick-chip" data-amt="1000">+1,000</button>
+      <button class="quick-chip" data-amt="10000">+10K</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" id="btn-cancel">CANCEL</button>
+      <button class="btn btn-confirm" id="btn-confirm">ADD CHIPS</button>
+    </div>
+  </div>
+</div>
+
+<script>
+if (window.SettingsUI) SettingsUI.mount();
+
+/* shared balance */
+const BALANCE_KEY = 'casino.balance';
+function loadBalance() {
+  const v = parseFloat(localStorage.getItem(BALANCE_KEY));
+  return isNaN(v) || v < 0 ? 1000 : v;
+}
+function persistBalance(v) {
+  try { localStorage.setItem(BALANCE_KEY, String(v)); } catch (e) {}
+}
+const fmt = n => {
+  const cents = Math.round(n * 100) / 100;
+  if (Number.isInteger(cents)) return cents.toLocaleString('en-US');
+  return cents.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+function refresh() {
+  document.getElementById('balance').textContent = fmt(loadBalance());
+}
+refresh();
+
+/* ADD FUNDS modal */
+function openAdd() {
+  const v = document.getElementById('modal-veil');
+  v.classList.add('show');
+  const input = document.getElementById('amount-input');
+  input.value = '';
+  setTimeout(() => input.focus(), 100);
+}
+function closeAdd() {
+  document.getElementById('modal-veil').classList.remove('show');
+}
+function confirmAdd() {
+  const inp = document.getElementById('amount-input');
+  const amt = parseFloat(inp.value);
+  if (isNaN(amt) || amt <= 0) { inp.focus(); return; }
+  persistBalance(loadBalance() + amt);
+  refresh();
+  closeAdd();
+}
+
+document.getElementById('btn-add').addEventListener('click', openAdd);
+document.getElementById('btn-history').addEventListener('click', () => {
+  if (window.HistoryUI) HistoryUI.open({ scope: 'all', game: null });
+});
+document.getElementById('btn-cancel').addEventListener('click', closeAdd);
+document.getElementById('btn-confirm').addEventListener('click', confirmAdd);
+document.getElementById('modal-veil').addEventListener('click', e => {
+  if (e.target.id === 'modal-veil') closeAdd();
+});
+document.querySelectorAll('.quick-chip').forEach(b => {
+  b.addEventListener('click', () => {
+    const cur = parseFloat(document.getElementById('amount-input').value) || 0;
+    document.getElementById('amount-input').value = cur + parseInt(b.dataset.amt, 10);
+  });
+});
+document.getElementById('amount-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmAdd();
+  if (e.key === 'Escape') closeAdd();
+});
+
+/* refresh balance when returning from a game */
+window.addEventListener('focus', refresh);
+window.addEventListener('pageshow', refresh);
+</script>
+
+</body>
+</html>

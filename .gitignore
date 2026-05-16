@@ -1,0 +1,33 @@
+# Diamond Casino — .gitignore
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Tooling caches
+.superpowers/
+nanobanana-output/
+
+# Audio masters — m4a transcodes ship to the web; .wav stays local
+Music/*.wav
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs / env
+*.log
+.env
+.env.local
+
+# Misc
+*.bak
