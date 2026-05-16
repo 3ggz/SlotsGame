@@ -842,9 +842,12 @@ const slotFlash = [];   // parallel to slotXs; each holds a 0..1 fade
 /* Balls in flight + floating win labels */
 const balls = [];
 const floaters = [];    // { x, y, vy, text, fontSize, color, life, maxLife, isLoss }
-const GRAVITY = 1900;       // was 1500 — snappier falls
-const RESTITUTION = 0.28;   // was 0.45 — dead-er peg bounces; ball doesn't recover upward as far
-const AIR_DRAG = 0.0001;    // was 0.0004 — essentially off; gravity should dominate vy
+const GRAVITY = 1900;
+const RESTITUTION = 0.22;   // was 0.28 — even less bounce-back so vy recovers faster
+const AIR_DRAG = 0.0001;
+const MIN_LATERAL = 75;     // post-bounce |vx| floor — ensures the ball clears
+                            // the peg radius before gravity pulls it back, so
+                            // no more twitchy pinballing on the same peg
 const MAX_BALLS = 50;
 const LAND_FADE_MS = 380; // how long a settled ball stays on screen before removal
 
@@ -1074,19 +1077,26 @@ function step(dt) {
           const overlap = r - d;
           b.x += nx * overlap;
           b.y += ny * overlap;
-          // Reflect, mild damp on horizontal sweep, then a big fresh
-          // tangential kick. Goal: ball escapes peg in ONE bounce, with
-          // enough lateral motion to reach an adjacent column before
-          // the next row — that's the Galton step that keeps drops fast.
+          // Reflect, damp horizontal sweep, add a fresh tangential kick,
+          // then ENFORCE a minimum |vx|. The floor is what actually
+          // unsticks balls — natural physics + jitter sometimes left vx
+          // below ~30 px/s, not enough to clear the peg radius before
+          // gravity pulled the ball back into a re-hit. With MIN_LATERAL
+          // enforced, the ball always carries at least 75 px/s sideways
+          // out of every bounce and escapes in one cycle.
           const vn = b.vx * nx + b.vy * ny;
           if (vn < 0) {
             b.vx -= (1 + RESTITUTION) * vn * nx;
             b.vy -= (1 + RESTITUTION) * vn * ny;
-            b.vx *= 0.72;                          // gentler damping (was 0.55)
+            b.vx *= 0.72;
             const tx = -ny, ty = nx;
-            const j = (Math.random() - 0.5) * 90;  // bigger jitter (was 60)
+            const j = (Math.random() - 0.5) * 80;
             b.vx += tx * j;
             b.vy += ty * j;
+            if (Math.abs(b.vx) < MIN_LATERAL) {
+              const dir = b.vx !== 0 ? Math.sign(b.vx) : (Math.random() < 0.5 ? -1 : 1);
+              b.vx = dir * MIN_LATERAL;
+            }
             pegTick(Math.hypot(b.vx, b.vy));
           }
         }
