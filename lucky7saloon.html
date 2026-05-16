@@ -1945,13 +1945,23 @@ button { border: 0; cursor: pointer; }
       return ctx;
     }
 
-    function route(node) {
+    function route(node, pan = 0) {
       const c = ensure();
       if (!c || !comp) return;
-      node.connect(comp);
+      if (c.createStereoPanner) {
+        const panner = c.createStereoPanner();
+        panner.pan.value = Math.max(-0.85, Math.min(0.85, pan));
+        node.connect(panner).connect(comp);
+      } else {
+        node.connect(comp);
+      }
     }
 
-    function tone(freq, dur = 0.12, type = 'sine', vol = 0.12, delay = 0, attack = 0.012) {
+    function reelPan(i = 0) {
+      return -0.58 + (i / 5) * 1.16;
+    }
+
+    function tone(freq, dur = 0.12, type = 'sine', vol = 0.12, delay = 0, attack = 0.012, pan = 0) {
       const c = ensure();
       if (!c) return;
       const t = c.currentTime + delay;
@@ -1963,12 +1973,12 @@ button { border: 0; cursor: pointer; }
       g.gain.linearRampToValueAtTime(vol, t + attack);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       osc.connect(g);
-      route(g);
+      route(g, pan);
       osc.start(t);
       osc.stop(t + dur + 0.03);
     }
 
-    function slide(from, to, dur = 0.28, type = 'sawtooth', vol = 0.12, delay = 0) {
+    function slide(from, to, dur = 0.28, type = 'sawtooth', vol = 0.12, delay = 0, pan = 0) {
       const c = ensure();
       if (!c) return;
       const t = c.currentTime + delay;
@@ -1981,12 +1991,12 @@ button { border: 0; cursor: pointer; }
       g.gain.linearRampToValueAtTime(vol, t + 0.015);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       osc.connect(g);
-      route(g);
+      route(g, pan);
       osc.start(t);
       osc.stop(t + dur + 0.04);
     }
 
-    function noise(dur = 0.18, vol = 0.09, cutoff = 900, type = 'bandpass', delay = 0) {
+    function noise(dur = 0.18, vol = 0.09, cutoff = 900, type = 'bandpass', delay = 0, pan = 0, q = 1.1) {
       const c = ensure();
       if (!c) return;
       const t = c.currentTime + delay;
@@ -1999,17 +2009,39 @@ button { border: 0; cursor: pointer; }
       src.buffer = buffer;
       filter.type = type;
       filter.frequency.setValueAtTime(cutoff, t);
+      filter.Q.value = q;
       g.gain.setValueAtTime(vol, t);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       src.connect(filter).connect(g);
-      route(g);
+      route(g, pan);
       src.start(t);
       src.stop(t + dur + 0.03);
     }
 
-    function thud(intensity = 1, delay = 0) {
-      slide(170 + 30 * intensity, 54, 0.16, 'sine', 0.20 * intensity, delay);
-      noise(0.045, 0.13 * intensity, 1800, 'lowpass', delay);
+    function thud(intensity = 1, delay = 0, pan = 0) {
+      slide(170 + 30 * intensity, 54, 0.16, 'sine', 0.20 * intensity, delay, pan);
+      noise(0.045, 0.13 * intensity, 1800, 'lowpass', delay, pan);
+    }
+
+    function woodKnock(delay = 0, pan = 0, intensity = 1) {
+      thud(0.26 * intensity, delay, pan);
+      noise(0.035, 0.05 * intensity, 720, 'bandpass', delay + 0.006, pan, 5.4);
+      tone(118 + Math.random() * 18, 0.055, 'triangle', 0.03 * intensity, delay + 0.004, 0.004, pan);
+    }
+
+    function brassPing(freq = 880, delay = 0, pan = 0, vol = 0.055) {
+      tone(freq, 0.16, 'sine', vol, delay, 0.003, pan);
+      tone(freq * 2.01, 0.105, 'triangle', vol * 0.34, delay + 0.006, 0.003, pan);
+      tone(freq * 2.98, 0.07, 'sine', vol * 0.16, delay + 0.012, 0.002, pan);
+    }
+
+    function coinSpray(count = 8, delay = 0, base = 880, panSpread = 0.42) {
+      for (let i = 0; i < count; i++) {
+        const d = delay + i * (0.022 + Math.random() * 0.018);
+        const p = (Math.random() * 2 - 1) * panSpread;
+        brassPing(base + i * 33 + Math.random() * 42, d, p, 0.032);
+        if (i % 3 === 0) noise(0.018, 0.012, 3000, 'bandpass', d, p, 7);
+      }
     }
 
     function chord(freqs, dur = 0.18, type = 'triangle', vol = 0.10, delay = 0) {
@@ -2018,57 +2050,107 @@ button { border: 0; cursor: pointer; }
 
     return {
       unlock: ensure,
-      click() { tone(760, 0.045, 'triangle', 0.045, 0, 0.004); tone(1180, 0.035, 'sine', 0.025, 0.018, 0.006); },
-      lowFunds() { slide(180, 90, 0.22, 'sawtooth', 0.10); thud(0.45, 0.08); },
-      addCash() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.10, 'triangle', 0.12, i * 0.045)); },
-      spinStart() {
-        thud(0.62);
-        noise(0.34, 0.055, 520, 'bandpass');
-        slide(120, 310, 0.42, 'sawtooth', 0.055, 0.02);
-        tone(440, 0.08, 'triangle', 0.035, 0.05, 0.018);
+      click() {
+        woodKnock(0, 0, 0.52);
+        brassPing(1260, 0.018, 0.08, 0.018);
+      },
+      lowFunds() {
+        slide(180, 86, 0.26, 'sawtooth', 0.09, 0, -0.1);
+        woodKnock(0.07, 0.12, 0.76);
+      },
+      addCash() {
+        coinSpray(10, 0, 820, 0.54);
+        [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.12, 'triangle', 0.08, i * 0.045, 0.014));
+      },
+      spinStart(totalMs = 3000) {
+        woodKnock(0, -0.18, 1.15);
+        woodKnock(0.055, 0.16, 0.72);
+        noise(0.36, 0.05, 460, 'bandpass', 0.03, 0, 1.5);
+        slide(95, 330, 0.48, 'sawtooth', 0.05, 0.025, 0);
+        tone(440, 0.08, 'triangle', 0.028, 0.075, 0.018);
+        const ticks = Math.min(18, Math.max(8, Math.round(totalMs / 190)));
+        for (let i = 0; i < ticks; i++) {
+          const d = 0.13 + i * 0.055;
+          noise(0.018, 0.011, 1600 + i * 34, 'bandpass', d, -0.35 + (i % 6) * 0.14, 6);
+        }
       },
       reelTick(i = 0, step = 0) {
-        const base = [760, 705, 820, 680, 735, 660][i % 6];
-        tone(base + step * 14, 0.022, 'triangle', 0.024, 0, 0.002);
-        if (step % 3 === 0) noise(0.018, 0.014, 2100, 'bandpass');
+        const pan = reelPan(i);
+        const base = [560, 520, 590, 505, 545, 492][i % 6];
+        woodKnock(0, pan, 0.22 + step * 0.012);
+        tone(base + step * 9, 0.026, 'triangle', 0.017, 0.002, 0.002, pan);
+        if (step % 3 === 0) noise(0.018, 0.010, 2200, 'bandpass', 0, pan, 7);
       },
       reelStop(i = 0) {
-        const base = [420, 360, 455, 335, 392, 318][i % 6] + (Math.random() * 22 - 11);
-        thud(0.38 + i * 0.04);
-        tone(base, 0.09, 'triangle', 0.058, 0.006, 0.006);
-        tone(base * 1.5, 0.055, 'sine', 0.024, 0.032, 0.004);
-        noise(0.028, 0.032, 1350, 'bandpass', 0.014);
+        const pan = reelPan(i);
+        const base = [392, 330, 440, 294, 370, 262][i % 6] + (Math.random() * 16 - 8);
+        woodKnock(0, pan, 0.86 + i * 0.035);
+        tone(base, 0.13, 'triangle', 0.052, 0.012, 0.006, pan);
+        brassPing(base * 2.02, 0.035, pan, 0.022 + i * 0.003);
+        noise(0.036, 0.028, 1200, 'bandpass', 0.016, pan, 3.2);
+        if (i === 5) {
+          brassPing(988, 0.09, 0, 0.05);
+          coinSpray(5, 0.12, 1047, 0.35);
+        }
       },
       waysTick(step = 0) {
-        if (step % 2) return;
-        const f = 620 + step * 26;
-        tone(f, 0.018, 'triangle', 0.022, 0, 0.002);
+        const f = 640 + step * 28;
+        brassPing(f, 0, (step % 5 - 2) * 0.12, 0.018);
       },
-      waysSlam() { thud(0.78); tone(620, 0.10, 'triangle', 0.065, 0.025, 0.012); },
+      waysSlam() {
+        woodKnock(0, 0, 0.82);
+        chord([392, 494, 659], 0.13, 'triangle', 0.052, 0.026);
+      },
       hitConfirm() {
-        tone(392, 0.075, 'triangle', 0.055, 0, 0.01);
-        tone(588, 0.09, 'sine', 0.038, 0.035, 0.014);
+        brassPing(740, 0, -0.08, 0.052);
+        brassPing(988, 0.055, 0.12, 0.04);
+        noise(0.052, 0.022, 3100, 'bandpass', 0.018, 0, 6);
       },
       tumble() {
-        noise(0.105, 0.055, 1450, 'bandpass');
-        slide(760, 260, 0.14, 'triangle', 0.06, 0.015);
-        thud(0.32, 0.07);
+        noise(0.12, 0.045, 1500, 'bandpass', 0, 0, 2.8);
+        slide(820, 240, 0.16, 'triangle', 0.05, 0.012);
+        woodKnock(0.075, 0, 0.58);
       },
-      smallWin() { [523, 659, 784].forEach((f, i) => tone(f, 0.13, 'triangle', 0.095, i * 0.058, 0.018)); },
-      mediumWin() { [392, 523, 659, 784].forEach((f, i) => tone(f, 0.16, 'triangle', 0.105, i * 0.07, 0.02)); noise(0.22, 0.045, 2400, 'bandpass', 0.10); },
+      smallWin() {
+        coinSpray(7, 0, 830, 0.38);
+        [523, 659, 784].forEach((f, i) => brassPing(f, i * 0.06, -0.16 + i * 0.16, 0.046));
+      },
+      mediumWin() {
+        coinSpray(14, 0, 760, 0.58);
+        [392, 523, 659, 784, 988].forEach((f, i) => brassPing(f, i * 0.065, -0.26 + i * 0.13, 0.055));
+        noise(0.22, 0.034, 2600, 'bandpass', 0.10, 0, 4.5);
+      },
       bigWin() {
-        thud(0.9);
-        [392, 523, 659, 880].forEach((f, i) => tone(f, 0.22, 'triangle', 0.13, 0.08 + i * 0.085, 0.022));
-        for (let i = 0; i < 7; i++) tone(1047 + i * 70, 0.07, 'sine', 0.038, 0.46 + i * 0.09, 0.018);
-        noise(0.42, 0.06, 1500, 'bandpass', 0.12);
+        woodKnock(0, 0, 1.08);
+        noise(0.48, 0.052, 900, 'bandpass', 0.04, 0, 2.2);
+        [262, 330, 392, 523, 659, 880].forEach((f, i) => tone(f, 0.30, 'triangle', 0.105, 0.08 + i * 0.075, 0.022));
+        coinSpray(28, 0.28, 920, 0.68);
+        for (let i = 0; i < 9; i++) brassPing(1047 + i * 56, 0.58 + i * 0.075, (i % 3 - 1) * 0.28, 0.035);
       },
       scatterTease(strong = true) {
-        slide(strong ? 330 : 260, strong ? 660 : 420, 0.32, 'sine', strong ? 0.07 : 0.04);
-        noise(0.14, strong ? 0.035 : 0.02, 900, 'bandpass', 0.04);
+        slide(strong ? 260 : 220, strong ? 760 : 470, 0.42, 'sine', strong ? 0.055 : 0.034, 0, 0);
+        noise(0.22, strong ? 0.032 : 0.02, 820, 'bandpass', 0.04, 0, 5);
+        brassPing(strong ? 1245 : 932, 0.18, 0, strong ? 0.045 : 0.027);
       },
-      bonusTrigger() { thud(1); slide(100, 68, 0.48, 'sawtooth', 0.11); chord([392, 523, 659, 784], 0.48, 'triangle', 0.13, 0.18); noise(0.58, 0.09, 820, 'bandpass', 0.06); },
-      multiplierUp(level) { const f = 540 + Math.min(1100, level * 30); tone(f, 0.095, 'triangle', 0.095, 0, 0.012); tone(f * 1.5, 0.12, 'sine', 0.048, 0.042, 0.018); },
-      retrigger() { chord([392, 588, 784, 988], 0.28, 'triangle', 0.12); thud(0.62, 0.10); },
+      bonusTrigger() {
+        woodKnock(0, -0.12, 1.22);
+        slide(110, 54, 0.58, 'sawtooth', 0.09, 0.02);
+        noise(0.70, 0.07, 760, 'bandpass', 0.05, 0, 2.4);
+        chord([262, 392, 523, 659], 0.46, 'triangle', 0.095, 0.18);
+        chord([392, 588, 784, 1047], 0.42, 'triangle', 0.085, 0.46);
+        coinSpray(18, 0.55, 820, 0.72);
+      },
+      multiplierUp(level) {
+        const f = 520 + Math.min(1180, level * 34);
+        brassPing(f, 0, 0, 0.056);
+        tone(f * 1.5, 0.13, 'sine', 0.035, 0.044, 0.018);
+        if (level % 3 === 0) coinSpray(4, 0.035, f, 0.24);
+      },
+      retrigger() {
+        chord([392, 588, 784, 988, 1175], 0.30, 'triangle', 0.09);
+        woodKnock(0.10, 0, 0.72);
+        coinSpray(12, 0.12, 920, 0.56);
+      },
     };
   })();
 
@@ -2391,7 +2473,11 @@ button { border: 0; cursor: pointer; }
       attachSpinStrip(reel, index);
       reel.classList.add('spinning');
     });
-    AudioFX.spinStart();
+    const totalMs = reels.reduce((max, reel) => {
+      const strip = reel.querySelector('.spin-strip');
+      return Math.max(max, Number(strip?.dataset.duration) || 0);
+    }, 0);
+    AudioFX.spinStart(totalMs);
     await new Promise(resolve => requestAnimationFrame(resolve));
     await Promise.all(reels.map((reel, i) => settleReel(reel, i)));
   }
