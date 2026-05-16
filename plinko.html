@@ -843,38 +843,26 @@ const AIR_DRAG = 0.0007;
 const MAX_BALLS = 50;
 const LAND_FADE_MS = 380; // how long a settled ball stays on screen before removal
 
-/* Each spawned ball pre-rolls its Galton-board path (N independent coin
-   flips). Slot index = number of right-moves; this is the binomial-true
-   outcome. Physics then runs normally, but at each peg collision we
-   force the deflection direction to match the prerolled path[row] (once
-   per row). Result: real bounces, perfect distribution, no edge-roll
-   exploit possible. */
+/* Pure physics now: no preroll, no per-peg override, no safety steering.
+   The angled outer walls + invisible slot dividers contain everything;
+   wherever the ball physically lands IS the outcome. Distribution is
+   roughly binomial (symmetric peg layout, ~50/50 deflection per peg,
+   tangential jitter prevents resonance). */
 function spawnBall(bet) {
   if (balls.length >= MAX_BALLS) return false;
   const N = state.rows;
-  const path = new Array(N);
-  let rights = 0;
-  for (let i = 0; i < N; i++) {
-    const d = Math.random() < 0.5 ? -1 : 1;
-    path[i] = d;
-    if (d > 0) rights++;
-  }
   balls.push({
-    x: LW / 2 + (Math.random() - 0.5) * pegSpaceX * 0.25,
+    x: LW / 2 + (Math.random() - 0.5) * pegSpaceX * 0.35,
     y: topPegY - pegSpaceY * 0.9,
-    vx: (Math.random() - 0.5) * 14,
+    vx: (Math.random() - 0.5) * 30,
     vy: 0,
     r: ballRadius,
     bet: bet,
-    // Snapshot the risk + rows at spawn time. Resolving against the LIVE
-    // state would let a player switch risk mid-flight after seeing where
-    // the ball is heading — pure exploit. Snapshotting closes that door
-    // even before the UI lock is in place.
+    // Snapshot risk + rows at spawn so a mid-flight UI change can't
+    // retroactively re-price the outcome. (Bet input is also locked
+    // while balls are in flight; this is defense-in-depth.)
     risk: state.risk,
     rows: N,
-    path: path,
-    slotIdx: rights,                 // prerolled target slot (0..N)
-    deflected: new Array(N).fill(false),
     landed: false,
     landedAt: 0,
   });
@@ -882,12 +870,18 @@ function spawnBall(bet) {
 }
 
 function settleBall(b) {
-  // Honor the prerolled slot — visuals may have drifted a hair, but the
-  // outcome is set at spawn time so the math is honest.
-  const idx = b.slotIdx;
+  // Outcome = whichever slot the ball physically landed in. The dividers
+  // have constrained it to a single column, so nearest-x is exact.
+  let idx = 0, bestD = Infinity;
+  for (let i = 0; i < slotXs.length; i++) {
+    const d = Math.abs(b.x - slotXs[i]);
+    if (d < bestD) { bestD = d; idx = i; }
+  }
   slotFlash[idx] = 1;
-  // Snap the ball cleanly into the slot's center column so the fade
-  // animation reads as "it landed here" rather than "it landed nearby".
+  // Tiny visual snap to the slot center so the fade animation reads as
+  // "it landed here" rather than "it landed a few px off-center". The
+  // ball is already inside the slot column thanks to the dividers, so
+  // this is a sub-pixel adjustment, not a teleport.
   b.x = slotXs[idx];
   b.vx = 0;
   b.landed = true;
@@ -1073,56 +1067,22 @@ function step(dt) {
           const overlap = r - d;
           b.x += nx * overlap;
           b.y += ny * overlap;
-          // Reflect velocity
+          // Reflect velocity + add tangential jitter so every bounce has
+          // variation (prevents pathological resonance / repeated paths).
           const vn = b.vx * nx + b.vy * ny;
           if (vn < 0) {
             b.vx -= (1 + RESTITUTION) * vn * nx;
             b.vy -= (1 + RESTITUTION) * vn * ny;
-
-            // First descending hit on a new row → apply the prerolled deflection.
-            // Hits from beneath or repeat hits on the same row use natural physics.
-            const fromAbove = dy < -p.r * 0.15 && b.vy > 0;
-            if (fromAbove && !b.deflected[p.row]) {
-              const dir = b.path[p.row];
-              // Physics-driven magnitude: pick the vx that will shift the
-              // ball by ~pegSpaceX/2 by the time it reaches the next row
-              // (so it naturally lands at the next peg position). The
-              // previous fixed 95-150 was far too low for fast-falling
-              // balls at the bottom of the board — they accumulated lag
-              // and got snapped at the slot, looking like wins were voided.
-              const vyEst = Math.max(180, b.vy);
-              const timeToNext = pegSpaceY / vyEst;
-              const targetShift = pegSpaceX * 0.55;
-              const baseMag = targetShift / Math.max(0.022, timeToNext);
-              const magnitude = Math.max(150, Math.min(520, baseMag + (Math.random() - 0.5) * 40));
-              b.vx = dir * magnitude;
-              b.deflected[p.row] = true;
-            } else {
-              // Natural tangential jitter for path variety
-              const tx = -ny, ty = nx;
-              const j = (Math.random() - 0.5) * 55;
-              b.vx += tx * j;
-              b.vy += ty * j;
-            }
+            const tx = -ny, ty = nx;
+            const j = (Math.random() - 0.5) * 75;
+            b.vx += tx * j;
+            b.vy += ty * j;
             pegTick(Math.hypot(b.vx, b.vy));
           }
         }
       }
 
-      // Safety steering: pulls the ball toward the prerolled slot center
-      // in the no-peg zone. Aggressive now so the visual ALWAYS matches
-      // the recorded outcome — no more apparent "voids" where the ball
-      // looked headed for an edge slot and snapped to a middle one.
-      if (b.y > bottomPegY + pegSpaceY * 0.05 && b.y < slotTopY) {
-        const target = slotXs[b.slotIdx];
-        const dxT = target - b.x;
-        // Proportional toward target, capped. Higher cap + tighter blend
-        // than before so corrections complete in the short slot-band fall.
-        const desired = Math.max(-520, Math.min(520, dxT * 14));
-        b.vx = b.vx * 0.55 + desired * 0.45;
-      }
-
-      // Crossed into slot band → settle on prerolled slot
+      // Crossed into the slot band → settle in whichever cup it landed in
       if (!b.landed && b.y > slotTopY + b.r * 0.5) {
         settleBall(b);
       }
