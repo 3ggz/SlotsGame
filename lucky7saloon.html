@@ -504,40 +504,6 @@ button { border: 0; cursor: pointer; }
   transform: translateY(0) scale(1);
 }
 
-.reel.settling::after {
-  content: "";
-  position: absolute;
-  z-index: 6;
-  inset: var(--spin-pad-y, 6px) var(--spin-pad-x, 6px);
-  border-radius: 7px;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 50% 36%, rgba(77,255,147,0.10), transparent 52%),
-    linear-gradient(180deg, rgba(18,52,30,0.96), rgba(5,17,9,0.98));
-  box-shadow:
-    inset 0 0 0 1px rgba(255,215,106,0.10),
-    inset 0 0 24px rgba(0,0,0,0.34);
-}
-
-.landing-strip {
-  position: absolute;
-  z-index: 7;
-  left: var(--spin-pad-x, 6px);
-  right: var(--spin-pad-x, 6px);
-  top: var(--spin-pad-y, 6px);
-  bottom: var(--spin-pad-y, 6px);
-  display: grid;
-  grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
-  gap: var(--spin-gap, 6px);
-  pointer-events: none;
-  will-change: transform, filter;
-}
-
-.landing-strip .symbol {
-  opacity: 1;
-  transform: none;
-}
-
 .spin-strip {
   position: absolute;
   z-index: 5;
@@ -547,13 +513,28 @@ button { border: 0; cursor: pointer; }
   display: grid;
   grid-auto-rows: var(--spin-cell-h, 48px);
   gap: var(--spin-gap, 6px);
-  animation: reelStripRush 0.34s linear infinite;
-  filter: blur(0.35px) saturate(1.22);
+  transform: translateY(var(--spin-start-y, -1200px));
+  filter: blur(1.15px) saturate(1.24);
   will-change: transform, opacity, filter;
 }
 
-.spin-strip.stopping {
-  filter: blur(0.22px) saturate(1.12);
+.spin-strip.braking {
+  filter: blur(0.3px) saturate(1.14);
+}
+
+.spin-strip .symbol {
+  width: 100%;
+  height: var(--spin-cell-h, 48px);
+}
+
+.spin-strip.final-lock .spin-final-symbol {
+  animation: symbolSeat 190ms cubic-bezier(.16,.9,.18,1) both;
+  animation-delay: var(--lock-delay, 0ms);
+}
+
+@keyframes symbolSeat {
+  0% { filter: brightness(1.34); transform: translateY(-3px) scale(1.01); }
+  100% { filter: brightness(1); transform: translateY(0) scale(1); }
 }
 
 .spin-token {
@@ -601,11 +582,6 @@ button { border: 0; cursor: pointer; }
 
 .spin-token.face-symbol .symbol-label {
   font-size: clamp(19px, 2.8vw, 38px);
-}
-
-@keyframes reelStripRush {
-  from { transform: translateY(calc(-1 * var(--spin-travel, 320px))); }
-  to { transform: translateY(0); }
 }
 
 .symbol {
@@ -2057,11 +2033,17 @@ button { border: 0; cursor: pointer; }
         slide(120, 310, 0.42, 'sawtooth', 0.055, 0.02);
         tone(440, 0.08, 'triangle', 0.035, 0.05, 0.018);
       },
+      reelTick(i = 0, step = 0) {
+        const base = [760, 705, 820, 680, 735, 660][i % 6];
+        tone(base + step * 14, 0.022, 'triangle', 0.024, 0, 0.002);
+        if (step % 3 === 0) noise(0.018, 0.014, 2100, 'bandpass');
+      },
       reelStop(i = 0) {
         const base = [420, 360, 455, 335, 392, 318][i % 6] + (Math.random() * 22 - 11);
-        thud(0.48 + i * 0.045);
-        tone(base, 0.075, 'triangle', 0.055, 0.012, 0.004);
-        noise(0.032, 0.045, 1450, 'bandpass', 0.018);
+        thud(0.38 + i * 0.04);
+        tone(base, 0.09, 'triangle', 0.058, 0.006, 0.006);
+        tone(base * 1.5, 0.055, 'sine', 0.024, 0.032, 0.004);
+        noise(0.028, 0.032, 1350, 'bandpass', 0.014);
       },
       waysTick(step = 0) {
         if (step % 2) return;
@@ -2256,26 +2238,64 @@ button { border: 0; cursor: pointer; }
     });
   }
 
+  const SPIN_REEL_SYMBOLS = [
+    { id: 'seven', label: '7' },
+    { id: 'bar', label: 'BAR' },
+    { id: 'badge', label: 'STAR' },
+    { id: 'king', label: 'K' },
+    { id: 'bell', label: 'BELL' },
+    { id: 'queen', label: 'Q' },
+    { id: 'ace', label: 'A' },
+    { id: 'scatter', label: 'DOOR' },
+    { id: 'jack', label: 'J' },
+    { id: 'seven', label: '7' },
+    { id: 'wild', label: 'SHERIFF' },
+    { id: 'bar', label: 'BAR' },
+  ];
+
+  function makeSpinToken(spinSymbol) {
+    const token = document.createElement('div');
+    token.className = 'spin-token sym-' + spinSymbol.id;
+    token.setAttribute('aria-hidden', 'true');
+    if (['seven', 'bar', 'badge', 'bell'].includes(spinSymbol.id)) {
+      token.classList.add('asset-symbol');
+      const art = document.createElement('span');
+      art.className = 'symbol-art';
+      token.appendChild(art);
+    }
+    if (['ace', 'king', 'queen', 'jack'].includes(spinSymbol.id)) {
+      token.classList.add('face-symbol');
+      const leftSuit = document.createElement('span');
+      const rightSuit = document.createElement('span');
+      leftSuit.className = 'face-suit left';
+      rightSuit.className = 'face-suit right';
+      token.append(leftSuit, rightSuit);
+    }
+    const label = document.createElement('span');
+    label.className = 'symbol-label';
+    label.textContent = spinSymbol.label;
+    token.appendChild(label);
+    return token;
+  }
+
+  function cloneFinalSymbolForSpin(symbol, rowIndex) {
+    const clone = symbol.cloneNode(true);
+    clone.classList.remove('win', 'burst', 'tease');
+    clone.classList.add('spin-final-symbol');
+    clone.removeAttribute('data-reel');
+    clone.removeAttribute('data-row');
+    clone.style.setProperty('--lock-delay', (rowIndex * 28) + 'ms');
+    clone.setAttribute('aria-hidden', 'true');
+    return clone;
+  }
+
   function attachSpinStrip(reelEl, reelIndex) {
-    const symbols = [
-      { id: 'seven', label: '7' },
-      { id: 'bar', label: 'BAR' },
-      { id: 'badge', label: 'STAR' },
-      { id: 'king', label: 'K' },
-      { id: 'bell', label: 'BELL' },
-      { id: 'queen', label: 'Q' },
-      { id: 'ace', label: 'A' },
-      { id: 'scatter', label: 'DOOR' },
-      { id: 'jack', label: 'J' },
-      { id: 'seven', label: '7' },
-      { id: 'wild', label: 'SHERIFF' },
-      { id: 'bar', label: 'BAR' },
-    ];
     const strip = document.createElement('div');
     strip.className = 'spin-strip';
 
     const reelStyles = getComputedStyle(reelEl);
-    const rows = Math.max(1, reelEl.children.length);
+    const finalSymbols = Array.from(reelEl.querySelectorAll(':scope > .symbol'));
+    const rows = Math.max(1, finalSymbols.length);
     const gap = parseFloat(reelStyles.rowGap || reelStyles.gap) || 0;
     const padTop = parseFloat(reelStyles.paddingTop) || 0;
     const padBottom = parseFloat(reelStyles.paddingBottom) || padTop;
@@ -2290,93 +2310,100 @@ button { border: 0; cursor: pointer; }
     strip.style.setProperty('--spin-gap', gap + 'px');
     strip.style.setProperty('--spin-pad-y', padTop + 'px');
     strip.style.setProperty('--spin-pad-x', Math.max(padLeft, padRight) + 'px');
-    const loopRows = symbols.length;
-    strip.style.setProperty('--spin-travel', (step * loopRows) + 'px');
-    strip.dataset.loopRows = String(loopRows);
+
+    const startRows = 30 + reelIndex * 8 + rows * 2;
+    const fillerRows = startRows + rows + 4;
+    const startY = -Math.round((startRows + 0.42) * step);
+    const duration = 1280 + reelIndex * 220 + rows * 42;
+    strip.style.setProperty('--spin-start-y', startY + 'px');
+    strip.dataset.startY = String(startY);
     strip.dataset.step = String(step);
-    strip.style.animationDuration = (0.72 + reelIndex * 0.028) + 's';
-    const stripLength = Math.max(loopRows * 3, loopRows + rows + 2);
-    Array.from({ length: stripLength }).forEach((entry, i) => {
-      const spinSymbol = symbols[(i + reelIndex * 2) % symbols.length];
-      const token = document.createElement('div');
-      token.className = 'spin-token sym-' + spinSymbol.id;
-      token.setAttribute('aria-hidden', 'true');
-      if (['seven', 'bar', 'badge', 'bell'].includes(spinSymbol.id)) {
-        token.classList.add('asset-symbol');
-        const art = document.createElement('span');
-        art.className = 'symbol-art';
-        token.appendChild(art);
-      }
-      if (['ace', 'king', 'queen', 'jack'].includes(spinSymbol.id)) {
-        token.classList.add('face-symbol');
-        const leftSuit = document.createElement('span');
-        const rightSuit = document.createElement('span');
-        leftSuit.className = 'face-suit left';
-        rightSuit.className = 'face-suit right';
-        token.append(leftSuit, rightSuit);
-      }
-      const label = document.createElement('span');
-      label.className = 'symbol-label';
-      label.textContent = spinSymbol.label;
-      token.appendChild(label);
-      strip.appendChild(token);
+    strip.dataset.rows = String(rows);
+    strip.dataset.duration = String(duration);
+
+    finalSymbols.forEach((symbol, rowIndex) => {
+      strip.appendChild(cloneFinalSymbolForSpin(symbol, rowIndex));
+    });
+
+    const seed = Math.floor(Math.random() * SPIN_REEL_SYMBOLS.length);
+    const stride = [5, 7, 11, 5, 7, 11][reelIndex % 6];
+    Array.from({ length: fillerRows }).forEach((entry, i) => {
+      const spinSymbol = SPIN_REEL_SYMBOLS[(seed + i * stride + reelIndex * 3) % SPIN_REEL_SYMBOLS.length];
+      strip.appendChild(makeSpinToken(spinSymbol));
     });
     reelEl.appendChild(strip);
-  }
-
-  function makeLandingStrip(reelEl) {
-    const strip = reelEl.querySelector('.spin-strip');
-    const landing = document.createElement('div');
-    landing.className = 'landing-strip';
-    const finalSymbols = Array.from(reelEl.querySelectorAll(':scope > .symbol'));
-    landing.style.setProperty('--rows', finalSymbols.length);
-    if (strip) {
-      landing.style.setProperty('--spin-gap', strip.style.getPropertyValue('--spin-gap'));
-      landing.style.setProperty('--spin-pad-y', strip.style.getPropertyValue('--spin-pad-y'));
-      landing.style.setProperty('--spin-pad-x', strip.style.getPropertyValue('--spin-pad-x'));
-    }
-    finalSymbols.forEach(symbol => {
-      const clone = symbol.cloneNode(true);
-      clone.classList.remove('win', 'burst', 'tease');
-      clone.removeAttribute('data-reel');
-      clone.removeAttribute('data-row');
-      clone.setAttribute('aria-hidden', 'true');
-      landing.appendChild(clone);
-    });
-    reelEl.appendChild(landing);
-    return landing;
+    return strip;
   }
 
   async function settleReel(reelEl, reelIndex) {
     const strip = reelEl.querySelector('.spin-strip');
-    const landing = makeLandingStrip(reelEl);
-    const settleMs = 430 + reelIndex * 22;
-    const step = strip ? parseFloat(strip.dataset.step) || 48 : 48;
-    const startOffset = Math.min(92, Math.max(34, step * 0.86));
-    reelEl.classList.add('settling');
-    landing.style.transform = 'translateY(' + (-startOffset) + 'px)';
-    landing.style.filter = 'blur(1.1px) brightness(1.08)';
+    if (!strip) return;
+    const step = parseFloat(strip.dataset.step) || 48;
+    const rows = Number(strip.dataset.rows) || Math.max(1, reelEl.querySelectorAll(':scope > .symbol').length);
+    const duration = Number(strip.dataset.duration) || (1300 + reelIndex * 180);
+    const startY = Number(strip.dataset.startY) || -Math.round(step * 32);
+    const brakeY = -Math.max(step * (rows + 4.5), step * 9);
+    const nearY = -Math.max(step * 1.08, 24);
+    const tickCount = Math.min(8, rows + 3);
+    const tickStart = Math.max(120, duration - (tickCount * 74 + 150));
 
-    if (strip) {
-      const currentTransform = getComputedStyle(strip).transform;
-      strip.classList.add('stopping');
-      strip.style.animation = 'none';
-      strip.style.transform = currentTransform === 'none' ? 'translateY(0)' : currentTransform;
-      strip.style.visibility = 'hidden';
+    for (let tick = 0; tick < tickCount; tick++) {
+      window.setTimeout(() => AudioFX.reelTick(reelIndex, tick), tickStart + tick * 74);
+    }
+    window.setTimeout(() => AudioFX.reelStop(reelIndex), Math.max(0, duration - 24));
+
+    strip.classList.add('braking');
+    if (strip.animate) {
+      const animation = strip.animate([
+        {
+          transform: 'translateY(' + startY + 'px)',
+          filter: 'blur(1.2px) saturate(1.24)',
+          offset: 0,
+          easing: 'cubic-bezier(.16,.02,.28,1)',
+        },
+        {
+          transform: 'translateY(' + Math.round(startY * 0.82) + 'px)',
+          filter: 'blur(1px) saturate(1.24)',
+          offset: 0.12,
+          easing: 'linear',
+        },
+        {
+          transform: 'translateY(' + Math.round(brakeY) + 'px)',
+          filter: 'blur(.62px) saturate(1.16)',
+          offset: 0.78,
+          easing: 'cubic-bezier(.05,.68,.12,1)',
+        },
+        {
+          transform: 'translateY(' + Math.round(nearY) + 'px)',
+          filter: 'blur(.18px) saturate(1.08)',
+          offset: 0.94,
+          easing: 'cubic-bezier(.1,.86,.15,1)',
+        },
+        {
+          transform: 'translateY(0)',
+          filter: 'blur(0) saturate(1)',
+          offset: 1,
+        },
+      ], {
+        duration,
+        fill: 'forwards',
+        easing: 'linear',
+      });
+      try { await animation.finished; } catch (e) {}
+    } else {
+      strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(.08,.78,.12,1), filter ' + duration + 'ms ease';
+      strip.style.transform = 'translateY(' + startY + 'px)';
+      void strip.offsetHeight;
+      strip.style.transform = 'translateY(0)';
+      strip.style.filter = 'blur(0) saturate(1)';
+      await sleep(duration);
     }
 
-    landing.style.transition =
-      'transform ' + settleMs + 'ms cubic-bezier(.08,.82,.12,1), ' +
-      'filter ' + settleMs + 'ms ease';
-    void landing.offsetHeight;
-    landing.style.transform = 'translateY(0)';
-    landing.style.filter = 'blur(0) brightness(1)';
-
-    await sleep(settleMs);
-    reelEl.classList.remove('spinning', 'settling');
+    strip.classList.add('final-lock');
+    await sleep(230 + rows * 28);
+    reelEl.classList.remove('spinning');
     await new Promise(resolve => requestAnimationFrame(resolve));
     if (strip) strip.remove();
-    landing.remove();
     reelEl.style.removeProperty('--spin-pad-y');
     reelEl.style.removeProperty('--spin-pad-x');
   }
@@ -2385,19 +2412,14 @@ button { border: 0; cursor: pointer; }
     const reels = Array.from(refs.reels.children);
     reels.forEach((reel, index) => {
       reel.querySelectorAll('.spin-strip').forEach(strip => strip.remove());
-      reel.querySelectorAll('.landing-strip').forEach(strip => strip.remove());
-      reel.classList.remove('settling');
       reel.style.removeProperty('--spin-pad-y');
       reel.style.removeProperty('--spin-pad-x');
       attachSpinStrip(reel, index);
       reel.classList.add('spinning');
     });
     AudioFX.spinStart();
-    await Promise.all(reels.map(async (reel, i) => {
-      await sleep(420 + i * 150);
-      await settleReel(reel, i);
-      AudioFX.reelStop(i);
-    }));
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    await Promise.all(reels.map((reel, i) => settleReel(reel, i)));
   }
 
   async function animateWaysTo(value) {
