@@ -857,9 +857,13 @@ function spawnBall(bet) {
   if (balls.length >= MAX_BALLS) return false;
   const N = state.rows;
   balls.push({
-    x: LW / 2 + (Math.random() - 0.5) * pegSpaceX * 0.35,
+    // Tight spawn — minor jitter only so the early rows aren't deterministic,
+    // but the ball starts dead center. (Was ±35% pegSpaceX, ±15 px/s — that
+    // was already giving the ball a head start toward the edges before it
+    // even hit a peg.)
+    x: LW / 2 + (Math.random() - 0.5) * pegSpaceX * 0.10,
     y: topPegY - pegSpaceY * 0.9,
-    vx: (Math.random() - 0.5) * 30,
+    vx: (Math.random() - 0.5) * 4,
     vy: 0,
     r: ballRadius,
     bet: bet,
@@ -1071,14 +1075,19 @@ function step(dt) {
           const overlap = r - d;
           b.x += nx * overlap;
           b.y += ny * overlap;
-          // Reflect velocity + add tangential jitter so every bounce has
-          // variation (prevents pathological resonance / repeated paths).
+          // Reflect velocity, then HARD-DAMP horizontal velocity so each
+          // peg starts a fresh deflection rather than carrying a
+          // sweep. Without this, a few unlucky bounces compound a ball
+          // toward the edge and there it stays — distribution becomes
+          // much wider than binomial and edge slots over-hit massively.
+          // Damping vx ~60% per bounce keeps the random walk tight.
           const vn = b.vx * nx + b.vy * ny;
           if (vn < 0) {
             b.vx -= (1 + RESTITUTION) * vn * nx;
             b.vy -= (1 + RESTITUTION) * vn * ny;
+            b.vx *= 0.42;                          // <— the centering fix
             const tx = -ny, ty = nx;
-            const j = (Math.random() - 0.5) * 75;
+            const j = (Math.random() - 0.5) * 32;  // smaller jitter (was 75)
             b.vx += tx * j;
             b.vy += ty * j;
             pegTick(Math.hypot(b.vx, b.vy));
