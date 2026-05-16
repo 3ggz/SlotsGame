@@ -330,10 +330,6 @@ body::after {
   background-size: contain;
   filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6));
   transform-style: preserve-3d;
-  /* --shift-y compensates each icon's visual mass offset from the geometric
-     canvas center so all symbols render their visual center at the cell
-     center (where paylines pass through). Set per-symbol below. */
-  transform: translateY(var(--shift-y, 0));
   transition: transform 0.35s cubic-bezier(.2,.7,.3,1.2), filter 0.3s;
 }
 
@@ -375,20 +371,11 @@ body.is-spinning .symbol::before {
   .reel, .strip { transform: translateZ(0); }
 }
 
-/* Per-symbol visual-mass shift expressed as a % of the icon box height.
-   Computed from each PNG's alpha-weighted centroid relative to the 512px
-   canvas center. Heart/seven/diamond have their painted mass above the
-   geometric center (need to be nudged down). Bell/crown/star have their
-   mass below center (need to be nudged up). Bar is naturally centered. */
-.sym-heart   { --shift-y:  3.7%; }
-.sym-clover  { --shift-y:  1.2%; }
-.sym-star    { --shift-y: -4.5%; }
-.sym-bell    { --shift-y: -10%;  }
-.sym-crown   { --shift-y: -7.6%; }
-.sym-bar     { --shift-y:  0;    }
-.sym-seven   { --shift-y:  6.3%; }
-.sym-diamond { --shift-y:  3.5%; }
-
+/* Every symbol PNG is normalized at build time: each icon is cropped to
+   its tight bounding box, scaled to fill the same proportional area
+   (~91% of canvas), and centered. With identical scale + position
+   across all symbols, the default background-position:center is enough —
+   no per-symbol CSS shifts needed. */
 .sym-heart::before   { background-image: url('images/heart.png'); }
 .sym-clover::before  { background-image: url('images/clover.png'); }
 .sym-star::before    { background-image: url('images/star.png'); }
@@ -402,12 +389,10 @@ body.is-spinning .symbol::before {
   filter: drop-shadow(0 0 16px rgba(34,211,238,0.7)) drop-shadow(0 0 28px rgba(255,46,147,0.35)) drop-shadow(0 4px 10px rgba(0,0,0,0.6));
 }
 
-/* Diamond gently breathes + hue-shifts through casino colors.
-   translateY(var(--shift-y)) carries the per-symbol mass shift through
-   the animation so the diamond stays mass-centered while pulsing. */
+/* Diamond gently breathes + hue-shifts through casino colors */
 @keyframes diamondPulse {
-  0%, 100% { transform: translateY(var(--shift-y, 0)) scale(1) rotateY(0deg); }
-  50%      { transform: translateY(var(--shift-y, 0)) scale(1.08) rotateY(8deg); }
+  0%, 100% { transform: scale(1) rotateY(0deg); }
+  50%      { transform: scale(1.08) rotateY(8deg); }
 }
 @keyframes diamondHueShift {
   0%   { filter: drop-shadow(0 0 16px rgba(34,211,238,0.7))  drop-shadow(0 0 28px rgba(255,46,147,0.35)) drop-shadow(0 4px 10px rgba(0,0,0,0.6)) hue-rotate(0deg); }
@@ -439,9 +424,9 @@ body.is-spinning .symbol::before {
   z-index: -1;
 }
 @keyframes symbolWin {
-  0%   { transform: translateY(var(--shift-y, 0)) scale(1); }
-  50%  { transform: translateY(var(--shift-y, 0)) scale(1.18); }
-  100% { transform: translateY(var(--shift-y, 0)) scale(1.08); }
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.18); }
+  100% { transform: scale(1.08); }
 }
 @keyframes winHalo {
   0%   { transform: scale(0.6); opacity: 0; }
