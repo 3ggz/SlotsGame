@@ -64,54 +64,42 @@ body::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>");
 }
 
-/* LOBBY LINK */
-.lobby-link {
+/* LOBBY + HISTORY — fixed top-left pair, identical sizing for perfect alignment */
+.lobby-link, .history-btn {
   position: fixed;
-  top: 12px; left: 12px;
+  top: 12px;
   z-index: 30;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 16px 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
   border-radius: 12px;
   text-decoration: none;
   font-family: 'Bungee', cursive;
   font-size: 11px;
   letter-spacing: 0.2em;
-  color: var(--gold-1);
-  background: linear-gradient(180deg, rgba(42,18,77,0.85), rgba(15,4,30,0.85));
-  backdrop-filter: blur(8px);
-  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 3px 0 rgba(0,0,0,0.5);
-  transition: transform 0.1s, filter 0.15s;
-}
-.lobby-link::before { content: '←'; font-size: 14px; }
-.lobby-link:hover { filter: brightness(1.15); }
-.lobby-link:active { transform: translateY(2px); }
-
-/* HISTORY BUTTON — top-left, sits next to lobby link */
-.history-btn {
-  position: fixed;
-  top: 12px; left: 148px;
-  z-index: 30;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 14px 8px;
-  border: 0;
-  border-radius: 12px;
-  font-family: 'Bungee', cursive;
-  font-size: 11px;
-  letter-spacing: 0.18em;
+  line-height: 1;
   cursor: pointer;
-  color: var(--neon-cyan);
   background: linear-gradient(180deg, rgba(42,18,77,0.85), rgba(15,4,30,0.85));
   backdrop-filter: blur(8px);
-  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.4), 0 3px 0 rgba(0,0,0,0.5);
   transition: transform 0.1s, filter 0.15s;
 }
-.history-btn::before { content: '⌛'; font-size: 12px; line-height: 1; }
-.history-btn:hover { filter: brightness(1.15); }
-.history-btn:active { transform: translateY(2px); }
+.lobby-link {
+  left: 12px;
+  color: var(--gold-1);
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 3px 0 rgba(0,0,0,0.5);
+}
+.history-btn {
+  left: 122px;
+  color: var(--neon-cyan);
+  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.4), 0 3px 0 rgba(0,0,0,0.5);
+}
+.lobby-link::before { content: '←'; font-size: 14px; line-height: 1; }
+.history-btn::before { content: '⌛'; font-size: 13px; line-height: 1; }
+.lobby-link:hover, .history-btn:hover { filter: brightness(1.15); }
+.lobby-link:active, .history-btn:active { transform: translateY(2px); }
 
 .balance-link {
   position: fixed;
@@ -870,11 +858,12 @@ body::before {
 /* MOBILE */
 @media (max-width: 720px) {
   .stage { padding: 54px 8px 16px; }
-  .lobby-link, .balance-link { top: 8px; padding: 7px 11px 6px; font-size: 9px; }
+  .balance-link { top: 8px; right: 8px; padding: 7px 11px 6px; font-size: 9px; }
+  .lobby-link, .history-btn { top: 8px; height: 30px; padding: 0 11px; font-size: 9px; letter-spacing: 0.14em; gap: 6px; }
   .lobby-link { left: 8px; }
-  .balance-link { right: 8px; }
-  .history-btn { top: 8px; left: 124px; padding: 7px 10px 6px; font-size: 9px; letter-spacing: 0.12em; }
-  .history-btn::before { font-size: 10px; }
+  .history-btn { left: 102px; }
+  .lobby-link::before { font-size: 11px; }
+  .history-btn::before { font-size: 11px; }
   .balance-link .value { font-size: 13px; }
   .balance-link .btn-add { width: 22px; height: 22px; font-size: 12px; }
   .table-title { font-size: clamp(22px, 6vw, 30px); }
@@ -917,6 +906,7 @@ body::before {
 </head>
 <body>
 <script src="casino-audio.js"></script>
+<script type="module" src="casino-account.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>

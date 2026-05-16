@@ -131,55 +131,41 @@ body::after {
   padding: 28px 16px 60px;
 }
 
-.lobby-link {
+/* LOBBY + HISTORY — fixed top-left pair, identical sizing for perfect alignment */
+.lobby-link, .history-btn {
   position: fixed;
   top: 14px;
-  left: 14px;
   z-index: 80;
-  font-family: 'Bungee', cursive;
-  font-size: 10px;
-  letter-spacing: 0.3em;
-  text-decoration: none;
-  color: var(--cyan-0);
-  text-shadow: 0 0 8px rgba(77,255,226,0.6);
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(2,8,18,0.7);
-  box-shadow: inset 0 0 0 1px rgba(77,255,226,0.4), 0 4px 16px rgba(0,0,0,0.5);
-  backdrop-filter: blur(6px);
-  transition: filter 0.2s, transform 0.1s;
-}
-.lobby-link:hover { filter: brightness(1.2); }
-.lobby-link:active { transform: translateY(2px); }
-
-/* HISTORY BUTTON — sits right of lobby link */
-.history-btn {
-  position: fixed;
-  top: 14px; left: 148px;
-  z-index: 80;
-  border: 0;
-  cursor: pointer;
-  font-family: 'Bungee', cursive;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  color: var(--cyan-0);
-  text-shadow: 0 0 8px rgba(77,255,226,0.6);
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(2,8,18,0.7);
-  box-shadow: inset 0 0 0 1px rgba(77,255,226,0.4), 0 4px 16px rgba(0,0,0,0.5);
-  backdrop-filter: blur(6px);
-  transition: filter 0.2s, transform 0.1s;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  text-decoration: none;
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--cyan-0);
+  text-shadow: 0 0 8px rgba(77,255,226,0.6);
+  background: rgba(2,8,18,0.7);
+  box-shadow: inset 0 0 0 1px rgba(77,255,226,0.4), 0 4px 16px rgba(0,0,0,0.5);
+  backdrop-filter: blur(6px);
+  transition: filter 0.2s, transform 0.1s;
 }
+.lobby-link { left: 14px; }
+.history-btn { left: 122px; }
 .history-btn::before { content: '⌛'; font-size: 11px; line-height: 1; }
-.history-btn:hover { filter: brightness(1.2); }
-.history-btn:active { transform: translateY(2px); }
+.lobby-link:hover, .history-btn:hover { filter: brightness(1.2); }
+.lobby-link:active, .history-btn:active { transform: translateY(2px); }
 
 @media (max-width: 720px) {
-  .history-btn { top: 10px; left: 124px; padding: 6px 11px; font-size: 9px; letter-spacing: 0.15em; }
+  .lobby-link, .history-btn { top: 10px; height: 28px; padding: 0 11px; font-size: 9px; letter-spacing: 0.15em; gap: 5px; }
+  .lobby-link { left: 10px; }
+  .history-btn { left: 100px; }
   .history-btn::before { font-size: 10px; }
 }
 
@@ -2118,6 +2104,7 @@ body::after {
 </head>
 <body>
 <script src="casino-audio.js"></script>
+<script type="module" src="casino-account.js"></script>
 
 <div class="bubbles" id="bg-bubbles"></div>
 

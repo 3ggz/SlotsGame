@@ -205,6 +205,428 @@ body::after {
   .btn-history::before { font-size: 12px; }
 }
 
+/* ACCOUNT BUTTON — top-right, offset left of the settings gear (40px wide + 14px gap) */
+.btn-account {
+  position: fixed;
+  top: 14px;
+  right: 64px;
+  z-index: 80;
+  border: 0;
+  cursor: pointer;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--gold-0);
+  background: rgba(2,8,18,0.7);
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.45), 0 4px 16px rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: filter 0.15s, transform 0.1s;
+}
+.btn-account::before { content: '◆'; font-size: 13px; line-height: 1; color: var(--gold-1); }
+.btn-account.signed-in::before { content: ''; display: none; }
+.btn-account .avatar {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--neon-violet), var(--neon-pink));
+  display: grid;
+  place-items: center;
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  color: #0a0418;
+  flex-shrink: 0;
+}
+.btn-account:hover { filter: brightness(1.15); }
+.btn-account:active { transform: translateY(2px); }
+@media (max-width: 720px) {
+  .btn-account { top: 8px; right: 58px; height: 34px; padding: 0 10px; font-size: 9px; letter-spacing: 0.14em; gap: 6px; max-width: 140px; }
+  .btn-account::before { font-size: 11px; }
+  .btn-account .avatar { width: 18px; height: 18px; font-size: 9px; }
+}
+
+/* LIVE FROM THE FLOOR — global stats panel */
+.live-floor {
+  position: relative;
+  padding: 20px 22px 22px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,46,147,0.18), transparent 60%),
+    radial-gradient(ellipse at 50% 100%, rgba(34,211,238,0.12), transparent 70%),
+    linear-gradient(180deg, #160734, #0a0319);
+  box-shadow: var(--shadow-deep), inset 0 0 0 1.5px rgba(255,210,74,0.28);
+  overflow: hidden;
+}
+.live-floor::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 16px;
+  pointer-events: none;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--neon-pink), var(--gold-1) 35%, var(--neon-cyan) 70%, var(--neon-pink));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0.45;
+  animation: lfBorder 8s linear infinite;
+}
+@keyframes lfBorder {
+  0%   { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+.live-floor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.live-title {
+  font-family: 'Bungee', cursive;
+  font-size: 13px;
+  letter-spacing: 0.32em;
+  color: var(--gold-0);
+  text-shadow: 0 0 12px rgba(255,210,74,0.5);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.live-pulse {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #ff2e58;
+  box-shadow: 0 0 12px rgba(255,46,88,0.9), 0 0 4px rgba(255,46,88,0.7);
+  animation: lfPulse 1.4s ease-in-out infinite;
+}
+@keyframes lfPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.78); }
+}
+.live-status {
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(34,211,238,0.55);
+  text-align: right;
+}
+.live-status.offline { color: rgba(255,255,255,0.32); text-shadow: none; }
+
+.live-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.live-stat {
+  position: relative;
+  padding: 12px 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.4));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.18);
+  text-align: center;
+}
+.live-stat .lbl {
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  color: rgba(255,255,255,0.55);
+  margin-bottom: 6px;
+}
+.live-stat .val {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: clamp(20px, 3.2vw, 28px);
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 0 14px rgba(255,255,255,0.18);
+  line-height: 1.1;
+  transition: transform 0.18s, color 0.25s;
+}
+.live-stat.flash .val {
+  color: var(--gold-1);
+  text-shadow: 0 0 18px rgba(255,210,74,0.75);
+  transform: translateY(-1px) scale(1.04);
+}
+.live-stat.spins .val   { color: #fff; }
+.live-stat.wagered .val { background: linear-gradient(180deg, #fff7d1, var(--gold-1)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.live-stat.won .val     { background: linear-gradient(180deg, #c8ffd9, var(--neon-green)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.live-stat.jp .val      { background: linear-gradient(180deg, #ffcde1, var(--neon-pink)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+.live-foot {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255,210,74,0.15);
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  color: rgba(255,255,255,0.65);
+  overflow: hidden;
+}
+.live-foot .jp-icon {
+  font-size: 14px;
+  filter: drop-shadow(0 0 6px rgba(255,210,74,0.8));
+  flex-shrink: 0;
+}
+.live-foot .jp-list {
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 1;
+}
+.live-foot .jp-item {
+  display: inline-block;
+  margin-right: 24px;
+  animation: jpEnter 0.5s ease-out;
+}
+.live-foot .jp-item .who { color: var(--gold-0); font-weight: 800; }
+.live-foot .jp-item .amt { color: var(--neon-green); font-weight: 800; font-family: 'Geist Mono', monospace; }
+.live-foot .jp-item .where { color: rgba(255,255,255,0.45); font-style: italic; }
+.live-foot .jp-item .kind {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-family: 'Bungee', cursive;
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  background: linear-gradient(180deg, var(--neon-pink), #6a0d3e);
+  color: #fff;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+.live-foot .jp-empty { color: rgba(255,255,255,0.3); font-style: italic; }
+@keyframes jpEnter {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.live-floor.setup-hint::after {
+  content: 'PASTE FIREBASE CONFIG IN casino-account.js TO GO LIVE';
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  transform: translateX(-50%);
+  font-family: 'Bungee', cursive;
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: rgba(255,210,74,0.55);
+  background: rgba(10,4,24,0.92);
+  padding: 4px 10px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.25);
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .live-floor { padding: 14px 14px 16px; border-radius: 18px; }
+  .live-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .live-stat { padding: 10px 8px 12px; }
+  .live-stat .val { font-size: 20px; }
+  .live-title { font-size: 11px; letter-spacing: 0.22em; }
+  .live-status { font-size: 8px; letter-spacing: 0.18em; }
+  .live-foot { font-size: 11px; padding-top: 10px; margin-top: 10px; }
+}
+
+/* AUTH MODAL */
+.auth-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(5,1,15,0.78);
+  backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.auth-veil.show { opacity: 1; pointer-events: all; }
+.auth-card {
+  width: min(420px, 92vw);
+  padding: 26px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at top, rgba(255,46,147,0.20), transparent 60%),
+    linear-gradient(180deg, #1c0a3a, #0a0319);
+  box-shadow: var(--shadow-deep), inset 0 0 0 1.5px rgba(255,210,74,0.28);
+  transform: translateY(20px) scale(0.95);
+  transition: transform 0.3s cubic-bezier(.2,.9,.2,1.3);
+}
+.auth-veil.show .auth-card { transform: translateY(0) scale(1); }
+.auth-title {
+  font-family: 'Bungee', cursive;
+  font-size: 22px;
+  letter-spacing: 0.1em;
+  color: var(--gold-0);
+  text-shadow: 0 0 12px rgba(255,210,74,0.5);
+  text-align: center;
+  margin-bottom: 4px;
+}
+.auth-sub {
+  font-size: 12px;
+  text-align: center;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.18em;
+  margin-bottom: 18px;
+}
+.auth-google {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 14px;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: #1f1f1f;
+  background: #fff;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.6);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: transform 0.1s, filter 0.15s;
+}
+.auth-google:hover { filter: brightness(0.97); }
+.auth-google:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.6); }
+.auth-google .g-mark {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background:
+    conic-gradient(from 90deg, #4285F4 0 25%, #34A853 25% 50%, #FBBC05 50% 75%, #EA4335 75%);
+}
+.auth-or {
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  color: rgba(255,255,255,0.35);
+  text-align: center;
+  margin: 6px 0 12px;
+  position: relative;
+}
+.auth-or::before, .auth-or::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 38%;
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+}
+.auth-or::before { left: 0; }
+.auth-or::after { right: 0; }
+.auth-field {
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.5);
+  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.3);
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+.auth-field::placeholder { color: rgba(255,255,255,0.35); }
+.auth-field:focus { box-shadow: inset 0 0 0 1.5px var(--neon-cyan), 0 0 14px rgba(34,211,238,0.3); }
+.auth-error {
+  min-height: 18px;
+  margin: 4px 0 10px;
+  font-size: 12px;
+  color: var(--neon-pink);
+  text-align: center;
+}
+.auth-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+}
+.auth-toggle {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+}
+.auth-toggle button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--neon-cyan);
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  padding: 4px;
+  text-decoration: underline;
+}
+.auth-signedin {
+  text-align: center;
+}
+.auth-signedin .who {
+  font-family: 'Bungee', cursive;
+  font-size: 18px;
+  letter-spacing: 0.12em;
+  color: var(--gold-0);
+  text-shadow: 0 0 10px rgba(255,210,74,0.5);
+  margin-bottom: 6px;
+}
+.auth-signedin .email {
+  font-size: 12px;
+  color: rgba(255,255,255,0.55);
+  margin-bottom: 18px;
+}
+.auth-personal {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.auth-personal .pstat {
+  padding: 10px 8px 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.4));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.18);
+  text-align: center;
+}
+.auth-personal .lbl {
+  font-family: 'Bungee', cursive;
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 4px;
+}
+.auth-personal .val {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: 16px;
+  color: #fff;
+}
+.btn-signout {
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: 'Bungee', cursive;
+  letter-spacing: 0.18em;
+  font-size: 13px;
+  color: #fff;
+  background: rgba(255,46,88,0.16);
+  box-shadow: inset 0 0 0 1.5px rgba(255,46,88,0.45);
+  transition: filter 0.15s, transform 0.1s;
+}
+.btn-signout:hover { filter: brightness(1.15); }
+.btn-signout:active { transform: translateY(2px); }
+
 /* GAME GRID */
 .games {
   display: grid;
@@ -920,8 +1342,10 @@ body::after {
 </head>
 <body>
 <script src="casino-audio.js"></script>
+<script type="module" src="casino-account.js"></script>
 
 <button class="btn-history" id="btn-history" title="View history">HISTORY</button>
+<button class="btn-account" id="btn-account" title="Sign in">SIGN IN</button>
 
 <div class="lobby">
 
@@ -936,6 +1360,35 @@ body::after {
     <span class="value">$<span id="balance">1,000</span></span>
     <button class="btn-add" id="btn-add" title="Add chips">+</button>
   </div>
+
+  <section class="live-floor" id="live-floor">
+    <div class="live-floor-head">
+      <div class="live-title"><span class="live-pulse"></span>LIVE FROM THE FLOOR</div>
+      <div class="live-status offline" id="live-status">CONNECTING…</div>
+    </div>
+    <div class="live-grid">
+      <div class="live-stat spins">
+        <div class="lbl">TOTAL SPINS</div>
+        <div class="val" id="stat-spins">0</div>
+      </div>
+      <div class="live-stat wagered">
+        <div class="lbl">TOTAL WAGERED</div>
+        <div class="val" id="stat-wagered">$0</div>
+      </div>
+      <div class="live-stat won">
+        <div class="lbl">PAID OUT</div>
+        <div class="val" id="stat-won">$0</div>
+      </div>
+      <div class="live-stat jp">
+        <div class="lbl">JACKPOTS HIT</div>
+        <div class="val" id="stat-jp">0</div>
+      </div>
+    </div>
+    <div class="live-foot">
+      <span class="jp-icon">🔥</span>
+      <div class="jp-list" id="jp-list"><span class="jp-empty">Waiting for the first jackpot of the day…</span></div>
+    </div>
+  </section>
 
   <div class="games">
 
@@ -1108,6 +1561,45 @@ body::after {
 
 </div>
 
+<!-- AUTH MODAL -->
+<div class="auth-veil" id="auth-veil">
+  <div class="auth-card">
+    <!-- signed-out view -->
+    <div id="auth-out">
+      <div class="auth-title" id="auth-title">SIGN IN</div>
+      <div class="auth-sub" id="auth-sub">SAVE YOUR STATS · WIN LEADERBOARDS</div>
+      <button class="auth-google" id="auth-google"><span class="g-mark"></span>CONTINUE WITH GOOGLE</button>
+      <div class="auth-or">OR</div>
+      <input class="auth-field" id="auth-name" type="text" placeholder="Display name" style="display:none" />
+      <input class="auth-field" id="auth-email" type="email" placeholder="Email" autocomplete="email" />
+      <input class="auth-field" id="auth-pw" type="password" placeholder="Password" autocomplete="current-password" />
+      <div class="auth-error" id="auth-error"></div>
+      <div class="auth-actions">
+        <button class="btn btn-cancel" id="auth-cancel">CANCEL</button>
+        <button class="btn btn-confirm" id="auth-confirm">SIGN IN</button>
+      </div>
+      <div class="auth-toggle" id="auth-toggle-row">
+        <span id="auth-toggle-prompt">New here?</span>
+        <button id="auth-toggle">CREATE ACCOUNT</button>
+      </div>
+    </div>
+    <!-- signed-in view -->
+    <div id="auth-in" style="display:none">
+      <div class="auth-signedin">
+        <div class="who" id="auth-who">PLAYER</div>
+        <div class="email" id="auth-mail"></div>
+      </div>
+      <div class="auth-personal">
+        <div class="pstat"><div class="lbl">YOUR SPINS</div><div class="val" id="ps-spins">0</div></div>
+        <div class="pstat"><div class="lbl">YOUR WAGERED</div><div class="val" id="ps-wagered">$0</div></div>
+        <div class="pstat"><div class="lbl">YOU WON</div><div class="val" id="ps-won">$0</div></div>
+        <div class="pstat"><div class="lbl">JACKPOTS</div><div class="val" id="ps-jp">0</div></div>
+      </div>
+      <button class="btn-signout" id="auth-signout">SIGN OUT</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD FUNDS MODAL -->
 <div class="modal-veil" id="modal-veil">
   <div class="modal-card">
@@ -1195,6 +1687,278 @@ document.getElementById('amount-input').addEventListener('keydown', e => {
 /* refresh balance when returning from a game */
 window.addEventListener('focus', refresh);
 window.addEventListener('pageshow', refresh);
+
+/* ============================================================
+   LIVE FROM THE FLOOR — global counters + jackpot ticker
+   ============================================================ */
+const STAT_KEYS = ['totalSpins', 'totalWagered', 'totalWon', 'jackpotsHit'];
+const STAT_EL   = {
+  totalSpins:   document.getElementById('stat-spins'),
+  totalWagered: document.getElementById('stat-wagered'),
+  totalWon:     document.getElementById('stat-won'),
+  jackpotsHit:  document.getElementById('stat-jp'),
+};
+const STAT_MONEY = { totalWagered: true, totalWon: true };
+const liveStatusEl = document.getElementById('live-status');
+const jpListEl     = document.getElementById('jp-list');
+const liveFloorEl  = document.getElementById('live-floor');
+
+const animState = { totalSpins: 0, totalWagered: 0, totalWon: 0, jackpotsHit: 0 };
+const animRAF   = {};
+
+function fmtCount(n) {
+  return Math.floor(n).toLocaleString('en-US');
+}
+function fmtMoneyShort(n) {
+  const v = Math.floor(n);
+  if (v >= 1e9) return '$' + (v / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
+  if (v >= 1e6) return '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
+  return '$' + v.toLocaleString('en-US');
+}
+
+function tweenStat(key, target) {
+  cancelAnimationFrame(animRAF[key]);
+  const start  = animState[key];
+  const delta  = target - start;
+  if (Math.abs(delta) < 0.5) { renderStat(key, target); animState[key] = target; return; }
+  const t0     = performance.now();
+  const dur    = Math.min(1200, 360 + Math.log10(Math.max(1, Math.abs(delta))) * 220);
+  const big    = delta > 0 && (key === 'jackpotsHit' || delta >= Math.max(50, start * 0.05));
+  const el     = STAT_EL[key];
+  if (big && el) {
+    const cell = el.closest('.live-stat');
+    cell?.classList.add('flash');
+    setTimeout(() => cell?.classList.remove('flash'), 600);
+  }
+  function frame(now) {
+    const k = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - k, 3);
+    const cur = start + delta * eased;
+    renderStat(key, cur);
+    animState[key] = cur;
+    if (k < 1) animRAF[key] = requestAnimationFrame(frame);
+    else      animState[key] = target;
+  }
+  animRAF[key] = requestAnimationFrame(frame);
+}
+function renderStat(key, v) {
+  const el = STAT_EL[key];
+  if (!el) return;
+  el.textContent = STAT_MONEY[key] ? fmtMoneyShort(v) : fmtCount(v);
+}
+STAT_KEYS.forEach(k => renderStat(k, 0));
+
+function applyStats(stats) {
+  STAT_KEYS.forEach(k => tweenStat(k, stats[k] || 0));
+}
+
+function renderJackpots(list) {
+  if (!list || !list.length) {
+    jpListEl.innerHTML = '<span class="jp-empty">Waiting for the first jackpot of the day…</span>';
+    return;
+  }
+  const GAME_NAME = {
+    slots: "Diamond Deluxe",
+    kraken: "Kraken's Depths",
+    lucky7: 'Lucky Seven Saloon',
+    blackjack: 'Blackjack',
+    craplesscraps: 'Crapless Craps',
+    plinko: 'Plinko',
+  };
+  const ago = ts => {
+    if (!ts) return 'just now';
+    const ms = (ts.toMillis ? ts.toMillis() : ts) - Date.now();
+    const s  = Math.max(0, -ms / 1000);
+    if (s < 60)    return Math.floor(s) + 's ago';
+    if (s < 3600)  return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    return Math.floor(s / 86400) + 'd ago';
+  };
+  jpListEl.innerHTML = list.map(j => `
+    <span class="jp-item">
+      <span class="kind">${(j.kind || 'JACKPOT')}</span>
+      <span class="who">${escapeHtml(j.player || 'Anonymous')}</span>
+      hit <span class="amt">$${Math.floor(j.amount).toLocaleString('en-US')}</span>
+      <span class="where">on ${escapeHtml(GAME_NAME[j.game] || j.game || 'the floor')}</span>
+      · ${ago(j.ts)}
+    </span>
+  `).join('');
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+let liveStarted = false;
+function startLiveStats() {
+  if (liveStarted) return;
+  if (!window.CasinoStats) { setTimeout(startLiveStats, 80); return; }
+  liveStarted = true;
+  if (window.CasinoStats.configured) {
+    liveStatusEl.textContent = 'LIVE';
+    liveStatusEl.classList.remove('offline');
+    liveFloorEl.classList.remove('setup-hint');
+  } else {
+    liveStatusEl.textContent = 'OFFLINE';
+    liveStatusEl.classList.add('offline');
+    liveFloorEl.classList.add('setup-hint');
+  }
+  window.CasinoStats.subscribe(applyStats);
+  window.CasinoStats.subscribeJackpots(renderJackpots);
+}
+document.addEventListener('casino-account-ready', startLiveStats, { once: true });
+setTimeout(startLiveStats, 1500);
+
+
+/* ============================================================
+   AUTH UI — sign in / sign up / sign out
+   ============================================================ */
+const authVeil    = document.getElementById('auth-veil');
+const btnAccount  = document.getElementById('btn-account');
+const authOut     = document.getElementById('auth-out');
+const authIn      = document.getElementById('auth-in');
+const authTitle   = document.getElementById('auth-title');
+const authSub     = document.getElementById('auth-sub');
+const authName    = document.getElementById('auth-name');
+const authEmail   = document.getElementById('auth-email');
+const authPw      = document.getElementById('auth-pw');
+const authError   = document.getElementById('auth-error');
+const authConfirm = document.getElementById('auth-confirm');
+const authToggle  = document.getElementById('auth-toggle');
+const authTogglePrompt = document.getElementById('auth-toggle-prompt');
+const authGoogle  = document.getElementById('auth-google');
+const authWho     = document.getElementById('auth-who');
+const authMail    = document.getElementById('auth-mail');
+
+let authMode = 'signin'; // 'signin' | 'signup'
+let signedInUser = null;
+
+function syncAuthForm() {
+  if (authMode === 'signup') {
+    authTitle.textContent = 'CREATE ACCOUNT';
+    authSub.textContent   = 'JOIN THE FLOOR · TRACK YOUR RUNS';
+    authConfirm.textContent = 'SIGN UP';
+    authName.style.display  = 'block';
+    authTogglePrompt.textContent = 'Already have an account?';
+    authToggle.textContent = 'SIGN IN';
+  } else {
+    authTitle.textContent = 'SIGN IN';
+    authSub.textContent   = 'SAVE YOUR STATS · WIN LEADERBOARDS';
+    authConfirm.textContent = 'SIGN IN';
+    authName.style.display  = 'none';
+    authTogglePrompt.textContent = 'New here?';
+    authToggle.textContent = 'CREATE ACCOUNT';
+  }
+  authError.textContent = '';
+}
+function openAuth() {
+  if (signedInUser) {
+    authOut.style.display = 'none';
+    authIn.style.display  = 'block';
+    authWho.textContent   = (signedInUser.displayName || (signedInUser.email ? signedInUser.email.split('@')[0] : 'PLAYER')).toUpperCase();
+    authMail.textContent  = signedInUser.email || '';
+  } else {
+    authOut.style.display = 'block';
+    authIn.style.display  = 'none';
+    if (!window.CasinoAccount?.configured) {
+      authError.textContent = 'Firebase not configured — see casino-account.js for setup.';
+      authConfirm.disabled = true;
+      authGoogle.disabled  = true;
+    } else {
+      authConfirm.disabled = false;
+      authGoogle.disabled  = false;
+    }
+    syncAuthForm();
+  }
+  authVeil.classList.add('show');
+}
+function closeAuth() {
+  authVeil.classList.remove('show');
+  setTimeout(() => { authError.textContent = ''; authPw.value = ''; }, 250);
+}
+function setErr(msg) {
+  authError.textContent = msg || '';
+}
+function readableAuthError(e) {
+  const code = e?.code || '';
+  if (code.includes('invalid-email'))         return 'That email looks invalid.';
+  if (code.includes('email-already-in-use'))  return 'An account with that email already exists.';
+  if (code.includes('weak-password'))         return 'Password is too weak (min 6 characters).';
+  if (code.includes('user-not-found'))        return 'No account with that email.';
+  if (code.includes('wrong-password'))        return 'Wrong password.';
+  if (code.includes('invalid-credential'))    return 'Wrong email or password.';
+  if (code.includes('popup-blocked'))         return 'Popup was blocked — allow popups and try again.';
+  if (code.includes('popup-closed-by-user'))  return '';
+  if (code.includes('network-request-failed')) return 'Network error — check your connection.';
+  return e?.message || 'Something went wrong. Try again.';
+}
+
+btnAccount.addEventListener('click', openAuth);
+authVeil.addEventListener('click', e => { if (e.target.id === 'auth-veil') closeAuth(); });
+document.getElementById('auth-cancel').addEventListener('click', closeAuth);
+authToggle.addEventListener('click', () => { authMode = authMode === 'signin' ? 'signup' : 'signin'; syncAuthForm(); });
+
+authGoogle.addEventListener('click', async () => {
+  if (!window.CasinoAccount?.configured) return;
+  setErr('');
+  try {
+    await window.CasinoAccount.signInGoogle();
+    closeAuth();
+  } catch (e) { setErr(readableAuthError(e)); }
+});
+
+authConfirm.addEventListener('click', async () => {
+  if (!window.CasinoAccount?.configured) return;
+  const email = authEmail.value.trim();
+  const pw    = authPw.value;
+  if (!email || !pw) { setErr('Email and password are required.'); return; }
+  setErr('');
+  authConfirm.disabled = true;
+  try {
+    if (authMode === 'signup') {
+      await window.CasinoAccount.signUpEmail(email, pw, authName.value.trim() || null);
+    } else {
+      await window.CasinoAccount.signInEmail(email, pw);
+    }
+    closeAuth();
+  } catch (e) {
+    setErr(readableAuthError(e));
+  } finally {
+    authConfirm.disabled = false;
+  }
+});
+[authEmail, authPw, authName].forEach(inp => inp?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') authConfirm.click();
+  if (e.key === 'Escape') closeAuth();
+}));
+
+document.getElementById('auth-signout').addEventListener('click', async () => {
+  try { await window.CasinoAccount.signOut(); } catch (e) {}
+  closeAuth();
+});
+
+function paintAccountButton(user) {
+  signedInUser = user && !user.isAnonymous ? user : null;
+  if (signedInUser) {
+    const name = signedInUser.displayName || (signedInUser.email ? signedInUser.email.split('@')[0] : 'Player');
+    const initial = (name[0] || '?').toUpperCase();
+    btnAccount.classList.add('signed-in');
+    btnAccount.innerHTML = `<span class="avatar">${escapeHtml(initial)}</span>${escapeHtml(name.toUpperCase())}`;
+    btnAccount.title = signedInUser.email || name;
+  } else {
+    btnAccount.classList.remove('signed-in');
+    btnAccount.textContent = 'SIGN IN';
+    btnAccount.title = 'Sign in';
+  }
+}
+let accountBound = false;
+function bindAccount() {
+  if (accountBound) return;
+  if (!window.CasinoAccount) { setTimeout(bindAccount, 80); return; }
+  accountBound = true;
+  window.CasinoAccount.onAuthChange(paintAccountButton);
+}
+document.addEventListener('casino-account-ready', bindAccount, { once: true });
+setTimeout(bindAccount, 1500);
 </script>
 
 </body>

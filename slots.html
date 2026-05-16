@@ -385,11 +385,14 @@ body.is-spinning .symbol::before {
   .reel, .strip { transform: translateZ(0); }
 }
 
-/* Every symbol PNG is normalized at build time: each icon is cropped to
-   its tight bounding box, scaled to fill the same proportional area
-   (~91% of canvas), and centered. With identical scale + position
-   across all symbols, the default background-position:center is enough —
-   no per-symbol CSS shifts needed. */
+/* Every symbol PNG is normalized at build time (images/bottom_align.py):
+   each icon's tight bbox is placed against the canvas bottom with an 8px
+   floor pad. background-size:contain scales the 512×512 canvas into the
+   ::before, so every icon — diamond halo or short bar alike — shares the
+   same baseline ~2 CSS px above the ::before bottom. Without this, the
+   diamond's full-canvas halo made it appear cell-filling while shorter
+   icons (crown, bar) floated centered with empty space below, reading
+   as visually "raised" next to a diamond. */
 .sym-heart::before,
 .sym-clover::before,
 .sym-star::before,
@@ -2231,6 +2234,7 @@ body.is-spinning .symbol::before {
 </head>
 <body>
 <script src="casino-audio.js"></script>
+<script type="module" src="casino-account.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>

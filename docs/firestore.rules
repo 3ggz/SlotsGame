@@ -1,0 +1,46 @@
+// Diamond Casino — Firestore security rules
+// Paste into Firebase Console → Firestore Database → Rules → Publish.
+//
+// Model:
+//   /globals/stats           single doc, world-readable, world-incrementable
+//   /recentJackpots/*        world-readable, append-only (auth required)
+//   /users/{uid}             only the owner can read/write their record
+//
+// Unauthenticated visitors can read everything (so the lobby's LIVE
+// panel works without forcing a sign-in). Writes require auth —
+// anonymous Firebase Auth counts, and casino-account.js calls
+// signInAnonymously() on every page load, so this is invisible to
+// the player.
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    // Global counters: anyone can read, any authed visitor can bump.
+    match /globals/stats {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Append-only jackpot ticker.
+    match /recentJackpots/{id} {
+      allow read:   if true;
+      allow create: if request.auth != null
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && request.resource.data.amount < 100000000
+        && request.resource.data.game is string
+        && request.resource.data.game.size() < 64
+        && request.resource.data.player is string
+        && request.resource.data.player.size() < 64;
+      allow update, delete: if false;
+    }
+
+    // Per-user stats: public read (for future leaderboards), owner-only write.
+    match /users/{uid} {
+      allow read:  if true;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

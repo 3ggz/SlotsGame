@@ -69,39 +69,23 @@ body::before {
 button, input { font: inherit; }
 button { border: 0; cursor: pointer; }
 
-.lobby-link {
+/* LOBBY + HISTORY — fixed top-left pair, identical sizing for perfect alignment */
+.lobby-link, .history-btn {
   position: fixed;
   top: 14px;
-  left: 14px;
   z-index: 50;
-  padding: 10px 13px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
   border-radius: 8px;
-  color: var(--cream);
   text-decoration: none;
   font-family: Bungee, cursive;
   font-size: 11px;
   letter-spacing: 0.08em;
-  background:
-    linear-gradient(180deg, rgba(255,215,106,0.18), rgba(0,0,0,0.62)),
-    var(--panel);
-  box-shadow:
-    inset 0 0 0 1px rgba(255,215,106,0.38),
-    0 14px 34px rgba(0,0,0,0.42);
-}
-
-.history-btn {
-  position: fixed;
-  top: 14px;
-  left: 110px;
-  z-index: 50;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 13px 9px;
-  border-radius: 8px;
-  font-family: Bungee, cursive;
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  line-height: 1;
   cursor: pointer;
   color: var(--cream);
   background:
@@ -112,9 +96,11 @@ button { border: 0; cursor: pointer; }
     0 14px 34px rgba(0,0,0,0.42);
   transition: transform 0.1s, filter 0.15s;
 }
+.lobby-link { left: 14px; }
+.history-btn { left: 110px; }
 .history-btn::before { content: '⌛'; font-size: 12px; line-height: 1; }
-.history-btn:hover { filter: brightness(1.15); }
-.history-btn:active { transform: translateY(2px); }
+.lobby-link:hover, .history-btn:hover { filter: brightness(1.15); }
+.lobby-link:active, .history-btn:active { transform: translateY(2px); }
 
 .stage {
   width: min(1160px, calc(100vw - 22px));
@@ -1355,9 +1341,10 @@ button { border: 0; cursor: pointer; }
   }
   .cabinet { padding: 6px; }
   .topper { padding: 7px; }
-  .lobby-link { top: 8px; left: 8px; font-size: 9px; }
-  .history-btn { top: 8px; left: 96px; font-size: 9px; padding: 8px 10px 7px; }
-  .history-btn::before { font-size: 10px; }
+  .lobby-link, .history-btn { top: 8px; height: 30px; padding: 0 11px; font-size: 9px; gap: 6px; }
+  .lobby-link { left: 8px; }
+  .history-btn { left: 92px; }
+  .history-btn::before { font-size: 11px; }
   .meters { gap: 3px; margin-bottom: 5px; }
   .meter { min-height: 34px; padding: 4px 2px; border-radius: 6px; }
   .meter-label { font-size: 5.5px; letter-spacing: 0.04em; }
@@ -1424,6 +1411,7 @@ button { border: 0; cursor: pointer; }
 </head>
 <body>
 <script src="casino-audio.js"></script>
+<script type="module" src="casino-account.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>

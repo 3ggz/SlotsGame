@@ -716,6 +716,14 @@
       allEntries.push(entry);
       persist();
       notify();
+      // Fan out to the global live-stats backend (no-op if unconfigured).
+      try {
+        if (global.CasinoStats && global.CasinoStats.recordRound) {
+          global.CasinoStats.recordRound({
+            game: entry.game, bet: entry.bet, win: entry.win, note: entry.note,
+          });
+        }
+      } catch (e) {}
       return entry;
     }
 
