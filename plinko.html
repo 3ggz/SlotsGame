@@ -402,32 +402,6 @@ body::before {
   color: #fff;
 }
 
-/* WIN TOAST — pops over the board for big hits */
-.win-toast {
-  position: absolute;
-  top: 30%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.7);
-  z-index: 12;
-  pointer-events: none;
-  opacity: 0;
-  padding: 12px 22px;
-  border-radius: 16px;
-  font-family: 'Bungee', cursive;
-  font-size: 24px;
-  letter-spacing: 0.12em;
-  color: #0a0418;
-  background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 50%, var(--gold-2));
-  box-shadow: 0 10px 30px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.5), 0 0 36px rgba(255,210,74,0.6);
-  text-shadow: 0 1px 0 rgba(255,255,255,0.4);
-  white-space: nowrap;
-  transition: opacity 0.3s, transform 0.45s cubic-bezier(.2,1.5,.3,1);
-}
-.win-toast.show {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-}
-
 /* MOBILE */
 @media (max-width: 720px) {
   .lobby-link, .history-btn {
@@ -456,7 +430,6 @@ body::before {
   .drop-btn { padding: 14px; font-size: 14px; letter-spacing: 0.22em; }
   .recent-strip { height: 26px; }
   .recent-pill { font-size: 11px; padding: 4px 8px; }
-  .win-toast { font-size: 18px; padding: 9px 18px; }
 }
 </style>
 </head>
@@ -479,7 +452,6 @@ body::before {
 
   <div class="board-frame">
     <canvas id="board"></canvas>
-    <div class="win-toast" id="win-toast">+$0</div>
   </div>
 
   <div class="recent-strip" id="recent-strip"></div>
@@ -710,22 +682,25 @@ let slotXs = [];         // x of slot CENTERS at the bottom
 let slotWidth = 0;
 let slotTopY = 0;        // top of the slot row
 let slotBottomY = 0;     // bottom of the canvas / where balls vanish
-let wallInsetX = 0;      // inner left/right edge of play area
+// Angled side walls — two line segments forming a funnel that exactly
+// hugs the peg triangle (no channel between wall and outermost peg, so
+// balls can't slide a clean edge path).
+let leftWall  = { ax: 0, ay: 0, bx: 0, by: 0 };
+let rightWall = { ax: 0, ay: 0, bx: 0, by: 0 };
+let wallTopY  = 0;       // upper extent of the angled walls
 
 function layoutBoard() {
   const N = state.rows;          // 8/12/16
   // Bottom row has N+2 pegs → N+1 slots. Top row has 3 pegs.
-  // Pick spacing so the bottom row fits inside the play width with margin.
   const playMargin = 18;
-  const slotBandH = 56;          // bottom band for slot multipliers
+  const slotBandH = 60;          // bottom band for slot multipliers
   pegSpaceX = (LW - 2 * playMargin) / (N + 1);
-  pegSpaceY = pegSpaceX * 0.88;   // slightly compressed for tighter bounces
+  pegSpaceY = pegSpaceX * 0.88;
 
-  topPegY = 56;                   // leave room for ball spawn lane
+  topPegY = 56;
   bottomPegY = topPegY + (N - 1) * pegSpaceY;
   slotTopY = bottomPegY + pegSpaceY * 0.55;
   slotBottomY = LH - 6;
-  // Ensure slot band fits — if not, scale spacing down to fit canvas height.
   const requiredH = topPegY + (N - 1) * pegSpaceY + pegSpaceY * 0.55 + slotBandH + 8;
   if (requiredH > LH) {
     const scale = (LH - topPegY - slotBandH - 14) / ((N - 1) * pegSpaceY + pegSpaceY * 0.55);
@@ -738,6 +713,8 @@ function layoutBoard() {
   ballRadius = Math.max(4, pegSpaceX * 0.30);
 
   // Build pegs: row r has (r+3) pegs, centered horizontally.
+  // Each peg is tagged with its row index — physics uses this to apply
+  // the prerolled path direction once per row.
   pegs = [];
   for (let r = 0; r < N; r++) {
     const count = r + 3;
@@ -745,7 +722,7 @@ function layoutBoard() {
     const startX = (LW - rowW) / 2;
     const y = topPegY + r * pegSpaceY;
     for (let k = 0; k < count; k++) {
-      pegs.push({ x: startX + k * pegSpaceX, y, r: pegRadius });
+      pegs.push({ x: startX + k * pegSpaceX, y, r: pegRadius, row: r });
     }
   }
 
@@ -758,7 +735,18 @@ function layoutBoard() {
     slotXs.push(bottomStartX + (i + 0.5) * pegSpaceX);
   }
   slotWidth = pegSpaceX;
-  wallInsetX = bottomStartX - pegSpaceX * 0.5;
+
+  // Angled walls: from just-outside the top row's outermost peg down
+  // to just-outside the bottom row's outermost peg. Forms a triangular
+  // funnel — no straight channel for a ball to slide down.
+  const topOuterX_L  = (LW - 2 * pegSpaceX) / 2;          // top row leftmost peg x
+  const botOuterX_L  = bottomStartX;                       // bottom row leftmost peg x
+  const margin       = pegRadius + ballRadius * 0.6;
+  wallTopY = Math.max(8, topPegY - pegSpaceY * 0.8);
+  leftWall  = { ax: topOuterX_L - margin, ay: wallTopY,
+                bx: botOuterX_L - margin, by: slotTopY - 2 };
+  rightWall = { ax: (LW - topOuterX_L) + margin, ay: wallTopY,
+                bx: (LW - botOuterX_L) + margin, by: slotTopY - 2 };
 }
 
 function resizeCanvas() {
@@ -777,50 +765,64 @@ window.addEventListener('resize', resizeCanvas);
 /* Per-slot flash animations (when a ball lands) */
 const slotFlash = [];   // parallel to slotXs; each holds a 0..1 fade
 
-/* Balls in flight */
-const balls = [];       // { x, y, vx, vy, r, bet, alive, settleAt, slotIdx }
-const GRAVITY = 1500;   // px/s² (logical units)
+/* Balls in flight + floating win labels */
+const balls = [];
+const floaters = [];    // { x, y, vy, text, fontSize, color, life, maxLife, isLoss }
+const GRAVITY = 1500;
 const RESTITUTION = 0.55;
 const AIR_DRAG = 0.0007;
 const MAX_BALLS = 50;
+const LAND_FADE_MS = 380; // how long a settled ball stays on screen before removal
 
+/* Each spawned ball pre-rolls its Galton-board path (N independent coin
+   flips). Slot index = number of right-moves; this is the binomial-true
+   outcome. Physics then runs normally, but at each peg collision we
+   force the deflection direction to match the prerolled path[row] (once
+   per row). Result: real bounces, perfect distribution, no edge-roll
+   exploit possible. */
 function spawnBall(bet) {
-  // Cap concurrent balls — caller must check; never silently swallow a paid bet.
   if (balls.length >= MAX_BALLS) return false;
-  // Slight horizontal jitter at the top so consecutive drops vary.
-  const jitter = (Math.random() - 0.5) * pegSpaceX * 0.5;
+  const N = state.rows;
+  const path = new Array(N);
+  let rights = 0;
+  for (let i = 0; i < N; i++) {
+    const d = Math.random() < 0.5 ? -1 : 1;
+    path[i] = d;
+    if (d > 0) rights++;
+  }
   balls.push({
-    x: LW / 2 + jitter,
+    x: LW / 2 + (Math.random() - 0.5) * pegSpaceX * 0.25,
     y: topPegY - pegSpaceY * 0.9,
-    vx: (Math.random() - 0.5) * 24,
+    vx: (Math.random() - 0.5) * 14,
     vy: 0,
     r: ballRadius,
     bet: bet,
-    alive: true,
-    settleAt: 0,
-    slotIdx: -1,
+    path: path,
+    slotIdx: rights,                 // prerolled target slot (0..N)
+    deflected: new Array(N).fill(false),
+    landed: false,
+    landedAt: 0,
   });
   return true;
 }
 
 function settleBall(b) {
-  // Lock to nearest slot using x position
-  let best = 0, bestD = Infinity;
-  for (let i = 0; i < slotXs.length; i++) {
-    const d = Math.abs(b.x - slotXs[i]);
-    if (d < bestD) { bestD = d; best = i; }
-  }
-  b.slotIdx = best;
-  b.settleAt = performance.now();
-  slotFlash[best] = 1;
+  // Honor the prerolled slot — visuals may have drifted a hair, but the
+  // outcome is set at spawn time so the math is honest.
+  const idx = b.slotIdx;
+  slotFlash[idx] = 1;
+  // Snap the ball cleanly into the slot's center column so the fade
+  // animation reads as "it landed here" rather than "it landed nearby".
+  b.x = slotXs[idx];
+  b.vx = 0;
+  b.landed = true;
+  b.landedAt = performance.now();
   slotThud();
-  resolveDrop(best, b.bet);
+  resolveDrop(idx, b.bet);
 }
 
 /* Resolve win for a ball that landed in slot `idx` */
 const recentEl = document.getElementById('recent-strip');
-const winToast = document.getElementById('win-toast');
-let toastTimer = null;
 
 function tierFor(mult) {
   if (mult >= 10)  return 1;     // hot pink → orange
@@ -828,6 +830,44 @@ function tierFor(mult) {
   if (mult >= 1)   return 3;     // gold (break-even / small win)
   if (mult >= 0.5) return 4;     // neutral
   return 5;                      // sub-half loss
+}
+
+/* Rising "+$N" or "-$N" label spawned over the winning slot. Font size
+   scales with the multiplier so a 1000× hit looks meaningfully different
+   from a 1.1× hit. */
+function spawnFloater(slotIdx, mult, bet) {
+  const winAmt = bet * mult;
+  const net = winAmt - bet;
+  const isLoss = net < 0;
+
+  let fontSize;
+  if (mult >= 100)      fontSize = 38;
+  else if (mult >= 10)  fontSize = 28;
+  else if (mult >= 2)   fontSize = 22;
+  else if (mult >= 1)   fontSize = 17;
+  else                  fontSize = 14;
+
+  let color;
+  if (mult >= 10)       color = '#fff7d1';   // big win: bright gold
+  else if (mult >= 2)   color = '#5cffa1';   // green
+  else if (mult >= 1)   color = '#ffe27a';   // soft gold
+  else                  color = '#ff8aa2';   // pink loss
+
+  // Lifetime: epic wins linger longer
+  const maxLife = mult >= 100 ? 2200 : (mult >= 10 ? 1700 : 1100);
+
+  floaters.push({
+    x: slotXs[slotIdx],
+    y: slotTopY + 24,
+    vy: -55 - Math.min(40, mult),   // bigger wins rise faster
+    text: (isLoss ? '-$' : '+$') + fmt(Math.abs(net)),
+    fontSize: fontSize,
+    color: color,
+    life: 0,
+    maxLife: maxLife,
+    isLoss: isLoss,
+    big: mult >= 10,
+  });
 }
 
 function resolveDrop(slotIdx, bet) {
@@ -846,6 +886,9 @@ function resolveDrop(slotIdx, bet) {
   else if (mult >= 1)   { playSfx('chipPayout', 0.7); }
   else                  { playSfx('loseLow', 0.55); }
 
+  // Floater (+$X / -$X) rises out of the slot
+  spawnFloater(slotIdx, mult, bet);
+
   // Recent strip
   const pill = document.createElement('div');
   pill.className = 'recent-pill tier-' + tierFor(mult);
@@ -853,25 +896,55 @@ function resolveDrop(slotIdx, bet) {
   recentEl.insertBefore(pill, recentEl.firstChild);
   while (recentEl.children.length > 9) recentEl.removeChild(recentEl.lastChild);
 
-  // Toast for satisfying wins (≥ 2× = real profit moment)
-  if (mult >= 2) {
-    winToast.textContent = (net >= 0 ? '+$' : '-$') + fmt(Math.abs(net));
-    winToast.classList.add('show');
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => winToast.classList.remove('show'), mult >= 10 ? 1800 : 1100);
-  }
-
   // History
   if (window.History) {
     const note = mult >= 100 ? 'GRAND' : (mult >= 10 ? 'BIG ' + mult + 'X' : (mult >= 1 ? mult + 'X' : null));
     History.record('plinko', bet, net, note);
   }
+}
 
-  // Auto-drop bookkeeping happens in the drop scheduler.
+/* Ball collision against an angled wall segment. Two segments per side
+   form a triangular funnel so balls can't slide a straight edge channel. */
+function collideLine(b, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  if (len2 < 1e-6) return;
+  let t = ((b.x - ax) * dx + (b.y - ay) * dy) / len2;
+  if (t < 0) t = 0; else if (t > 1) t = 1;
+  const cx = ax + t * dx;
+  const cy = ay + t * dy;
+  const ex = b.x - cx, ey = b.y - cy;
+  const d2 = ex * ex + ey * ey;
+  if (d2 < b.r * b.r) {
+    const d = Math.sqrt(d2) || 0.0001;
+    const nx = ex / d, ny = ey / d;
+    const overlap = b.r - d;
+    b.x += nx * overlap;
+    b.y += ny * overlap;
+    const vn = b.vx * nx + b.vy * ny;
+    if (vn < 0) {
+      const e = 0.35;       // softer than peg bounce — walls feel inert
+      b.vx -= (1 + e) * vn * nx;
+      b.vy -= (1 + e) * vn * ny;
+    }
+  }
 }
 
 /* ---------- physics step ---------- */
 function step(dt) {
+  const now = performance.now();
+
+  // Remove faded-out landed balls + expired floaters before stepping physics
+  for (let i = balls.length - 1; i >= 0; i--) {
+    if (balls[i].landed && now - balls[i].landedAt > LAND_FADE_MS) {
+      balls.splice(i, 1);
+    }
+  }
+  for (let i = floaters.length - 1; i >= 0; i--) {
+    floaters[i].life += dt * 1000;
+    if (floaters[i].life > floaters[i].maxLife) floaters.splice(i, 1);
+  }
+
   // Substeps keep collisions tight at high velocity.
   const STEPS = 4;
   const h = dt / STEPS;
@@ -879,7 +952,7 @@ function step(dt) {
   for (let s = 0; s < STEPS; s++) {
     for (let i = balls.length - 1; i >= 0; i--) {
       const b = balls[i];
-      if (!b.alive) continue;
+      if (b.landed) continue;
 
       b.vy += GRAVITY * h;
       b.vx *= (1 - AIR_DRAG);
@@ -887,14 +960,14 @@ function step(dt) {
       b.x  += b.vx * h;
       b.y  += b.vy * h;
 
-      // Wall bounce
-      const minX = wallInsetX + b.r;
-      const maxX = (LW - wallInsetX) - b.r;
-      if (b.x < minX) { b.x = minX; b.vx = -b.vx * 0.35; }
-      else if (b.x > maxX) { b.x = maxX; b.vx = -b.vx * 0.35; }
+      // Angled wall collisions (left + right funnels)
+      collideLine(b, leftWall.ax,  leftWall.ay,  leftWall.bx,  leftWall.by);
+      collideLine(b, rightWall.ax, rightWall.ay, rightWall.bx, rightWall.by);
+      // Hard outer-canvas safety clamps (catch any escape from numerical drift)
+      if (b.x < b.r + 2)        { b.x = b.r + 2;       b.vx = Math.abs(b.vx) * 0.3; }
+      else if (b.x > LW - b.r - 2) { b.x = LW - b.r - 2; b.vx = -Math.abs(b.vx) * 0.3; }
 
       // Peg collisions — only check pegs within a vertical band near the ball.
-      // (Cheap optimization that keeps per-frame cost flat as rows grow.)
       const yMin = b.y - pegSpaceY * 1.2;
       const yMax = b.y + pegSpaceY * 1.2;
       for (let pi = 0; pi < pegs.length; pi++) {
@@ -903,7 +976,7 @@ function step(dt) {
         const dx = b.x - p.x;
         const dy = b.y - p.y;
         const r = b.r + p.r;
-        const d2 = dx*dx + dy*dy;
+        const d2 = dx * dx + dy * dy;
         if (d2 < r * r) {
           const d = Math.sqrt(d2) || 0.0001;
           const nx = dx / d;
@@ -917,34 +990,53 @@ function step(dt) {
           if (vn < 0) {
             b.vx -= (1 + RESTITUTION) * vn * nx;
             b.vy -= (1 + RESTITUTION) * vn * ny;
-            // Tangential nudge for path variety (and to escape resonance)
-            const tx = -ny, ty = nx;
-            const j = (Math.random() - 0.5) * 70;
-            b.vx += tx * j;
-            b.vy += ty * j;
-            const speed = Math.hypot(b.vx, b.vy);
-            pegTick(speed);
+
+            // First descending hit on a new row → apply the prerolled deflection.
+            // Hits from beneath or repeat hits on the same row use natural physics.
+            const fromAbove = dy < -p.r * 0.15 && b.vy > 0;
+            if (fromAbove && !b.deflected[p.row]) {
+              const dir = b.path[p.row];
+              const magnitude = 95 + Math.random() * 55;
+              // Force the resulting horizontal direction to match the preroll.
+              // (If natural bounce already agrees, this is a small boost; if it
+              // disagrees, we override — physics still LOOKS real because the
+              // ball is in contact with a peg and any post-contact vx is plausible.)
+              b.vx = dir * magnitude;
+              b.deflected[p.row] = true;
+            } else {
+              // Natural tangential jitter for path variety
+              const tx = -ny, ty = nx;
+              const j = (Math.random() - 0.5) * 55;
+              b.vx += tx * j;
+              b.vy += ty * j;
+            }
+            pegTick(Math.hypot(b.vx, b.vy));
           }
         }
       }
 
-      // Crossed into slot band → settle
-      if (b.alive && b.y > slotTopY + b.r * 0.5 && b.slotIdx < 0) {
-        // Clamp to play area (don't allow a ball to sneak past dividers)
-        b.alive = false;
-        settleBall(b);
+      // Safety steering: once past the last peg row there are no pegs to
+      // hit, just a short fall into the slot. If the ball drifted off
+      // target (rare — only when a row was skipped entirely), nudge it
+      // toward the prerolled slot center so the visual matches the win.
+      if (b.y > bottomPegY + pegSpaceY * 0.2 && b.y < slotTopY) {
+        const target = slotXs[b.slotIdx];
+        const dxT = target - b.x;
+        // Cap correction velocity so the swerve never looks supernatural.
+        const desired = Math.max(-220, Math.min(220, dxT * 6));
+        b.vx = b.vx * 0.82 + desired * 0.18;
       }
 
-      // Drop off the canvas — actually remove after a short fall in the bin
-      if (b.y > LH + 40) {
-        balls.splice(i, 1);
+      // Crossed into slot band → settle on prerolled slot
+      if (!b.landed && b.y > slotTopY + b.r * 0.5) {
+        settleBall(b);
       }
     }
   }
 
   // Fade slot flashes
   for (let i = 0; i < slotFlash.length; i++) {
-    if (slotFlash[i] > 0) slotFlash[i] = Math.max(0, slotFlash[i] - dt * 1.6);
+    if (slotFlash[i] > 0) slotFlash[i] = Math.max(0, slotFlash[i] - dt * 1.4);
   }
 }
 
@@ -962,13 +1054,31 @@ function slotHue(idx, total) {
 function renderBoard() {
   ctx2d.clearRect(0, 0, LW, LH);
 
-  // Faint vertical guide rails behind everything
+  // Faint funnel fill behind everything (between the angled walls)
   ctx2d.save();
   const grd = ctx2d.createLinearGradient(0, 0, 0, LH);
-  grd.addColorStop(0, 'rgba(168,85,247,0.06)');
-  grd.addColorStop(1, 'rgba(34,211,238,0.04)');
+  grd.addColorStop(0, 'rgba(168,85,247,0.08)');
+  grd.addColorStop(1, 'rgba(34,211,238,0.05)');
   ctx2d.fillStyle = grd;
-  ctx2d.fillRect(wallInsetX - 8, 0, (LW - wallInsetX * 2) + 16, LH);
+  ctx2d.beginPath();
+  ctx2d.moveTo(leftWall.ax,  leftWall.ay);
+  ctx2d.lineTo(rightWall.ax, rightWall.ay);
+  ctx2d.lineTo(rightWall.bx, rightWall.by);
+  ctx2d.lineTo(leftWall.bx,  leftWall.by);
+  ctx2d.closePath();
+  ctx2d.fill();
+  ctx2d.restore();
+
+  // Subtle wall outlines so the funnel reads visually
+  ctx2d.save();
+  ctx2d.strokeStyle = 'rgba(255,210,74,0.18)';
+  ctx2d.lineWidth = 1.2;
+  ctx2d.beginPath();
+  ctx2d.moveTo(leftWall.ax,  leftWall.ay);
+  ctx2d.lineTo(leftWall.bx,  leftWall.by);
+  ctx2d.moveTo(rightWall.ax, rightWall.ay);
+  ctx2d.lineTo(rightWall.bx, rightWall.by);
+  ctx2d.stroke();
   ctx2d.restore();
 
   // Pegs
@@ -1013,71 +1123,95 @@ function renderBoard() {
     ctx2d.stroke();
   }
 
-  // Slot multiplier chips along the bottom
+  // Slot multiplier chips along the bottom.
+  // Bigger chips + Bungee (way more condensed than Geist Mono) + dropped
+  // the `×` suffix so the 17 multipliers fit cleanly even at 16 rows on
+  // mobile. The `×` is implied by the chip context.
   const mults = MULTIPLIERS[state.rows][state.risk];
-  const chipH = Math.min(40, slotWidth * 1.05);
-  const chipY = slotTopY + 18;
+  const chipH = Math.min(46, slotWidth * 1.30);
+  const chipY = slotTopY + 22;
   for (let i = 0; i < total; i++) {
     const cx = slotXs[i];
     const cy = chipY;
-    const w  = Math.min(slotWidth - 4, 60);
+    const w  = Math.min(slotWidth - 2, 64);
     const h  = chipH;
     const hue = slotHue(i, total);
     const flash = slotFlash[i] || 0;
-    const sat = 78 + flash * 22;
-    const lit = 50 + flash * 22;
+    const sat = 80 + flash * 20;
+    const lit = 50 + flash * 24;
 
     // Chip body
     ctx2d.save();
     const cgrad = ctx2d.createLinearGradient(cx, cy - h/2, cx, cy + h/2);
-    cgrad.addColorStop(0, `hsl(${hue} ${sat}% ${lit + 16}%)`);
+    cgrad.addColorStop(0, `hsl(${hue} ${sat}% ${lit + 18}%)`);
     cgrad.addColorStop(0.5, `hsl(${hue} ${sat}% ${lit}%)`);
-    cgrad.addColorStop(1, `hsl(${hue} ${sat - 10}% ${Math.max(15, lit - 28)}%)`);
+    cgrad.addColorStop(1, `hsl(${hue} ${sat - 12}% ${Math.max(15, lit - 30)}%)`);
     ctx2d.fillStyle = cgrad;
-    roundRect(ctx2d, cx - w/2, cy - h/2, w, h, Math.min(8, w * 0.18));
+    roundRect(ctx2d, cx - w/2, cy - h/2, w, h, Math.min(8, w * 0.2));
     ctx2d.fill();
 
     // Inner highlight rim
-    ctx2d.strokeStyle = `hsla(${hue} 100% 88% / ${0.35 + flash * 0.45})`;
+    ctx2d.strokeStyle = `hsla(${hue} 100% 88% / ${0.4 + flash * 0.5})`;
     ctx2d.lineWidth = 1.5;
-    roundRect(ctx2d, cx - w/2 + 0.75, cy - h/2 + 0.75, w - 1.5, h - 1.5, Math.min(7, w * 0.17));
+    roundRect(ctx2d, cx - w/2 + 0.75, cy - h/2 + 0.75, w - 1.5, h - 1.5, Math.min(7, w * 0.19));
     ctx2d.stroke();
 
-    // Flash glow on landing
+    // Flash glow on landing — strong, slow fade
     if (flash > 0.02) {
-      ctx2d.shadowColor = `hsla(${hue} 100% 70% / ${flash})`;
-      ctx2d.shadowBlur = 28 * flash;
-      ctx2d.strokeStyle = `hsla(${hue} 100% 80% / ${flash})`;
-      ctx2d.lineWidth = 2;
-      roundRect(ctx2d, cx - w/2, cy - h/2, w, h, Math.min(8, w * 0.18));
+      ctx2d.shadowColor = `hsla(${hue} 100% 72% / ${Math.min(1, flash * 1.2)})`;
+      ctx2d.shadowBlur = 36 * flash;
+      ctx2d.strokeStyle = `hsla(${hue} 100% 82% / ${Math.min(1, flash * 1.1)})`;
+      ctx2d.lineWidth = 2 + flash * 1.5;
+      roundRect(ctx2d, cx - w/2, cy - h/2, w, h, Math.min(8, w * 0.2));
       ctx2d.stroke();
     }
     ctx2d.restore();
 
-    // Multiplier text
+    // Multiplier text — compact: Bungee, abbreviate >=1000 to "1K", drop
+    // leading "0." and trailing ".0", then auto-shrink to fit chip width.
     const m = mults[i];
-    const txt = m >= 100 ? Math.round(m) + '×'
-              : m >= 10  ? m.toFixed(0) + '×'
-              : m >= 1   ? m.toFixed(1) + '×'
-                         : m.toFixed(2) + '×';
-    ctx2d.fillStyle = m >= 1 ? '#1a0608' : 'rgba(255,255,255,0.92)';
-    ctx2d.font = `800 ${Math.min(13, w * 0.28)}px 'Geist Mono', monospace`;
+    let txt;
+    if (m >= 1000)    txt = Math.round(m / 1000) + 'K';
+    else if (m >= 100)txt = '' + Math.round(m);
+    else if (m >= 10) txt = m.toFixed(0);
+    else if (m >= 1)  txt = (m % 1 === 0) ? m.toFixed(0) : m.toFixed(1);
+    else              txt = ('' + m.toFixed(1)).replace(/^0/, '');   // 0.5 → .5
+    let fontPx = Math.min(15, Math.max(9, w * 0.36));
+    ctx2d.font = `${fontPx}px 'Bungee', cursive`;
+    // Measure and shrink if needed so 3-char numbers always fit at N=16 on mobile
+    const maxTextW = w - 4;
+    const measured = ctx2d.measureText(txt).width;
+    if (measured > maxTextW) {
+      fontPx = Math.max(7, fontPx * (maxTextW / measured));
+      ctx2d.font = `${fontPx}px 'Bungee', cursive`;
+    }
+    ctx2d.fillStyle = m >= 1 ? '#1a0608' : 'rgba(255,255,255,0.95)';
     ctx2d.textAlign = 'center';
     ctx2d.textBaseline = 'middle';
     ctx2d.fillText(txt, cx, cy + 0.5);
   }
 
-  // Balls (drawn last so they sit on top)
+  // Balls — fade + scale-down when landed so the bin doesn't stack.
+  const nowMs = performance.now();
   for (const b of balls) {
-    // Soft drop shadow under the ball
+    let alpha = 1, scale = 1;
+    if (b.landed) {
+      const t = Math.min(1, (nowMs - b.landedAt) / LAND_FADE_MS);
+      alpha = 1 - t;
+      scale = 1 - t * 0.45;
+    }
+    if (alpha <= 0.02) continue;
+
     ctx2d.save();
+    ctx2d.globalAlpha = alpha;
+    const rEff = b.r * scale;
     ctx2d.shadowColor = 'rgba(0,0,0,0.55)';
-    ctx2d.shadowBlur = b.r * 0.9;
+    ctx2d.shadowBlur = rEff * 0.9;
     ctx2d.shadowOffsetX = 0;
-    ctx2d.shadowOffsetY = b.r * 0.5;
+    ctx2d.shadowOffsetY = rEff * 0.5;
     const bg = ctx2d.createRadialGradient(
-      b.x - b.r * 0.4, b.y - b.r * 0.5, b.r * 0.1,
-      b.x, b.y, b.r * 1.1
+      b.x - rEff * 0.4, b.y - rEff * 0.5, rEff * 0.1,
+      b.x, b.y, rEff * 1.1
     );
     bg.addColorStop(0, '#fff7d1');
     bg.addColorStop(0.35, '#ffd24a');
@@ -1085,15 +1219,47 @@ function renderBoard() {
     bg.addColorStop(1, '#3a2200');
     ctx2d.fillStyle = bg;
     ctx2d.beginPath();
-    ctx2d.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx2d.arc(b.x, b.y, rEff, 0, Math.PI * 2);
     ctx2d.fill();
-    ctx2d.restore();
-
+    ctx2d.shadowBlur = 0;
     // Sharp specular highlight
     ctx2d.fillStyle = 'rgba(255,255,255,0.85)';
     ctx2d.beginPath();
-    ctx2d.arc(b.x - b.r * 0.38, b.y - b.r * 0.45, b.r * 0.22, 0, Math.PI * 2);
+    ctx2d.arc(b.x - rEff * 0.38, b.y - rEff * 0.45, rEff * 0.22, 0, Math.PI * 2);
     ctx2d.fill();
+    ctx2d.restore();
+  }
+
+  // Rising "+$X" / "-$X" floaters — size scaled with win tier.
+  for (const f of floaters) {
+    const t = f.life / f.maxLife;
+    // Quick fade-in (first 12%), long fade-out
+    const inA  = Math.min(1, f.life / 80);
+    const outA = Math.max(0, 1 - Math.max(0, (t - 0.55) / 0.45));
+    const a    = Math.min(inA, outA);
+    if (a <= 0.01) continue;
+    const yOff = f.life * 0.085;       // ~85 px/s ascent
+    // Pop scale at start so it punches in
+    const pop = t < 0.10 ? 0.75 + (t / 0.10) * 0.35 : 1.0 + Math.sin(t * 3) * 0.02;
+    ctx2d.save();
+    ctx2d.globalAlpha = a;
+    ctx2d.font = `${f.fontSize * pop}px 'Bungee', cursive`;
+    ctx2d.textAlign = 'center';
+    ctx2d.textBaseline = 'middle';
+    // Clamp x so an edge-slot floater (especially a wide "+$1000.00")
+    // doesn't get cut off by the canvas edge.
+    const halfW = ctx2d.measureText(f.text).width / 2;
+    const drawX = Math.max(halfW + 6, Math.min(LW - halfW - 6, f.x));
+    if (f.big) {
+      ctx2d.shadowColor = f.color;
+      ctx2d.shadowBlur = 22;
+    } else {
+      ctx2d.shadowColor = 'rgba(0,0,0,0.65)';
+      ctx2d.shadowBlur = 6;
+    }
+    ctx2d.fillStyle = f.color;
+    ctx2d.fillText(f.text, drawX, f.y - yOff);
+    ctx2d.restore();
   }
 }
 
