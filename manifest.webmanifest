@@ -51,6 +51,12 @@
       "short_name": "Craps",
       "url": "./craplesscraps.html",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Plinko",
+      "short_name": "Plinko",
+      "url": "./plinko.html",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

@@ -491,6 +491,88 @@ body::after {
 .preview.blackjack .c2 { left: 70px; top: 8px; transform: rotate(0deg); }
 .preview.blackjack .c3 { left: 140px; top: 16px; transform: rotate(12deg); }
 
+/* PLINKO PREVIEW — triangular peg grid + falling ball + multiplier strip */
+.preview.plinko {
+  background:
+    radial-gradient(ellipse at 50% 6%, rgba(168,85,247,0.32), transparent 60%),
+    radial-gradient(ellipse at 50% 100%, rgba(34,211,238,0.16), transparent 70%),
+    linear-gradient(180deg, #0a0420 0%, #1a0838 60%, #08031a 100%);
+  box-shadow: inset 0 0 0 1px rgba(168,85,247,0.35);
+  overflow: hidden;
+}
+.preview.plinko .pk-stage {
+  position: relative;
+  width: 156px;
+  height: 168px;
+}
+.preview.plinko .pk-peg-grid {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 11px;
+  padding-top: 12px;
+}
+.preview.plinko .pk-row {
+  display: flex;
+  gap: 14px;
+}
+.preview.plinko .pk-peg {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff7d1, #ffd24a 55%, #7a5500);
+  box-shadow: 0 0 6px rgba(255,210,74,0.55);
+}
+.preview.plinko .pk-ball {
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  width: 11px; height: 11px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff7d1, #ffd24a 50%, #b8860b 90%);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 0 10px rgba(255,210,74,0.5);
+  animation: pkBall 2.8s cubic-bezier(.55,.05,.6,1) infinite;
+}
+@keyframes pkBall {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  8%   { opacity: 1; }
+  18%  { transform: translate(-14px, 28px); }
+  35%  { transform: translate(10px, 56px); }
+  52%  { transform: translate(-18px, 86px); }
+  72%  { transform: translate(8px, 118px); }
+  92%  { transform: translate(-4px, 148px); opacity: 1; }
+  100% { transform: translate(-4px, 156px); opacity: 0; }
+}
+.preview.plinko .pk-slots {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 4px 4px;
+}
+.preview.plinko .pk-slot {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: 8px;
+  display: grid;
+  place-items: center;
+  color: #1a0608;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+}
+.preview.plinko .pk-slot:nth-child(1),
+.preview.plinko .pk-slot:nth-child(7) { background: linear-gradient(180deg, #ff7aa3, #c41a4d); color: #2a000a; box-shadow: 0 0 10px rgba(255,46,147,0.5), inset 0 0 0 1px rgba(255,255,255,0.3); }
+.preview.plinko .pk-slot:nth-child(2),
+.preview.plinko .pk-slot:nth-child(6) { background: linear-gradient(180deg, #ffb04a, #c46c12); color: #2a1500; }
+.preview.plinko .pk-slot:nth-child(3),
+.preview.plinko .pk-slot:nth-child(5) { background: linear-gradient(180deg, #ffe27a, #b88f1c); color: #2a1a00; }
+.preview.plinko .pk-slot:nth-child(4) { background: linear-gradient(180deg, #5cffc8, #129273); color: #00261b; }
+
 /* CRAPS PREVIEW — mini bubble dome with two dice */
 .preview.craps {
   background:
@@ -635,27 +717,6 @@ body::after {
   color: var(--gold-1);
   z-index: 2;
 }
-
-/* PHONE SHARE BUTTON */
-.phone-link {
-  align-self: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 22px;
-  border-radius: 14px;
-  font-family: 'Bungee', cursive;
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-decoration: none;
-  color: rgba(255,255,255,0.85);
-  background: linear-gradient(180deg, rgba(168,85,247,0.25), rgba(15,4,30,0.85));
-  box-shadow: inset 0 0 0 1.5px rgba(168,85,247,0.45), 0 3px 0 rgba(0,0,0,0.5);
-  transition: filter 0.2s, transform 0.1s;
-}
-.phone-link::before { content: '📱'; font-size: 16px; }
-.phone-link:hover { filter: brightness(1.15); }
-.phone-link:active { transform: translateY(2px); }
 
 /* FOOTER */
 .footer {
@@ -804,6 +865,22 @@ body::after {
   .preview.blackjack .pcard .suit-center { font-size: 22px; }
   .preview.blackjack .c2 { left: 56px; }
   .preview.blackjack .c3 { left: 112px; }
+  .preview.plinko .pk-stage { width: 124px; height: 120px; }
+  .preview.plinko .pk-peg-grid { gap: 8px; padding-top: 8px; }
+  .preview.plinko .pk-row { gap: 11px; }
+  .preview.plinko .pk-peg { width: 5px; height: 5px; }
+  .preview.plinko .pk-ball { width: 9px; height: 9px; margin-left: -4.5px; }
+  .preview.plinko .pk-slot { width: 14px; height: 14px; font-size: 6px; }
+  @keyframes pkBall {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    10%  { opacity: 1; }
+    25%  { transform: translate(-10px, 22px); }
+    45%  { transform: translate(7px, 44px); }
+    65%  { transform: translate(-12px, 66px); }
+    85%  { transform: translate(5px, 88px); }
+    95%  { transform: translate(-3px, 106px); opacity: 1; }
+    100% { transform: translate(-3px, 112px); opacity: 0; }
+  }
   .preview.craps .cr-dome { width: 96px; height: 74px; gap: 6px; }
   .preview.craps .cr-die { width: 22px; height: 22px; padding: 2px; }
   .preview.craps .cr-die .pip { width: 3px; height: 3px; }
@@ -906,6 +983,39 @@ body::after {
       <div class="play-cta">PLAY</div>
     </a>
 
+    <a class="game-card" href="plinko.html">
+      <div class="preview plinko">
+        <div class="pk-stage">
+          <div class="pk-peg-grid">
+            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
+            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
+            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
+            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
+            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
+          </div>
+          <div class="pk-ball"></div>
+          <div class="pk-slots">
+            <span class="pk-slot">29×</span>
+            <span class="pk-slot">4×</span>
+            <span class="pk-slot">1.5×</span>
+            <span class="pk-slot">0.2×</span>
+            <span class="pk-slot">1.5×</span>
+            <span class="pk-slot">4×</span>
+            <span class="pk-slot">29×</span>
+          </div>
+        </div>
+      </div>
+      <div class="game-title">PLINKO</div>
+      <div class="game-tagline">DROP &middot; BOUNCE &middot; WIN</div>
+      <div class="game-desc">Drop a chrome ball into a glowing peg pyramid. Pick your risk, pick your rows, and chase the 1,000× edge slots.</div>
+      <div class="game-meta">
+        <span class="meta-pill">3 RISK LEVELS</span>
+        <span class="meta-pill">UP TO 1000×</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
     <a class="game-card" href="blackjack.html">
       <div class="preview blackjack">
         <div class="card-fan">
@@ -967,8 +1077,6 @@ body::after {
     </a>
 
   </div>
-
-  <a class="phone-link" href="launcher.html">PLAY ON YOUR PHONE</a>
 
   <div class="footer">VIRTUAL CURRENCY · NOT REAL MONEY</div>
 

@@ -767,16 +767,20 @@
     let currentGame = null;
 
     const GAME_LABEL = {
-      blackjack: 'BLACKJACK',
-      slots:     'DIAMOND SPIN',
-      kraken:    'KRAKEN',
-      lucky7:    'LUCKY 7 SALOON',
+      blackjack:     'BLACKJACK',
+      slots:         'DIAMOND SPIN',
+      kraken:        'KRAKEN',
+      lucky7:        'LUCKY 7 SALOON',
+      craplesscraps: 'CRAPLESS CRAPS',
+      plinko:        'PLINKO',
     };
     const GAME_ICON = {
-      blackjack: '♠',  // ♠
-      slots:     '◆',  // ◆
-      kraken:    '🐙', // 🐙
-      lucky7:    '7',
+      blackjack:     '♠',
+      slots:         '◆',
+      kraken:        '🐙',
+      lucky7:        '7',
+      craplesscraps: '🎲',
+      plinko:        '▼',
     };
 
     function fmtMoney(n) {
