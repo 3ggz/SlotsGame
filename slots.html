@@ -235,11 +235,14 @@ body::after {
   text-shadow: 0 0 10px rgba(34,211,238,0.65);
 }
 
-/* ---------- SCREEN (reels area) ---------- */
+/* ---------- SCREEN (reels area) ----------
+   Top/bottom padding is generous so the corner buttons
+   (BUY BONUS, AUTO, BOOST) sit above/below the reels rather
+   than overlapping the first/last symbol rows. */
 .screen {
   position: relative;
   border-radius: 28px;
-  padding: 18px;
+  padding: 52px 18px;
   background:
     radial-gradient(ellipse at 50% 0%, rgba(34,211,238,0.10), transparent 70%),
     linear-gradient(180deg, #0a0218 0%, #06010f 100%);
@@ -407,10 +410,13 @@ body::after {
 
 /* ---------- PAYLINES OVERLAY ----------
    Lives above .reels (which is explicitly z-index:1 so this z-index
-   wins unambiguously even with the .strip's promoted GPU layer). */
+   wins unambiguously even with the .strip's promoted GPU layer).
+   Top/bottom inset matches .screen's vertical padding so the SVG
+   exactly covers .reels — lines drawn through symbol centers stay
+   inside the viewBox at corner cells. */
 .paylines {
   position: absolute;
-  top: 16px; left: 16px; right: 16px; bottom: 16px;
+  top: 50px; left: 16px; right: 16px; bottom: 50px;
   pointer-events: none;
   z-index: 20;
 }
@@ -2076,10 +2082,10 @@ body::after {
   .title-main { font-size: clamp(26px, 8.5vw, 42px); }
   .title-sub { font-size: 9px; letter-spacing: 0.32em; }
 
-  .screen { padding: 12px; border-radius: 14px; }
+  .screen { padding: 40px 12px; border-radius: 14px; }
   .reels { gap: 6px; height: 240px; }
   .symbol { height: 80px; }
-  .paylines { top: 12px; left: 12px; right: 12px; bottom: 12px; }
+  .paylines { top: 40px; left: 12px; right: 12px; bottom: 40px; }
 
   /* Screen-corner buttons: compact, no overlap with first symbol */
   .auto-corner { top: 6px; right: 6px; padding: 6px 11px 5px; font-size: 9px; letter-spacing: 0.18em; }
