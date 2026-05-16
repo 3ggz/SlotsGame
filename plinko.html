@@ -444,6 +444,7 @@ body::before {
 </head>
 <body>
 <script src="casino-audio.js"></script>
+<script type="module" src="casino-account.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>
@@ -518,7 +519,7 @@ body::before {
 
 if (window.SettingsUI) SettingsUI.mount();
 if (window.HistoryUI)  HistoryUI.mount();
-if (window.Music)      Music.init(encodeURI("Music/Diamond Spin.m4a")); // shared track until a dedicated Plinko track lands
+if (window.Music)      Music.init(encodeURI("Music/Plinko Royale.m4a"));
 
 /* ---------- shared balance (matches other games) ---------- */
 const BALANCE_KEY = 'casino.balance';
@@ -618,9 +619,10 @@ function pegTick(velocity) {
   o.frequency.exponentialRampToValueAtTime(Math.max(110, baseFreq * 0.55), now + 0.04);
 
   const g = ctx.createGain();
-  // Quieter overall (peak 0.04-0.12 → 0.012-0.04). Reads as background
-  // wood-on-wood texture, not foreground percussion.
-  const peak = 0.012 + v * 0.030;
+  // Audible-but-not-piercing. Bumped peak from 0.012-0.04 -> 0.025-0.07
+  // now that win volumes are pulled back; pegs should still read as
+  // background texture, not foreground percussion.
+  const peak = 0.025 + v * 0.045;
   g.gain.setValueAtTime(0.0001, now);
   g.gain.exponentialRampToValueAtTime(peak * vol, now + 0.003);
   g.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
@@ -935,9 +937,9 @@ function resolveDrop(slotIdx, bet, risk, rows) {
   refreshBalance();
 
   // Audio cue based on tier
-  if (mult >= 10)       { playSfx('fanfare', 0.8); playSfx('chipPayout'); }
-  else if (mult >= 2)   { playSfx('winChime'); playSfx('chipPayout', 0.7); }
-  else if (mult >= 1)   { playSfx('chipPayout', 0.7); }
+  if (mult >= 10)       { playSfx('fanfare', 0.55); playSfx('chipPayout', 0.55); }
+  else if (mult >= 2)   { playSfx('winChime', 0.55); playSfx('chipPayout', 0.4); }
+  else if (mult >= 1)   { playSfx('chipPayout', 0.4); }
   else                  { softLoss(); }
 
   // Floater (+$X / -$X) rises out of the slot
@@ -1050,11 +1052,17 @@ function step(dt) {
             const fromAbove = dy < -p.r * 0.15 && b.vy > 0;
             if (fromAbove && !b.deflected[p.row]) {
               const dir = b.path[p.row];
-              const magnitude = 95 + Math.random() * 55;
-              // Force the resulting horizontal direction to match the preroll.
-              // (If natural bounce already agrees, this is a small boost; if it
-              // disagrees, we override — physics still LOOKS real because the
-              // ball is in contact with a peg and any post-contact vx is plausible.)
+              // Physics-driven magnitude: pick the vx that will shift the
+              // ball by ~pegSpaceX/2 by the time it reaches the next row
+              // (so it naturally lands at the next peg position). The
+              // previous fixed 95-150 was far too low for fast-falling
+              // balls at the bottom of the board — they accumulated lag
+              // and got snapped at the slot, looking like wins were voided.
+              const vyEst = Math.max(180, b.vy);
+              const timeToNext = pegSpaceY / vyEst;
+              const targetShift = pegSpaceX * 0.55;
+              const baseMag = targetShift / Math.max(0.022, timeToNext);
+              const magnitude = Math.max(150, Math.min(520, baseMag + (Math.random() - 0.5) * 40));
               b.vx = dir * magnitude;
               b.deflected[p.row] = true;
             } else {
@@ -1069,16 +1077,17 @@ function step(dt) {
         }
       }
 
-      // Safety steering: once past the last peg row there are no pegs to
-      // hit, just a short fall into the slot. If the ball drifted off
-      // target (rare — only when a row was skipped entirely), nudge it
-      // toward the prerolled slot center so the visual matches the win.
-      if (b.y > bottomPegY + pegSpaceY * 0.2 && b.y < slotTopY) {
+      // Safety steering: pulls the ball toward the prerolled slot center
+      // in the no-peg zone. Aggressive now so the visual ALWAYS matches
+      // the recorded outcome — no more apparent "voids" where the ball
+      // looked headed for an edge slot and snapped to a middle one.
+      if (b.y > bottomPegY + pegSpaceY * 0.05 && b.y < slotTopY) {
         const target = slotXs[b.slotIdx];
         const dxT = target - b.x;
-        // Cap correction velocity so the swerve never looks supernatural.
-        const desired = Math.max(-220, Math.min(220, dxT * 6));
-        b.vx = b.vx * 0.82 + desired * 0.18;
+        // Proportional toward target, capped. Higher cap + tighter blend
+        // than before so corrections complete in the short slot-band fall.
+        const desired = Math.max(-520, Math.min(520, dxT * 14));
+        b.vx = b.vx * 0.55 + desired * 0.45;
       }
 
       // Crossed into slot band → settle on prerolled slot
