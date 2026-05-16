@@ -1190,3 +1190,19 @@
   global.History = History;
   global.HistoryUI = HistoryUI;
 })(window);
+
+/* ---------- SERVICE WORKER REGISTRATION ----------
+   Registers ./service-worker.js so the casino installs as a PWA
+   and keeps working offline once cached. No-op on file:// or in
+   browsers without SW support. Registration runs after window
+   load so it never competes with the page's own resource fetch.  */
+(function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  if (location.protocol === 'file:') return;
+  const register = () => {
+    navigator.serviceWorker.register('./service-worker.js', { scope: './' })
+      .catch(() => { /* silently ignore — site still works without SW */ });
+  };
+  if (document.readyState === 'complete') register();
+  else window.addEventListener('load', register);
+})();
