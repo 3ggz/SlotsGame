@@ -770,11 +770,13 @@
       blackjack: 'BLACKJACK',
       slots:     'DIAMOND SPIN',
       kraken:    'KRAKEN',
+      lucky7:    'LUCKY 7 SALOON',
     };
     const GAME_ICON = {
       blackjack: '♠',  // ♠
       slots:     '◆',  // ◆
       kraken:    '🐙', // 🐙
+      lucky7:    '7',
     };
 
     function fmtMoney(n) {

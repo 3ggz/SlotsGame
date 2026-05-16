@@ -89,6 +89,33 @@ button { border: 0; cursor: pointer; }
     0 14px 34px rgba(0,0,0,0.42);
 }
 
+.history-btn {
+  position: fixed;
+  top: 14px;
+  left: 110px;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 13px 9px;
+  border-radius: 8px;
+  font-family: Bungee, cursive;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  color: var(--cream);
+  background:
+    linear-gradient(180deg, rgba(255,215,106,0.18), rgba(0,0,0,0.62)),
+    var(--panel);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,215,106,0.38),
+    0 14px 34px rgba(0,0,0,0.42);
+  transition: transform 0.1s, filter 0.15s;
+}
+.history-btn::before { content: '⌛'; font-size: 12px; line-height: 1; }
+.history-btn:hover { filter: brightness(1.15); }
+.history-btn:active { transform: translateY(2px); }
+
 .stage {
   width: min(1160px, calc(100vw - 22px));
   min-height: 100vh;
@@ -1359,6 +1386,8 @@ button { border: 0; cursor: pointer; }
   .cabinet { padding: 6px; }
   .topper { padding: 7px; }
   .lobby-link { top: 8px; left: 8px; font-size: 9px; }
+  .history-btn { top: 8px; left: 96px; font-size: 9px; padding: 8px 10px 7px; }
+  .history-btn::before { font-size: 10px; }
   .meters { gap: 3px; margin-bottom: 5px; }
   .meter { min-height: 34px; padding: 4px 2px; border-radius: 6px; }
   .meter-label { font-size: 5.5px; letter-spacing: 0.04em; }
@@ -1427,6 +1456,7 @@ button { border: 0; cursor: pointer; }
 <script src="casino-audio.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
+<button class="history-btn" id="btn-history" title="History">HISTORY</button>
 
 <main class="stage">
   <section class="cabinet" id="cabinet">
@@ -2507,6 +2537,7 @@ button { border: 0; cursor: pointer; }
     updateStatus('REELS SPINNING');
     refs.spin.classList.add('spinning');
 
+    const spinStartBalance = State.balance;
     if (!options.free) setBalance(State.balance - bet);
 
     const heights = Core.pickReelHeights(Math.random);
@@ -2547,6 +2578,15 @@ button { border: 0; cursor: pointer; }
     } else {
       updateStatus(totalWin > 0 ? 'PAID $' + fmt(totalWin) : 'SPIN AGAIN');
       tryAutoSpin();
+    }
+
+    if (!options.free && window.History) {
+      const net = State.balance - spinStartBalance;
+      let note = '';
+      if (award.triggers) note = 'HIGH NOON';
+      else if (net >= bet * 20) note = 'BIG WIN';
+      else if (net > 0) note = 'WIN';
+      History.record('lucky7', bet, net, note || null);
     }
   }
 
@@ -2780,9 +2820,13 @@ button { border: 0; cursor: pointer; }
     }
     AudioFX.click();
     closeBuyModal();
+    const buyStartBalance = State.balance;
     setBalance(State.balance - cost);
     setWin(0);
     await triggerFreeSpins(10, true, State.bet);
+    if (window.History) {
+      History.record('lucky7', cost, State.balance - buyStartBalance, 'BOUGHT BONUS');
+    }
   }
 
   function toggleBoost() {
@@ -2867,6 +2911,10 @@ button { border: 0; cursor: pointer; }
     refs.boost.addEventListener('click', toggleBoost);
     refs.introPlay.addEventListener('click', closeIntroRules);
     refs.bigwinClose.addEventListener('click', closeBigWin);
+    refs.history.addEventListener('click', () => {
+      AudioFX.click();
+      if (window.HistoryUI) HistoryUI.open({ scope: 'session', game: 'lucky7' });
+    });
     window.addEventListener('keydown', e => {
       const modalOpen = document.querySelector('.modal-veil.show, .bonus-stage.show, .bigwin-stage.show');
       if (e.code === 'Space' && !modalOpen && !State.spinning && !State.inBonus && !State.bigWinShowing) {
@@ -2933,6 +2981,7 @@ button { border: 0; cursor: pointer; }
       bigwinAmount: $('bigwin-amount'),
       bigwinClose: $('bigwin-close'),
       particles: $('particles'),
+      history: $('btn-history'),
     });
   }
 

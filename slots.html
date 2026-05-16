@@ -327,7 +327,17 @@ body::after {
   filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6));
   transform-style: preserve-3d;
   transition: transform 0.35s cubic-bezier(.2,.7,.3,1.2), filter 0.3s;
-  will-change: transform;
+}
+
+/* Off-screen strip rows (the filler past the 3 visible ones) skip the
+   expensive drop-shadow + animations entirely. During the brief spin
+   they pass through the window so fast it's invisible; once landed,
+   only the first 3 are in view anyway. This is the single biggest
+   mobile-perf fix for the slot — without it, diamond hue-rotates on
+   off-screen rows pin the GPU and freeze the page after one spin. */
+.strip .symbol:nth-child(n+4)::before {
+  animation: none !important;
+  filter: none;
 }
 @media (max-width: 720px) {
   .symbol::before { max-width: 86px; max-height: 86px; }
@@ -2002,7 +2012,7 @@ body::after {
 /* HISTORY BUTTON — sits right of lobby link */
 .history-btn {
   position: fixed;
-  top: 12px; left: 116px;
+  top: 12px; left: 148px;
   z-index: 30;
   display: inline-flex;
   align-items: center;
@@ -2026,7 +2036,7 @@ body::after {
 
 @media (max-width: 720px) {
   .lobby-link { top: 8px; left: 8px; padding: 7px 12px 6px; font-size: 10px; letter-spacing: 0.16em; }
-  .history-btn { top: 8px; left: 86px; padding: 7px 10px 6px; font-size: 9px; letter-spacing: 0.12em; }
+  .history-btn { top: 8px; left: 124px; padding: 7px 10px 6px; font-size: 9px; letter-spacing: 0.12em; }
   .history-btn::before { font-size: 10px; }
 }
 
@@ -2803,7 +2813,7 @@ function updateJackpotDisplay() {
    ============================================================ */
 const REEL_COUNT = 5;
 const ROW_COUNT = 3;
-const STRIP_LEN = 30; // logical symbols per reel strip
+const STRIP_LEN = 14; // logical symbols per reel strip — kept small so off-screen symbols aren't a paint cost
 
 function pickSymbol(extraDiamondBoost = 0) {
   const totalW = SYMBOLS.reduce((s, x) => s + x.weight + (x.bonus ? extraDiamondBoost : 0), 0);
