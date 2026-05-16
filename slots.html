@@ -252,6 +252,7 @@ body::after {
 
 .reels {
   position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 12px;
@@ -404,12 +405,14 @@ body::after {
 /* dim non-winning */
 .symbol.dim { filter: brightness(0.32) saturate(0.35) blur(0.6px); }
 
-/* ---------- PAYLINES OVERLAY ---------- */
+/* ---------- PAYLINES OVERLAY ----------
+   Lives above .reels (which is explicitly z-index:1 so this z-index
+   wins unambiguously even with the .strip's promoted GPU layer). */
 .paylines {
   position: absolute;
   top: 16px; left: 16px; right: 16px; bottom: 16px;
   pointer-events: none;
-  z-index: 5;
+  z-index: 20;
 }
 .payline {
   fill: none;
@@ -1461,8 +1464,15 @@ body::after {
   70%  { transform: translateY(-0.5px) scaleY(1.008); }
   100% { transform: translateY(0) scaleY(1); }
 }
+/* During .thud the top-shadow pseudo briefly takes over the whole reel
+   as a warm impact flash. Without overriding height it stays a 42px
+   band at the top — which reads as a misaligned bar instead of a
+   landing flash on the visible row. */
 .reel.thud::before {
-  background: linear-gradient(180deg, rgba(255,210,74,0.30), transparent 80%) !important;
+  top: 0;
+  bottom: 0;
+  height: auto;
+  background: radial-gradient(ellipse at center, rgba(255,210,74,0.28), rgba(255,210,74,0.06) 60%, transparent 85%) !important;
   animation: reelFlash 0.55s ease-out;
 }
 @keyframes reelFlash {
