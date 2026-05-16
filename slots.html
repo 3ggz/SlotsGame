@@ -321,6 +321,8 @@ body::after {
    ::before pseudo so we can rotate/scale/glow it independently. */
 .symbol::before {
   content: '';
+  --icon-y: 0%;
+  --icon-scale: 1;
   width: 92%;
   height: 92%;
   max-width: 110px;
@@ -329,6 +331,7 @@ body::after {
   background-position: center;
   background-size: contain;
   filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6));
+  transform: translateY(var(--icon-y)) scale(var(--icon-scale));
   transform-style: preserve-3d;
   transition: transform 0.35s cubic-bezier(.2,.7,.3,1.2), filter 0.3s;
 }
@@ -351,6 +354,17 @@ body.is-spinning .symbol::before {
 }
 @media (max-width: 720px) {
   .symbol::before { max-width: 86px; max-height: 86px; }
+  .sym-heart::before,
+  .sym-clover::before,
+  .sym-star::before,
+  .sym-bell::before,
+  .sym-crown::before,
+  .sym-bar::before,
+  .sym-seven::before {
+    width: 78px;
+    height: 78px;
+    max-height: none;
+  }
   /* Mobile: drop the multi-layer drop-shadow chain — replace with a single
      cheap shadow. Three stacked drop-shadow filters are one of the most
      expensive things you can ask a mobile GPU to do per frame. */
@@ -376,6 +390,20 @@ body.is-spinning .symbol::before {
    (~91% of canvas), and centered. With identical scale + position
    across all symbols, the default background-position:center is enough —
    no per-symbol CSS shifts needed. */
+.sym-heart::before,
+.sym-clover::before,
+.sym-star::before,
+.sym-bell::before,
+.sym-crown::before,
+.sym-bar::before,
+.sym-seven::before {
+  --icon-y: 4%;
+  --icon-scale: 1;
+  width: 100px;
+  height: 100px;
+  max-height: none;
+}
+
 .sym-heart::before   { background-image: url('images/heart.png'); }
 .sym-clover::before  { background-image: url('images/clover.png'); }
 .sym-star::before    { background-image: url('images/star.png'); }
@@ -424,9 +452,9 @@ body.is-spinning .symbol::before {
   z-index: -1;
 }
 @keyframes symbolWin {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.18); }
-  100% { transform: scale(1.08); }
+  0%   { transform: translateY(var(--icon-y)) scale(var(--icon-scale)) scale(1); }
+  50%  { transform: translateY(var(--icon-y)) scale(var(--icon-scale)) scale(1.18); }
+  100% { transform: translateY(var(--icon-y)) scale(var(--icon-scale)) scale(1.08); }
 }
 @keyframes winHalo {
   0%   { transform: scale(0.6); opacity: 0; }
@@ -2179,6 +2207,17 @@ body.is-spinning .symbol::before {
   .reels { height: 200px; }
   .symbol { height: 66px; }
   .symbol::before { max-width: 70px; max-height: 70px; }
+  .sym-heart::before,
+  .sym-clover::before,
+  .sym-star::before,
+  .sym-bell::before,
+  .sym-crown::before,
+  .sym-bar::before,
+  .sym-seven::before {
+    width: 64px;
+    height: 64px;
+    max-height: none;
+  }
 
   .jp-amount { font-size: 11px; }
   .title-main { font-size: clamp(22px, 8.5vw, 34px); }
