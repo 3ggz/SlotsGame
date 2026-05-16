@@ -330,6 +330,10 @@ body::after {
   background-size: contain;
   filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6));
   transform-style: preserve-3d;
+  /* --shift-y compensates each icon's visual mass offset from the geometric
+     canvas center so all symbols render their visual center at the cell
+     center (where paylines pass through). Set per-symbol below. */
+  transform: translateY(var(--shift-y, 0));
   transition: transform 0.35s cubic-bezier(.2,.7,.3,1.2), filter 0.3s;
 }
 
@@ -343,9 +347,47 @@ body::after {
   animation: none !important;
   filter: none;
 }
+/* During an active spin, pause expensive idle animations on the visible
+   symbols too — frees the GPU for the transform-translate of the strip
+   itself, which is the only thing the user is meant to see moving. */
+body.is-spinning .symbol::before {
+  animation-play-state: paused !important;
+}
 @media (max-width: 720px) {
   .symbol::before { max-width: 86px; max-height: 86px; }
+  /* Mobile: drop the multi-layer drop-shadow chain — replace with a single
+     cheap shadow. Three stacked drop-shadow filters are one of the most
+     expensive things you can ask a mobile GPU to do per frame. */
+  .symbol::before {
+    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.55));
+    transition: filter 0.25s;
+  }
+  .sym-diamond::before {
+    /* Drop hue-rotate animation entirely on mobile — single shadow only */
+    animation: diamondPulse 3.2s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px rgba(34,211,238,0.55)) drop-shadow(0 2px 5px rgba(0,0,0,0.55));
+  }
+  .symbol.win::before {
+    filter: drop-shadow(0 0 12px rgba(255,210,74,0.9)) brightness(1.2) saturate(1.2);
+  }
+  /* Promote each reel to its own compositor layer so the strip transform
+     never has to repaint sibling reels. */
+  .reel, .strip { transform: translateZ(0); }
 }
+
+/* Per-symbol visual-mass shift expressed as a % of the icon box height.
+   Computed from each PNG's alpha-weighted centroid relative to the 512px
+   canvas center. Heart/seven/diamond have their painted mass above the
+   geometric center (need to be nudged down). Bell/crown/star have their
+   mass below center (need to be nudged up). Bar is naturally centered. */
+.sym-heart   { --shift-y:  3.7%; }
+.sym-clover  { --shift-y:  1.2%; }
+.sym-star    { --shift-y: -4.5%; }
+.sym-bell    { --shift-y: -10%;  }
+.sym-crown   { --shift-y: -7.6%; }
+.sym-bar     { --shift-y:  0;    }
+.sym-seven   { --shift-y:  6.3%; }
+.sym-diamond { --shift-y:  3.5%; }
 
 .sym-heart::before   { background-image: url('images/heart.png'); }
 .sym-clover::before  { background-image: url('images/clover.png'); }
@@ -360,10 +402,12 @@ body::after {
   filter: drop-shadow(0 0 16px rgba(34,211,238,0.7)) drop-shadow(0 0 28px rgba(255,46,147,0.35)) drop-shadow(0 4px 10px rgba(0,0,0,0.6));
 }
 
-/* Diamond gently breathes + hue-shifts through casino colors */
+/* Diamond gently breathes + hue-shifts through casino colors.
+   translateY(var(--shift-y)) carries the per-symbol mass shift through
+   the animation so the diamond stays mass-centered while pulsing. */
 @keyframes diamondPulse {
-  0%, 100% { transform: scale(1) rotateY(0deg); }
-  50%      { transform: scale(1.08) rotateY(8deg); }
+  0%, 100% { transform: translateY(var(--shift-y, 0)) scale(1) rotateY(0deg); }
+  50%      { transform: translateY(var(--shift-y, 0)) scale(1.08) rotateY(8deg); }
 }
 @keyframes diamondHueShift {
   0%   { filter: drop-shadow(0 0 16px rgba(34,211,238,0.7))  drop-shadow(0 0 28px rgba(255,46,147,0.35)) drop-shadow(0 4px 10px rgba(0,0,0,0.6)) hue-rotate(0deg); }
@@ -395,9 +439,9 @@ body::after {
   z-index: -1;
 }
 @keyframes symbolWin {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.18); }
-  100% { transform: scale(1.08); }
+  0%   { transform: translateY(var(--shift-y, 0)) scale(1); }
+  50%  { transform: translateY(var(--shift-y, 0)) scale(1.18); }
+  100% { transform: translateY(var(--shift-y, 0)) scale(1.08); }
 }
 @keyframes winHalo {
   0%   { transform: scale(0.6); opacity: 0; }
@@ -1995,65 +2039,49 @@ body::after {
   to   { opacity: 1; transform: scale(1.2); }
 }
 
-/* lobby back button */
-.lobby-link {
+/* LOBBY + HISTORY — fixed top-left pair, identical sizing for perfect alignment */
+.lobby-link, .history-btn {
   position: fixed;
   top: 12px;
-  left: 12px;
   z-index: 30;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 16px 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
   border-radius: 12px;
   text-decoration: none;
   font-family: 'Bungee', cursive;
   font-size: 11px;
   letter-spacing: 0.2em;
-  color: var(--gold-1);
-  background: linear-gradient(180deg, rgba(42,18,77,0.85), rgba(15,4,30,0.85));
-  backdrop-filter: blur(8px);
-  box-shadow:
-    inset 0 0 0 1.5px rgba(255,210,74,0.35),
-    0 3px 0 rgba(0,0,0,0.5);
-  transition: transform 0.1s, filter 0.15s;
-}
-.lobby-link::before {
-  content: '←';
-  font-size: 14px;
-}
-.lobby-link:hover { filter: brightness(1.15); }
-.lobby-link:active { transform: translateY(2px); }
-
-/* HISTORY BUTTON — sits right of lobby link */
-.history-btn {
-  position: fixed;
-  top: 12px; left: 148px;
-  z-index: 30;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 14px 8px;
-  border: 0;
-  border-radius: 12px;
-  font-family: 'Bungee', cursive;
-  font-size: 11px;
-  letter-spacing: 0.18em;
+  line-height: 1;
   cursor: pointer;
-  color: var(--neon-cyan);
   background: linear-gradient(180deg, rgba(42,18,77,0.85), rgba(15,4,30,0.85));
   backdrop-filter: blur(8px);
-  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.4), 0 3px 0 rgba(0,0,0,0.5);
   transition: transform 0.1s, filter 0.15s;
 }
-.history-btn::before { content: '⌛'; font-size: 12px; line-height: 1; }
-.history-btn:hover { filter: brightness(1.15); }
-.history-btn:active { transform: translateY(2px); }
+.lobby-link {
+  left: 12px;
+  color: var(--gold-1);
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 3px 0 rgba(0,0,0,0.5);
+}
+.history-btn {
+  left: 122px;
+  color: var(--neon-cyan);
+  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.4), 0 3px 0 rgba(0,0,0,0.5);
+}
+.lobby-link::before { content: '←'; font-size: 14px; line-height: 1; }
+.history-btn::before { content: '⌛'; font-size: 13px; line-height: 1; }
+.lobby-link:hover, .history-btn:hover { filter: brightness(1.15); }
+.lobby-link:active, .history-btn:active { transform: translateY(2px); }
 
 @media (max-width: 720px) {
-  .lobby-link { top: 8px; left: 8px; padding: 7px 12px 6px; font-size: 10px; letter-spacing: 0.16em; }
-  .history-btn { top: 8px; left: 124px; padding: 7px 10px 6px; font-size: 9px; letter-spacing: 0.12em; }
-  .history-btn::before { font-size: 10px; }
+  .lobby-link, .history-btn { top: 8px; height: 30px; padding: 0 11px; font-size: 9px; letter-spacing: 0.14em; gap: 6px; }
+  .lobby-link { left: 8px; }
+  .history-btn { left: 102px; }
+  .lobby-link::before { font-size: 12px; }
+  .history-btn::before { font-size: 11px; }
 }
 
 /* footnote */
@@ -2867,26 +2895,41 @@ function buildReels() {
     reelEl.dataset.reel = r;
     const strip = document.createElement('div');
     strip.className = 'strip';
-    // initial random 3 visible
-    for (let i = 0; i < 3; i++) strip.appendChild(symbolEl(pickSymbol()));
+    // Pre-allocate STRIP_LEN symbol nodes so the spin loop can reuse them
+    // without ever inserting or removing children. Avoids per-spin layout cost.
+    for (let i = 0; i < STRIP_LEN; i++) strip.appendChild(symbolEl(pickSymbol()));
     reelEl.appendChild(strip);
     reelsEl.appendChild(reelEl);
   }
 }
 
 /* Spin a single reel DOWNWARD; reels start in parallel and stop in staggered succession.
-   Target triple is at items[0..2]; strip begins shifted up by (len-3) and slides to 0. */
+   Target triple is at items[0..2]; strip begins shifted up by (len-3) and slides to 0.
+
+   Perf note: we reuse the existing strip's child elements instead of rebuilding
+   the whole subtree each spin. That avoids the layout pass that comes from
+   inserting 14 nodes × 5 reels = 70 fresh elements per spin, which is the main
+   cause of the "the SPIN button feels sluggish on mobile" lag. */
 function spinReel(reelIndex, finalTriple, duration, onStop) {
   return new Promise(resolve => {
     const reel = document.querySelector(`.reel[data-reel="${reelIndex}"]`);
-    const oldStrip = reel.querySelector('.strip');
-    const strip = document.createElement('div');
-    strip.className = 'strip';
+    const strip = reel.querySelector('.strip');
 
     const symbolH = reel.clientHeight / 3;
     const items = makeStrip(finalTriple);
-    items.forEach(s => strip.appendChild(symbolEl(s)));
-    reel.replaceChild(strip, oldStrip);
+
+    // Reuse existing symbol nodes; grow/shrink only if STRIP_LEN changed.
+    const existing = strip.children;
+    while (existing.length < items.length) strip.appendChild(symbolEl(items[existing.length]));
+    while (existing.length > items.length) strip.removeChild(strip.lastChild);
+    for (let i = 0; i < items.length; i++) {
+      const sym = items[i];
+      const node = existing[i];
+      node.className = 'symbol ' + sym.cls;
+      node.dataset.symbol = sym.id;
+      const glyph = sym.id === 'diamond' ? '' : sym.glyph;
+      if (node.textContent !== glyph) node.textContent = glyph;
+    }
 
     const startY = -(symbolH * (items.length - 3));
 
@@ -3044,6 +3087,9 @@ function fireCabinetImpact() {
 function spawnConfetti(x, y, count = 30) {
   const layer = document.getElementById('particles');
   const colors = ['#ff2e93','#22d3ee','#a855f7','#ffd24a','#5cffa1','#ffffff'];
+  // Mobile: halve particle count — each particle is a DOM node with an
+  // animation, and the GPU thrashes once you have ~50+ in flight.
+  if (window.innerWidth < 720) count = Math.max(3, Math.ceil(count / 2));
   for (let i = 0; i < count; i++) {
     const p = document.createElement('div');
     p.className = 'particle';
@@ -3068,6 +3114,7 @@ function spawnCoinShower(originEl, count = 40) {
   const layer = document.getElementById('particles');
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
+  if (window.innerWidth < 720) count = Math.max(6, Math.ceil(count / 2));
   for (let i = 0; i < count; i++) {
     const c = document.createElement('div');
     c.className = 'coin';
@@ -3166,6 +3213,7 @@ async function doSpin(opts = {}) {
   }
 
   State.spinning = true;
+  document.body.classList.add('is-spinning');
   document.getElementById('spin-btn').classList.add('spinning');
   document.getElementById('spin-btn').disabled = true;
   updateBuyBonusButton();
@@ -3305,6 +3353,7 @@ async function doSpin(opts = {}) {
   }
 
   State.spinning = false;
+  document.body.classList.remove('is-spinning');
   document.getElementById('spin-btn').classList.remove('spinning');
   // Leave the button disabled if a Big Win overlay is up — it'll re-enable itself when it closes.
   if (!State.bigWinShowing) document.getElementById('spin-btn').disabled = false;
