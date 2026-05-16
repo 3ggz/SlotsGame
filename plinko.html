@@ -842,9 +842,9 @@ const slotFlash = [];   // parallel to slotXs; each holds a 0..1 fade
 /* Balls in flight + floating win labels */
 const balls = [];
 const floaters = [];    // { x, y, vy, text, fontSize, color, life, maxLife, isLoss }
-const GRAVITY = 1500;
-const RESTITUTION = 0.45;   // was 0.55 — was bouncing balls back up too hard
-const AIR_DRAG = 0.0004;    // was 0.0007 — let balls fall through cleanly
+const GRAVITY = 1900;       // was 1500 — snappier falls
+const RESTITUTION = 0.28;   // was 0.45 — dead-er peg bounces; ball doesn't recover upward as far
+const AIR_DRAG = 0.0001;    // was 0.0004 — essentially off; gravity should dominate vy
 const MAX_BALLS = 50;
 const LAND_FADE_MS = 380; // how long a settled ball stays on screen before removal
 
@@ -857,13 +857,12 @@ function spawnBall(bet) {
   if (balls.length >= MAX_BALLS) return false;
   const N = state.rows;
   balls.push({
-    // Tight spawn — minor jitter only so the early rows aren't deterministic,
-    // but the ball starts dead center. (Was ±35% pegSpaceX, ±15 px/s — that
-    // was already giving the ball a head start toward the edges before it
-    // even hit a peg.)
-    x: LW / 2 + (Math.random() - 0.5) * pegSpaceX * 0.10,
+    // Slight spawn spread + a bit of initial vx so consecutive balls in
+    // an auto run don't all trace the same column. Still tight enough
+    // that distribution is determined by bounces, not by where it dropped.
+    x: LW / 2 + (Math.random() - 0.5) * pegSpaceX * 0.22,
     y: topPegY - pegSpaceY * 0.9,
-    vx: (Math.random() - 0.5) * 4,
+    vx: (Math.random() - 0.5) * 20,
     vy: 0,
     r: ballRadius,
     bet: bet,
@@ -1075,17 +1074,17 @@ function step(dt) {
           const overlap = r - d;
           b.x += nx * overlap;
           b.y += ny * overlap;
-          // Reflect, damp horizontal sweep, then add a FRESH tangential
-          // kick (post-damp so it isn't reduced). Damp keeps the random
-          // walk tight; the kick guarantees the ball escapes the peg in
-          // one bounce instead of oscillating on top of it.
+          // Reflect, mild damp on horizontal sweep, then a big fresh
+          // tangential kick. Goal: ball escapes peg in ONE bounce, with
+          // enough lateral motion to reach an adjacent column before
+          // the next row — that's the Galton step that keeps drops fast.
           const vn = b.vx * nx + b.vy * ny;
           if (vn < 0) {
             b.vx -= (1 + RESTITUTION) * vn * nx;
             b.vy -= (1 + RESTITUTION) * vn * ny;
-            b.vx *= 0.55;                          // less aggressive than 0.42 — gives escape velocity
+            b.vx *= 0.72;                          // gentler damping (was 0.55)
             const tx = -ny, ty = nx;
-            const j = (Math.random() - 0.5) * 60;  // bigger kick so ball clears peg radius in one cycle
+            const j = (Math.random() - 0.5) * 90;  // bigger jitter (was 60)
             b.vx += tx * j;
             b.vy += ty * j;
             pegTick(Math.hypot(b.vx, b.vy));
@@ -1096,6 +1095,44 @@ function step(dt) {
       // Crossed into the slot band → settle in whichever cup it landed in
       if (!b.landed && b.y > slotTopY + b.r * 0.5) {
         settleBall(b);
+      }
+    }
+
+    // Ball-ball collisions — prevents the visual stack when auto-drop
+    // pushes new balls into the air faster than old ones can fall.
+    // Each ball's circle pushes the others apart and exchanges normal
+    // velocity components (elastic-ish). O(n^2) over in-flight balls,
+    // fine for our MAX_BALLS=50.
+    for (let i = 0; i < balls.length; i++) {
+      const a = balls[i];
+      if (a.landed) continue;
+      for (let j = i + 1; j < balls.length; j++) {
+        const c = balls[j];
+        if (c.landed) continue;
+        const dxb = c.x - a.x;
+        const dyb = c.y - a.y;
+        const rsum = a.r + c.r;
+        const d2 = dxb * dxb + dyb * dyb;
+        if (d2 < rsum * rsum && d2 > 0.001) {
+          const d = Math.sqrt(d2);
+          const nx = dxb / d, ny = dyb / d;
+          const overlap = rsum - d;
+          // Separate equally
+          a.x -= nx * overlap * 0.5;
+          a.y -= ny * overlap * 0.5;
+          c.x += nx * overlap * 0.5;
+          c.y += ny * overlap * 0.5;
+          // Velocity exchange along the collision normal (e ~= 0.3 — soft)
+          const vRel = (c.vx - a.vx) * nx + (c.vy - a.vy) * ny;
+          if (vRel < 0) {
+            const e = 0.3;
+            const impulse = (1 + e) * vRel * 0.5;
+            a.vx += impulse * nx;
+            a.vy += impulse * ny;
+            c.vx -= impulse * nx;
+            c.vy -= impulse * ny;
+          }
+        }
       }
     }
   }
