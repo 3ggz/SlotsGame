@@ -698,7 +698,7 @@
     } catch (e) {}
   }
 
-  function onJackpotWin(game, won) {
+  function onJackpotWin(game, won, originatingBet) {
     // 1) Credit the player's balance in shared localStorage. Every
     //    game keys off 'casino.balance' so this is universal.
     creditBalanceLocal(won.amount);
@@ -708,19 +708,47 @@
 
     // 3) Notify the active game so it can refresh its in-memory
     //    balance display from the just-updated localStorage.
-    const detail = { kind: won.label, amount: won.amount, game };
+    const detail = { kind: won.label, amount: won.amount, game, bet: originatingBet };
     try {
       document.dispatchEvent(new CustomEvent('jackpot-win', { detail }));
     } catch (e) {}
 
-    // 4) Feed the lobby ticker + the global jackpotsHit counter via
-    //    the existing History.record → CasinoStats.recordRound chain.
-    //    The note carries the kind so detectJackpot picks it up.
-    try {
-      if (window.History && typeof window.History.record === 'function') {
-        window.History.record(game, 0, won.amount, won.label + ' JACKPOT');
-      }
-    } catch (e) {}
+    // 4) Write the jackpot event to Firestore directly so we capture
+    //    the originating bet (History.record's recordRound chain only
+    //    knows about (bet, win) of the current entry and would either
+    //    double-count or lose the bet). One write to /recentJackpots
+    //    for the ticker, and a separate bump of /globals/stats for the
+    //    global counters.
+    writeJackpotRecord(game, won, originatingBet).catch(e =>
+      console.warn('[casino-jackpots] could not record jackpot:', e));
+  }
+
+  async function writeJackpotRecord(game, won, originatingBet) {
+    if (!db || !fs) return;
+    const user = (window.CasinoAccount && window.CasinoAccount.user && window.CasinoAccount.user()) ||
+                 (auth && auth.currentUser) || null;
+    const player = (user && (user.displayName ||
+                              (user.email ? user.email.split('@')[0] : null))) ||
+                   (user && user.isAnonymous ? 'Anonymous' : 'Player');
+
+    await Promise.all([
+      fs.addDoc(fs.collection(db, 'recentJackpots'), {
+        game:      String(game || 'unknown'),
+        kind:      won.label,
+        amount:    won.amount,
+        bet:       Number(originatingBet) || 0,
+        player:    player,
+        uid:       (user && user.uid) || null,
+        anonymous: !!(user && user.isAnonymous),
+        ts:        fs.serverTimestamp(),
+      }),
+      fs.setDoc(fs.doc(db, 'globals', 'stats'), {
+        jackpotsHit:      fs.increment(1),
+        totalJackpotPaid: fs.increment(won.amount),
+        totalWon:         fs.increment(won.amount),
+        updatedAt:        fs.serverTimestamp(),
+      }, { merge: true }),
+    ]);
   }
 
   // -----------------------------------------------------------
