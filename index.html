@@ -334,30 +334,60 @@ body::after {
   flex-shrink: 0;
 }
 .live-foot .jp-list {
-  overflow: hidden;
-  white-space: nowrap;
   flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,210,74,0.35) transparent;
+  /* Mask the leading edge so items scroll smoothly behind the icon. */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 28px), transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 28px), transparent 100%);
 }
+.live-foot .jp-list::-webkit-scrollbar { height: 6px; }
+.live-foot .jp-list::-webkit-scrollbar-track { background: transparent; }
+.live-foot .jp-list::-webkit-scrollbar-thumb {
+  background: rgba(255,210,74,0.3);
+  border-radius: 999px;
+}
+.live-foot .jp-list::-webkit-scrollbar-thumb:hover { background: rgba(255,210,74,0.55); }
 .live-foot .jp-item {
-  display: inline-block;
-  margin-right: 24px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px 5px 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.45));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.18);
   animation: jpEnter 0.5s ease-out;
 }
-.live-foot .jp-item .who { color: var(--gold-0); font-weight: 800; }
-.live-foot .jp-item .amt { color: var(--neon-green); font-weight: 800; font-family: 'Geist Mono', monospace; }
-.live-foot .jp-item .where { color: rgba(255,255,255,0.45); font-style: italic; }
+.live-foot .jp-item .who   { color: var(--gold-0); font-weight: 800; }
+.live-foot .jp-item .bet   { color: rgba(255,255,255,0.55); font-family: 'Geist Mono', monospace; font-weight: 700; }
+.live-foot .jp-item .plus  { color: rgba(255,210,74,0.45); font-family: 'Bungee', cursive; font-size: 9px; padding: 0 1px; }
+.live-foot .jp-item .amt   { color: var(--neon-green); font-weight: 800; font-family: 'Geist Mono', monospace; }
+.live-foot .jp-item .where { color: rgba(255,255,255,0.42); font-style: italic; }
+.live-foot .jp-item .when  { color: rgba(255,255,255,0.32); font-size: 11px; }
 .live-foot .jp-item .kind {
   display: inline-block;
-  padding: 1px 7px;
+  padding: 2px 7px 1px;
   border-radius: 999px;
   font-family: 'Bungee', cursive;
   font-size: 8px;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.18em;
   background: linear-gradient(180deg, var(--neon-pink), #6a0d3e);
   color: #fff;
   vertical-align: middle;
-  margin-right: 6px;
+  flex-shrink: 0;
 }
+.live-foot .jp-item.kind-grand .kind { background: linear-gradient(180deg, #ffe27a, #b8860b); color: #1a0640; }
+.live-foot .jp-item.kind-major .kind { background: linear-gradient(180deg, #ff7ed4, #6a0d3e); }
+.live-foot .jp-item.kind-minor .kind { background: linear-gradient(180deg, #6ee7f5, #0a4e58); color: #0a1620; }
+.live-foot .jp-item.kind-mini  .kind { background: linear-gradient(180deg, #8effc1, #1b6e3a); color: #0a1620; }
 .live-foot .jp-empty { color: rgba(255,255,255,0.3); font-style: italic; }
 @keyframes jpEnter {
   from { opacity: 0; transform: translateX(8px); }
@@ -2003,15 +2033,27 @@ function renderJackpots(list) {
     if (s < 86400) return Math.floor(s / 3600) + 'h ago';
     return Math.floor(s / 86400) + 'd ago';
   };
-  jpListEl.innerHTML = list.map(j => `
-    <span class="jp-item">
-      <span class="kind">${(j.kind || 'JACKPOT')}</span>
+  const fmtBet = v => {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    if (n >= 1e9) return '$' + (n / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
+    if (n >= 1e6) return '$' + (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
+    if (n >= 1000) return '$' + Math.round(n).toLocaleString('en-US');
+    // small bets — show two decimals if non-integer
+    return Number.isInteger(n) ? '$' + n : '$' + n.toFixed(2);
+  };
+  jpListEl.innerHTML = list.map(j => {
+    const kind = (j.kind || 'JACKPOT').toLowerCase();
+    const betStr = fmtBet(j.bet);
+    return `
+    <span class="jp-item kind-${escapeHtml(kind)}">
+      <span class="kind">${escapeHtml((j.kind || 'JACKPOT').toUpperCase())}</span>
       <span class="who">${escapeHtml(j.player || 'Anonymous')}</span>
-      hit <span class="amt">$${Math.floor(j.amount).toLocaleString('en-US')}</span>
-      <span class="where">on ${escapeHtml(GAME_NAME[j.game] || j.game || 'the floor')}</span>
-      · ${ago(j.ts)}
-    </span>
-  `).join('');
+      ${betStr ? `<span class="bet">${betStr}</span><span class="plus">+</span>` : ''}<span class="amt">$${Math.floor(j.amount).toLocaleString('en-US')}</span>
+      <span class="where">${escapeHtml(GAME_NAME[j.game] || j.game || 'floor')}</span>
+      <span class="when">${ago(j.ts)}</span>
+    </span>`;
+  }).join('');
 }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -2032,7 +2074,7 @@ function startLiveStats() {
     liveFloorEl.classList.add('setup-hint');
   }
   window.CasinoStats.subscribe(applyStats);
-  window.CasinoStats.subscribeJackpots(renderJackpots);
+  window.CasinoStats.subscribeJackpots(renderJackpots, 20);
 }
 document.addEventListener('casino-account-ready', startLiveStats, { once: true });
 setTimeout(startLiveStats, 1500);

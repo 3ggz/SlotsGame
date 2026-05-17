@@ -437,11 +437,20 @@
     let hiding = false;
 
     const css = `
+      /* Dark-root paint MUST happen before any visible rendering so
+         mobile safe areas (status bar, URL bar) don't flash white
+         under the loader. casino-audio.js is a classic blocking
+         script that runs ahead of the deferred casino-account.js
+         module, so this rule wins the race. */
+      :root { color-scheme: dark; }
+      html, body { background-color: #0a0418; }
+
       .casino-loader {
         position: fixed;
         inset: 0;
         z-index: 99999;
-        background:
+        background-color: #0a0418;
+        background-image:
           radial-gradient(ellipse at 20% 0%, rgba(168,85,247,0.28) 0%, transparent 50%),
           radial-gradient(ellipse at 80% 100%, rgba(255,46,147,0.22) 0%, transparent 55%),
           radial-gradient(ellipse at 50% 50%, rgba(34,211,238,0.08) 0%, transparent 70%),
