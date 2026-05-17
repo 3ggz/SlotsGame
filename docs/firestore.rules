@@ -8,6 +8,9 @@
 //   /rocketRoundCashouts/*   world-readable, append-only cashout dots
 //   /rocketChat/*            world-readable, append-only short chat
 //   /rocketClock/{uid}       owner-only clock sync pings for shared rounds
+//   /rouletteRoundWins/*     world-readable, append-only roulette win feed
+//   /rouletteChat/*          world-readable, append-only short chat
+//   /rouletteClock/{uid}     owner-only clock sync pings for shared rounds
 //   /users/{uid}             only the owner can read/write their record
 //
 // Unauthenticated visitors can read everything (so the lobby's LIVE
@@ -92,6 +95,49 @@ service cloud.firestore {
 
     // Rocket table chat.
     match /rocketChat/{id} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 160
+        && request.resource.data.player is string
+        && request.resource.data.player.size() < 64;
+      allow update, delete: if false;
+    }
+
+    // Roulette live-table wins, scoped by deterministic round id.
+    match /rouletteRoundWins/{roundId}/wins/{id} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.roundId == roundId
+        && request.resource.data.number is string
+        && request.resource.data.number.size() > 0
+        && request.resource.data.number.size() <= 2
+        && request.resource.data.color is string
+        && request.resource.data.color.size() > 0
+        && request.resource.data.color.size() < 16
+        && request.resource.data.label is string
+        && request.resource.data.label.size() > 0
+        && request.resource.data.label.size() < 96
+        && request.resource.data.bet is number
+        && request.resource.data.bet > 0
+        && request.resource.data.bet < 100000000
+        && request.resource.data.payout is number
+        && request.resource.data.payout > 0
+        && request.resource.data.payout < 100000000
+        && request.resource.data.player is string
+        && request.resource.data.player.size() < 64;
+      allow update, delete: if false;
+    }
+
+    // Per-client server-time pings used to align Roulette rounds.
+    match /rouletteClock/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Roulette table chat.
+    match /rouletteChat/{id} {
       allow read: if true;
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid

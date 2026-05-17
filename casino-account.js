@@ -522,6 +522,16 @@ window.RocketLive = {
   recordCashout() { return Promise.resolve(); },
 };
 
+window.RouletteLive = {
+  configured: false,
+  playerLabel: () => 'Player',
+  syncClock() { return Promise.resolve(0); },
+  subscribeWins(roundId, fn) { try { fn([]); } catch (e) {} return () => {}; },
+  recordWin() { return Promise.resolve(); },
+  subscribeChat(fn) { try { fn([]); } catch (e) {} return () => {}; },
+  sendChat() { return Promise.resolve(); },
+};
+
 window.CasinoAccount = {
   configured: false,
   onAuthChange(fn) { try { fn(null); } catch (e) {} },
@@ -588,11 +598,13 @@ if (!CONFIGURED) {
         'lucky7saloon.html': 'lucky7saloon',
         'plinko.html': 'plinko',
         'rocket.html': 'rocket',
+        'roulette.html': 'roulette',
         'blackjack.html': 'blackjack',
         'multihandblackjack.html': 'multihandblackjack',
         'standardcraps.html': 'standardcraps',
         'easycraps.html': 'easycraps',
         'craplesscraps.html': 'craplesscraps',
+        'dragontree.html': 'dragontree',
       };
       const localPresenceId = (() => {
         const key = 'casino.presence.tab';
@@ -805,6 +817,17 @@ if (!CONFIGURED) {
         }, () => {});
       }
 
+      function subscribeRouletteWins(roundId, fn, n = 80) {
+        const rid = String(roundId || '');
+        if (!rid) { try { fn([]); } catch (e) {} return () => {}; }
+        const q = query(collection(db, 'rouletteRoundWins', rid, 'wins'), orderBy('ts', 'desc'), limit(n));
+        return onSnapshot(q, snap => {
+          const list = [];
+          snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+          fn(list);
+        }, () => {});
+      }
+
       function subscribePresence(fn) {
         const ref = collection(db, PRESENCE_COLLECTION);
         let docs = [];
@@ -878,6 +901,32 @@ if (!CONFIGURED) {
         });
       }
 
+      async function syncRouletteClock() {
+        const u = await waitForCurrentUser();
+        if (!u) return 0;
+        const ref = doc(db, 'rouletteClock', u.uid);
+        const sentAt = Date.now();
+        await setDoc(ref, { ts: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+        return new Promise(resolve => {
+          let done = false;
+          let off = () => {};
+          const finish = (offset) => {
+            if (done) return;
+            done = true;
+            try { off(); } catch (e) {}
+            resolve(Number.isFinite(offset) ? offset : 0);
+          };
+          off = onSnapshot(ref, snap => {
+            const d = snap.data() || {};
+            if (!d.ts || typeof d.ts.toMillis !== 'function') return;
+            const receivedAt = Date.now();
+            const midpoint = sentAt + (receivedAt - sentAt) / 2;
+            finish(d.ts.toMillis() - midpoint);
+          }, () => finish(0));
+          setTimeout(() => finish(0), 5000);
+        });
+      }
+
       function recordRocketCashout(data) {
         data = data || {};
         const roundId = String(data.roundId || '');
@@ -901,8 +950,44 @@ if (!CONFIGURED) {
         }).catch(() => {});
       }
 
+      function recordRouletteWin(data) {
+        data = data || {};
+        const roundId = String(data.roundId || '');
+        if (!roundId) return Promise.resolve();
+        const bet = Number(data.bet) || 0;
+        const payout = Number(data.payout) || 0;
+        const number = String(data.number || '');
+        const color = String(data.color || '');
+        const label = String(data.label || 'Roulette win').slice(0, 80);
+        if (bet <= 0 || payout <= 0 || !number || !color) return Promise.resolve();
+        if (!currentUser) {
+          return waitForCurrentUser().then(u => u ? recordRouletteWin(data) : undefined);
+        }
+        return addDoc(collection(db, 'rouletteRoundWins', roundId, 'wins'), {
+          roundId,
+          number,
+          color,
+          label,
+          bet,
+          payout,
+          player: playerLabel(currentUser),
+          uid: currentUser?.uid || null,
+          anonymous: !!currentUser?.isAnonymous,
+          ts: serverTimestamp(),
+        }).catch(() => {});
+      }
+
       function subscribeRocketChat(fn, n = 30) {
         const q = query(collection(db, 'rocketChat'), orderBy('ts', 'desc'), limit(n));
+        return onSnapshot(q, snap => {
+          const list = [];
+          snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+          fn(list.reverse());
+        }, () => {});
+      }
+
+      function subscribeRouletteChat(fn, n = 30) {
+        const q = query(collection(db, 'rouletteChat'), orderBy('ts', 'desc'), limit(n));
         return onSnapshot(q, snap => {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
@@ -917,6 +1002,21 @@ if (!CONFIGURED) {
           return waitForCurrentUser().then(u => u ? sendRocketChat(text) : undefined);
         }
         return addDoc(collection(db, 'rocketChat'), {
+          text,
+          player: playerLabel(currentUser),
+          uid: currentUser?.uid || null,
+          anonymous: !!currentUser?.isAnonymous,
+          ts: serverTimestamp(),
+        }).catch(() => {});
+      }
+
+      function sendRouletteChat(message) {
+        const text = String(message || '').trim().slice(0, 160);
+        if (!text) return Promise.resolve();
+        if (!currentUser) {
+          return waitForCurrentUser().then(u => u ? sendRouletteChat(text) : undefined);
+        }
+        return addDoc(collection(db, 'rouletteChat'), {
           text,
           player: playerLabel(currentUser),
           uid: currentUser?.uid || null,
@@ -941,6 +1041,16 @@ if (!CONFIGURED) {
         recordCashout: recordRocketCashout,
         subscribeChat: subscribeRocketChat,
         sendChat: sendRocketChat,
+      };
+
+      window.RouletteLive = {
+        configured: true,
+        playerLabel: () => playerLabel(currentUser),
+        syncClock: syncRouletteClock,
+        subscribeWins: subscribeRouletteWins,
+        recordWin: recordRouletteWin,
+        subscribeChat: subscribeRouletteChat,
+        sendChat: sendRouletteChat,
       };
 
       function subscribeUserDoc(uid, fn) {

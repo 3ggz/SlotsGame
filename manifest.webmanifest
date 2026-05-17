@@ -1,7 +1,7 @@
 {
   "name": "Diamond Casino",
   "short_name": "Diamond",
-  "description": "Your casino, your tables. Slots, blackjack, craps, Plinko, and Rocket with shared chips and a vintage-neon vibe.",
+  "description": "Your casino, your tables. Slots, blackjack, craps, Plinko, Rocket, and Roulette with shared chips and a vintage-neon vibe.",
   "id": "/diamond-casino/",
   "start_url": "./index.html",
   "scope": "./",
@@ -62,6 +62,12 @@
       "name": "Rocket",
       "short_name": "Rocket",
       "url": "./rocket.html",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Roulette",
+      "short_name": "Roulette",
+      "url": "./roulette.html",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     }
   ]

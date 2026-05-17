@@ -1158,6 +1158,89 @@ body::after {
   100% { transform: scaleY(1.14); opacity: 1; }
 }
 
+.preview.roulette {
+  background:
+    radial-gradient(ellipse at 50% 12%, rgba(255,210,74,0.26), transparent 44%),
+    radial-gradient(ellipse at 18% 80%, rgba(255,46,147,0.18), transparent 48%),
+    radial-gradient(ellipse at 82% 76%, rgba(34,211,238,0.20), transparent 48%),
+    linear-gradient(180deg, #080118 0%, #1a0734 56%, #050112 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.32), inset 0 -36px 56px rgba(0,0,0,0.40);
+  overflow: hidden;
+}
+.preview.roulette::before {
+  content: '';
+  position: absolute;
+  width: 158px;
+  height: 158px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #070313 0 16%, #fff0a8 16.5% 18%, #150828 18.5% 29%, transparent 29.5%),
+    conic-gradient(from -90deg,
+      #0b8b48 0 2.631%, #101017 2.631% 5.262%, #bb1736 5.262% 7.893%, #101017 7.893% 10.524%,
+      #bb1736 10.524% 13.155%, #101017 13.155% 15.786%, #bb1736 15.786% 18.417%, #101017 18.417% 21.048%,
+      #bb1736 21.048% 23.679%, #101017 23.679% 26.310%, #bb1736 26.310% 28.941%, #101017 28.941% 31.572%,
+      #bb1736 31.572% 34.203%, #101017 34.203% 36.834%, #bb1736 36.834% 39.465%, #101017 39.465% 42.096%,
+      #bb1736 42.096% 44.727%, #101017 44.727% 47.358%, #bb1736 47.358% 49.989%, #0b8b48 49.989% 52.620%,
+      #101017 52.620% 55.251%, #bb1736 55.251% 57.882%, #101017 57.882% 60.513%, #bb1736 60.513% 63.144%,
+      #101017 63.144% 65.775%, #bb1736 65.775% 68.406%, #101017 68.406% 71.037%, #bb1736 71.037% 73.668%,
+      #101017 73.668% 76.299%, #bb1736 76.299% 78.930%, #101017 78.930% 81.561%, #bb1736 81.561% 84.192%,
+      #101017 84.192% 86.823%, #bb1736 86.823% 89.454%, #101017 89.454% 92.085%, #bb1736 92.085% 94.716%,
+      #101017 94.716% 97.347%, #bb1736 97.347% 100%);
+  border: 6px solid var(--gold-1);
+  box-shadow: 0 0 28px rgba(255,210,74,0.34), inset 0 0 28px rgba(0,0,0,0.78);
+  animation: roulettePreviewSpin 7s linear infinite;
+}
+.preview.roulette::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  left: calc(50% + 44px);
+  top: calc(50% - 64px);
+  background: radial-gradient(circle at 35% 30%, #fff, #fff7d1 50%, #b8a87d);
+  box-shadow: 0 0 14px rgba(255,255,255,0.88), 0 0 22px rgba(34,211,238,0.38);
+  z-index: 3;
+  animation: roulettePreviewBall 2.6s ease-in-out infinite alternate;
+}
+.preview.roulette .rt-felt {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 16px;
+  z-index: 2;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+  padding: 7px;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 12px),
+    linear-gradient(180deg, #0b321e, #06170f);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.34), 0 10px 18px rgba(0,0,0,0.38);
+}
+.preview.roulette .rt-cell {
+  border-radius: 4px;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: 8px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+}
+.preview.roulette .rt-cell.red { background: linear-gradient(180deg, #da294a, #6d061a); }
+.preview.roulette .rt-cell.black { background: linear-gradient(180deg, #2b2935, #05050a); }
+.preview.roulette .rt-cell.green { background: linear-gradient(180deg, #16bf6b, #064b2a); }
+@keyframes roulettePreviewSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes roulettePreviewBall {
+  0% { transform: rotate(-18deg) translateY(0); }
+  100% { transform: rotate(18deg) translateY(4px); }
+}
+
 .preview.craps {
   background:
     radial-gradient(ellipse at 50% 50%, rgba(255,210,74,0.14), transparent 65%),
@@ -1702,6 +1785,30 @@ body::after {
       <div class="game-meta">
         <span class="meta-pill">GLOBAL</span>
         <span class="meta-pill">MANUAL FIRST</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="roulette.html" data-game="roulette">
+      <div class="preview roulette">
+        <div class="rt-felt">
+          <span class="rt-cell green">0</span>
+          <span class="rt-cell green">00</span>
+          <span class="rt-cell red">1</span>
+          <span class="rt-cell black">2</span>
+          <span class="rt-cell red">3</span>
+          <span class="rt-cell black">4</span>
+          <span class="rt-cell red">5</span>
+          <span class="rt-cell black">6</span>
+        </div>
+      </div>
+      <div class="game-title">ROULETTE</div>
+      <div class="game-tagline">GLOBAL AMERICAN WHEEL</div>
+      <div class="game-desc">Join shared American roulette spins with 0 and 00, full inside and outside betting, quick covers, chat, and live table wins.</div>
+      <div class="game-meta">
+        <span class="meta-pill">GLOBAL</span>
+        <span class="meta-pill">0 + 00</span>
         <span class="meta-pill hot">NEW</span>
       </div>
       <div class="play-cta">PLAY</div>
