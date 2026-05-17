@@ -806,6 +806,14 @@ button, input { font: inherit; }
   .meter-row strong { font-size: 14px; }
   .recent-list { gap: 5px; }
   .recent-pill { min-width: 43px; padding: 5px 7px 4px; font-size: 10px; }
+  .toast {
+    top: 250px;
+    bottom: auto;
+    min-width: min(330px, calc(100vw - 32px));
+    padding: 10px 12px;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+  }
   .control-deck { padding: 11px; border-radius: 18px; }
   .control-card { padding: 10px; }
   .action-card { order: -1; }
@@ -1021,6 +1029,9 @@ const recentListEl = document.getElementById('recent-list');
 const rollHistoryListEl = document.getElementById('roll-history-list');
 const toastEl = document.getElementById('toast');
 
+const BASE_GRAPH_MAX = 18;
+const MAX_GRAPH_MAX = 500;
+
 const State = {
   mode: 'idle',
   multiplier: 1,
@@ -1038,6 +1049,7 @@ const State = {
   crashY: 0,
   recent: [],
   countdownTimer: 0,
+  graphMax: BASE_GRAPH_MAX,
 };
 
 let W = 0, H = 0, DPR = 1;
@@ -1107,13 +1119,13 @@ function multiplierAt(elapsedMs) {
 function curvePoint(p) {
   p = clamp(p, 0, 1.08);
   const startX = W * 0.15;
-  const startY = H * 0.82;
+  const startY = H * 0.76;
   const endX = W * 0.91;
-  const endY = H * 0.20;
+  const endY = H * 0.18;
   const c1X = W * 0.28;
-  const c1Y = H * 0.92;
+  const c1Y = H * 0.72;
   const c2X = W * 0.84;
-  const c2Y = H * 0.86;
+  const c2Y = H * 0.76;
   const t = clamp(p, 0, 1);
   const x = Math.pow(1 - t, 3) * startX + 3 * Math.pow(1 - t, 2) * t * c1X + 3 * (1 - t) * t * t * c2X + t * t * t * endX;
   const y = Math.pow(1 - t, 3) * startY + 3 * Math.pow(1 - t, 2) * t * c1Y + 3 * (1 - t) * t * t * c2Y + t * t * t * endY;
@@ -1121,8 +1133,35 @@ function curvePoint(p) {
   return { x, y };
 }
 
-function pathProgress(mult) {
-  return clamp(Math.log(Math.max(1, mult)) / Math.log(18), 0.035, 1.02);
+function pathProgress(mult, scaleMax) {
+  const max = Math.max(2, Number(scaleMax || State.graphMax || BASE_GRAPH_MAX));
+  return clamp(Math.log(Math.max(1, mult)) / Math.log(max), 0.035, 1.02);
+}
+
+function graphTarget(round) {
+  if (!round || round.phase === 'betting') return BASE_GRAPH_MAX;
+  const live = round.phase === 'running' ? Math.max(1, round.multiplier) : Math.max(1, round.crashAt);
+  return clamp(Math.max(BASE_GRAPH_MAX, live * 1.45), BASE_GRAPH_MAX, MAX_GRAPH_MAX);
+}
+
+function updateGraphScale(target, dt) {
+  const current = State.graphMax || BASE_GRAPH_MAX;
+  const speed = target > current ? 8.5 : 4.5;
+  const k = 1 - Math.exp(-speed * Math.max(0.001, dt));
+  State.graphMax = current + (target - current) * k;
+}
+
+function graphMarks(scaleMax) {
+  const all = [1.25, 2, 5, 10, 20, 50, 100, 200, 500];
+  const visible = all.filter(m => m <= scaleMax * 1.08);
+  if (!visible.includes(1.25)) visible.unshift(1.25);
+  return visible.slice(0, 7);
+}
+
+function pathAngle(p) {
+  const a = curvePoint(clamp(p - 0.008, 0.001, 1.04));
+  const b = curvePoint(clamp(p + 0.008, 0.001, 1.04));
+  return Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI + 90;
 }
 
 function getBet() {
@@ -1735,6 +1774,7 @@ Object.assign(State, {
   hasPlayedLaunchSfx: false,
   lastPhase: '',
   roundOffsetMs: 0,
+  graphMax: BASE_GRAPH_MAX,
 });
 
 function casinoNow() {
@@ -2065,7 +2105,9 @@ function syncGlobalRound(round) {
     State.localCashout = null;
     State.hasPlayedLaunchSfx = false;
     State.lastCrashRoundId = null;
+    State.graphMax = BASE_GRAPH_MAX;
     explosionDone = false;
+    particles = [];
     rocketEl.classList.remove('running', 'cash', 'crashed');
     readoutEl.className = 'multiplier-readout';
     bindCashoutFeed(round.roundId);
@@ -2263,6 +2305,7 @@ function resetRound() {
 function drawCurve(p, now) {
   const targetP = clamp(p, 0.035, 1.04);
   const active = curvePoint(targetP);
+  const scaleMax = State.graphMax || BASE_GRAPH_MAX;
 
   function strokePath(limit, style, width, shadow, alpha) {
     ctx.save();
@@ -2295,19 +2338,22 @@ function drawCurve(p, now) {
   strokePath(targetP, glow, 14, 'rgba(34,211,238,0.70)', 0.92);
   strokePath(targetP, 'rgba(255,255,255,0.78)', 3, 'rgba(255,255,255,0.45)', 1);
 
-  const marks = [1.25, 2, 5, 10, 20];
+  const marks = graphMarks(scaleMax);
   ctx.save();
   ctx.font = `${Math.max(10, Math.min(15, W * 0.016))}px 'Geist Mono', monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   marks.forEach((m, i) => {
-    const mp = pathProgress(m);
-    if (mp > targetP + 0.03 || mp > 1.02) return;
+    const mp = pathProgress(m, scaleMax);
+    if (mp > 1.02) return;
     const pt = curvePoint(mp);
     const pulse = 0.65 + Math.sin(now / 210 + i) * 0.22;
-    ctx.fillStyle = `rgba(223,251,255,${0.42 + pulse * 0.20})`;
-    ctx.shadowColor = 'rgba(34,211,238,0.44)';
-    ctx.shadowBlur = 10;
+    const reached = mp <= targetP + 0.035;
+    ctx.fillStyle = reached
+      ? `rgba(223,251,255,${0.46 + pulse * 0.22})`
+      : `rgba(223,251,255,${0.18 + pulse * 0.08})`;
+    ctx.shadowColor = reached ? 'rgba(34,211,238,0.44)' : 'rgba(34,211,238,0.18)';
+    ctx.shadowBlur = reached ? 10 : 4;
     ctx.fillText(m.toFixed(m < 10 ? 2 : 0) + 'x', pt.x, pt.y - 28);
   });
   ctx.restore();
@@ -2324,7 +2370,7 @@ function drawCashoutDots(now, visibleP) {
   ctx.textBaseline = 'bottom';
   ctx.font = `${Math.max(10, Math.min(13, W * 0.014))}px 'Bungee', cursive`;
   dots.forEach((c, i) => {
-    const p = pathProgress(c.multiplier);
+    const p = pathProgress(c.multiplier, State.graphMax || BASE_GRAPH_MAX);
     if (p > visibleP + 0.05) return;
     const pt = curvePoint(p);
     const local = !!c.local;
@@ -2353,15 +2399,15 @@ function positionRocket(now) {
   const round = State.activeRound || getGlobalRound(casinoNow());
   let p;
   if (round.phase === 'betting') p = 0.035 + Math.sin(now / 700) * 0.004;
-  else if (round.phase === 'running') p = pathProgress(round.multiplier);
-  else p = pathProgress(round.crashAt);
+  else if (round.phase === 'running') p = pathProgress(round.multiplier, State.graphMax || BASE_GRAPH_MAX);
+  else p = pathProgress(round.crashAt, State.graphMax || BASE_GRAPH_MAX);
   const pt = curvePoint(p);
   State.rocketX = pt.x;
   State.rocketY = pt.y;
   State.rocketP = p;
   rocketEl.style.left = pt.x + 'px';
   rocketEl.style.top = pt.y + 'px';
-  const angle = 31 - clamp(p, 0, 1) * 18;
+  const angle = pathAngle(p);
   rocketEl.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
 }
 
@@ -2374,6 +2420,7 @@ function frame(now) {
   syncGlobalRound(round);
   State.multiplier = round.multiplier;
   State.peak = Math.max(State.peak, State.multiplier);
+  updateGraphScale(graphTarget(round), dt);
 
   if (round.phase === 'running') {
     updateThrust(State.multiplier);
@@ -2412,7 +2459,7 @@ function frame(now) {
 
   syncControls();
   drawBackground(now);
-  const drawP = round.phase === 'betting' ? 0.035 : pathProgress(round.multiplier);
+  const drawP = round.phase === 'betting' ? 0.035 : pathProgress(round.multiplier, State.graphMax || BASE_GRAPH_MAX);
   drawCurve(drawP, now);
   positionRocket(now);
   if (round.phase === 'running') spawnTrail(State.rocketX, State.rocketY, State.multiplier);
