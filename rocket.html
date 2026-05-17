@@ -157,14 +157,15 @@ button, input { font: inherit; }
 .game-header {
   position: relative;
   display: grid;
-  justify-items: center;
-  gap: 7px;
-  padding: 10px 18px 12px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 8px 14px;
   border-radius: 22px;
   overflow: hidden;
-  text-align: center;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(255,210,74,0.20), transparent 62%),
+    radial-gradient(ellipse at 18% 0%, rgba(255,210,74,0.18), transparent 58%),
+    radial-gradient(ellipse at 85% 50%, rgba(34,211,238,0.12), transparent 62%),
     linear-gradient(180deg, rgba(26,8,56,0.82), rgba(5,1,18,0.38));
   box-shadow: inset 0 0 0 1px rgba(255,210,74,0.18), 0 18px 38px rgba(0,0,0,0.20);
 }
@@ -173,25 +174,25 @@ button, input { font: inherit; }
   content: '';
   position: absolute;
   top: 50%;
-  width: min(170px, 18vw);
+  width: min(110px, 12vw);
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(255,210,74,0.70), transparent);
   filter: drop-shadow(0 0 8px rgba(255,210,74,0.48));
 }
 .game-header::before { left: 22px; }
 .game-header::after { right: 22px; transform: scaleX(-1); }
-.title-block { position: relative; z-index: 1; min-width: 0; }
+.title-block { position: relative; z-index: 1; min-width: 0; text-align: left; }
 .game-header .pre {
   font-family: 'Bungee', cursive;
-  font-size: 9px;
-  letter-spacing: 0.46em;
+  font-size: 8px;
+  letter-spacing: 0.32em;
   color: var(--neon-cyan);
   text-shadow: 0 0 8px rgba(34,211,238,0.55);
   margin-bottom: 3px;
 }
 .game-header .title {
   font-family: 'Bungee Shade', 'Bungee', cursive;
-  font-size: clamp(34px, 6vw, 60px);
+  font-size: clamp(30px, 4.4vw, 44px);
   line-height: 0.95;
   letter-spacing: 0.04em;
   background: linear-gradient(180deg, #fff7d1 0%, var(--gold-1) 45%, #b8860b 100%);
@@ -200,14 +201,55 @@ button, input { font: inherit; }
   color: transparent;
   filter: drop-shadow(0 4px 0 rgba(0,0,0,0.52)) drop-shadow(0 0 18px rgba(255,210,74,0.30));
 }
-.game-header .sub {
+.roll-history {
   position: relative;
   z-index: 1;
-  max-width: 560px;
-  color: rgba(255,255,255,0.62);
-  font-size: 13px;
-  line-height: 1.35;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.roll-history-label {
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
+  letter-spacing: 0.30em;
+  color: rgba(255,240,168,0.76);
+}
+.roll-history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.roll-pill {
+  min-width: 48px;
+  padding: 5px 7px 4px;
+  border-radius: 999px;
   text-align: center;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.86);
+  background: rgba(255,255,255,0.075);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.11);
+}
+.roll-pill.low {
+  color: #ffd7df;
+  background: rgba(255,46,93,0.14);
+  box-shadow: inset 0 0 0 1px rgba(255,77,109,0.30), 0 0 12px rgba(255,46,147,0.12);
+}
+.roll-pill.mid {
+  color: #dffbff;
+  background: rgba(34,211,238,0.12);
+  box-shadow: inset 0 0 0 1px rgba(34,211,238,0.26), 0 0 12px rgba(34,211,238,0.14);
+}
+.roll-pill.high {
+  color: #fff0a8;
+  background: rgba(255,210,74,0.14);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.32), 0 0 14px rgba(255,210,74,0.16);
+}
+.roll-pill.moon {
+  color: #06190d;
+  background: linear-gradient(180deg, #d8ffe8, #5cffa1 62%, #10a85a);
+  box-shadow: 0 0 16px rgba(92,255,161,0.28);
 }
 
 .rocket-table {
@@ -337,8 +379,8 @@ button, input { font: inherit; }
 .rocket-wrap {
   position: absolute;
   z-index: 6;
-  width: clamp(96px, 13vw, 150px);
-  height: clamp(96px, 13vw, 150px);
+  width: clamp(62px, 8vw, 98px);
+  height: clamp(84px, 10.8vw, 132px);
   left: 16%;
   top: 78%;
   transform: translate(-50%, -50%) rotate(28deg);
@@ -365,24 +407,24 @@ button, input { font: inherit; }
 }
 .flame {
   position: absolute;
-  left: 8%;
-  top: 62%;
-  width: 44%;
-  height: 22%;
-  border-radius: 50% 12% 50% 50%;
+  left: 33%;
+  top: 76%;
+  width: 34%;
+  height: 32%;
+  border-radius: 50% 50% 46% 46%;
   background:
     radial-gradient(ellipse at 80% 50%, rgba(255,255,255,0.95), transparent 22%),
     radial-gradient(ellipse at 70% 50%, rgba(92,255,255,0.85), transparent 44%),
     radial-gradient(ellipse at 40% 50%, rgba(255,46,147,0.82), transparent 70%);
   filter: blur(2px);
-  transform: rotate(15deg) scaleX(0.96);
+  transform: scaleX(0.96);
   opacity: 0;
   mix-blend-mode: screen;
 }
 .rocket-wrap.running .flame { opacity: 1; animation: flamePulse 0.08s infinite alternate; }
 @keyframes flamePulse {
-  0% { transform: rotate(15deg) scaleX(0.88) scaleY(0.82); opacity: 0.72; }
-  100% { transform: rotate(15deg) scaleX(1.18) scaleY(1.05); opacity: 1; }
+  0% { transform: scaleX(0.82) scaleY(0.76); opacity: 0.70; }
+  100% { transform: scaleX(1.16) scaleY(1.10); opacity: 1; }
 }
 
 .countdown {
@@ -715,7 +757,10 @@ button, input { font: inherit; }
 @media (max-width: 920px) {
   .game-header::before,
   .game-header::after { width: 12vw; opacity: 0.64; }
-  .game-header .sub { max-width: none; }
+  .game-header { grid-template-columns: 1fr; justify-items: stretch; }
+  .title-block { text-align: center; }
+  .roll-history-label { text-align: center; }
+  .roll-history-list { justify-content: center; }
   .rocket-table { grid-template-columns: 1fr; }
   .side-rail { grid-template-columns: repeat(2, 1fr); }
   .flight-card { height: clamp(360px, 52vh, 440px); min-height: 360px; }
@@ -745,7 +790,8 @@ button, input { font: inherit; }
   .stage { padding: 76px 12px 22px; gap: 11px; }
   .game-header .pre { font-size: 8px; letter-spacing: 0.38em; }
   .game-header .title { font-size: 34px; }
-  .game-header .sub { font-size: 12px; }
+  .roll-history-list { gap: 4px; }
+  .roll-pill { min-width: 42px; padding: 4px 6px 3px; font-size: 10px; }
   .flight-card { height: 300px; min-height: 300px; border-radius: 20px; padding: 10px; }
   #flight { inset: 10px; width: calc(100% - 20px); height: calc(100% - 20px); }
   .flight-hud { gap: 8px; }
@@ -796,7 +842,12 @@ button, input { font: inherit; }
       <div class="pre">DIAMOND CASINO</div>
       <h1 class="title">ROCKET</h1>
     </div>
-    <p class="sub">One global launch. Everyone rides the same trail, then every cashout lands as a dot before burnout.</p>
+    <div class="roll-history" aria-label="Last 20 Rocket rolls">
+      <div class="roll-history-label">LAST 20 ROLLS</div>
+      <div class="roll-history-list" id="roll-history-list">
+        <span class="roll-pill">--</span>
+      </div>
+    </div>
   </header>
 
   <section class="rocket-table">
@@ -810,37 +861,38 @@ button, input { font: inherit; }
         <div class="caption" id="caption">READY</div>
       </div>
       <div class="rocket-wrap" id="rocket">
-        <svg class="rocket-svg" viewBox="0 0 160 160" aria-hidden="true">
+        <svg class="rocket-svg" viewBox="0 0 120 170" aria-hidden="true">
           <defs>
-            <linearGradient id="bodyGold" x1="28" y1="128" x2="126" y2="32" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stop-color="#5c3d00"/>
-              <stop offset="0.28" stop-color="#ffd24a"/>
+            <linearGradient id="rkBodyGold" x1="24" y1="140" x2="92" y2="18" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#6a4300"/>
+              <stop offset="0.34" stop-color="#ffd24a"/>
               <stop offset="0.58" stop-color="#fff3bd"/>
-              <stop offset="1" stop-color="#8f5f00"/>
+              <stop offset="1" stop-color="#8a5b00"/>
             </linearGradient>
-            <linearGradient id="nose" x1="98" y1="23" x2="134" y2="60" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stop-color="#f9fbff"/>
-              <stop offset="0.45" stop-color="#6e7a92"/>
-              <stop offset="1" stop-color="#151c30"/>
+            <linearGradient id="rkNose" x1="44" y1="5" x2="76" y2="46" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#ffffff"/>
+              <stop offset="0.48" stop-color="#7c879d"/>
+              <stop offset="1" stop-color="#12192c"/>
             </linearGradient>
-            <radialGradient id="window" cx="50%" cy="42%" r="62%">
+            <radialGradient id="rkWindow" cx="38%" cy="32%" r="64%">
               <stop offset="0" stop-color="#e7fbff"/>
-              <stop offset="0.48" stop-color="#22d3ee"/>
+              <stop offset="0.52" stop-color="#22d3ee"/>
               <stop offset="1" stop-color="#07556b"/>
             </radialGradient>
-            <linearGradient id="fin" x1="34" y1="108" x2="82" y2="140" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stop-color="#ff8bc6"/>
+            <linearGradient id="rkFin" x1="24" y1="110" x2="100" y2="146" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#ff8fc8"/>
               <stop offset="1" stop-color="#a855f7"/>
             </linearGradient>
           </defs>
-          <path d="M103 23c16 4 28 16 34 32-12 5-25 13-38 25L79 60c9-15 17-27 24-37z" fill="url(#nose)"/>
-          <path d="M35 108c15-34 33-62 54-84 20 5 37 22 43 42-22 21-50 39-84 54L35 108z" fill="url(#bodyGold)" stroke="#fff0a8" stroke-width="2.4"/>
-          <path d="M41 105c-15 5-25 15-31 31 17-6 27-16 32-31z" fill="url(#fin)" stroke="#ffc9ed" stroke-width="2"/>
-          <path d="M57 121c-4 11-5 21-3 30 12-8 19-19 20-34z" fill="url(#fin)" stroke="#ffc9ed" stroke-width="2"/>
-          <circle cx="95" cy="64" r="17" fill="#1a0838" stroke="#fff0a8" stroke-width="4"/>
-          <circle cx="95" cy="64" r="11" fill="url(#window)"/>
-          <path d="M56 103c23-9 43-22 61-39" fill="none" stroke="rgba(255,255,255,0.62)" stroke-width="5" stroke-linecap="round"/>
-          <path d="M65 111c19-8 36-19 52-33" fill="none" stroke="rgba(92,255,161,0.38)" stroke-width="3" stroke-linecap="round"/>
+          <path d="M60 7c14 16 23 36 27 58H33C37 43 46 23 60 7z" fill="url(#rkNose)" stroke="#fff0a8" stroke-width="2.5"/>
+          <path d="M30 61c0-13 60-13 60 0v56c0 16-12 31-30 41-18-10-30-25-30-41V61z" fill="url(#rkBodyGold)" stroke="#fff0a8" stroke-width="2.8"/>
+          <path d="M29 103c-15 8-23 22-25 43 18-5 30-15 35-31z" fill="url(#rkFin)" stroke="#ffc9ed" stroke-width="2.4"/>
+          <path d="M91 103c15 8 23 22 25 43-18-5-30-15-35-31z" fill="url(#rkFin)" stroke="#ffc9ed" stroke-width="2.4"/>
+          <path d="M45 134h30l-15 25z" fill="#5c3d00" opacity="0.72"/>
+          <circle cx="60" cy="75" r="19" fill="#1a0838" stroke="#fff0a8" stroke-width="4.5"/>
+          <circle cx="60" cy="75" r="12" fill="url(#rkWindow)"/>
+          <path d="M45 55c7-4 23-5 31-1" fill="none" stroke="rgba(255,255,255,0.58)" stroke-width="5" stroke-linecap="round"/>
+          <path d="M42 103c8 7 28 9 38 0" fill="none" stroke="rgba(92,255,161,0.36)" stroke-width="3.5" stroke-linecap="round"/>
         </svg>
         <span class="flame"></span>
       </div>
@@ -966,6 +1018,7 @@ const statTargetEl = document.getElementById('stat-target');
 const statPeakEl = document.getElementById('stat-peak');
 const statLastEl = document.getElementById('stat-last');
 const recentListEl = document.getElementById('recent-list');
+const rollHistoryListEl = document.getElementById('roll-history-list');
 const toastEl = document.getElementById('toast');
 
 const State = {
@@ -1053,14 +1106,14 @@ function multiplierAt(elapsedMs) {
 
 function curvePoint(p) {
   p = clamp(p, 0, 1.08);
-  const startX = W * 0.10;
-  const startY = H * 0.78;
-  const endX = W * 0.88;
-  const endY = H * 0.18;
-  const c1X = W * 0.32;
-  const c1Y = H * 0.76;
-  const c2X = W * 0.64;
-  const c2Y = H * 0.34;
+  const startX = W * 0.15;
+  const startY = H * 0.82;
+  const endX = W * 0.91;
+  const endY = H * 0.20;
+  const c1X = W * 0.28;
+  const c1Y = H * 0.92;
+  const c2X = W * 0.84;
+  const c2Y = H * 0.86;
   const t = clamp(p, 0, 1);
   const x = Math.pow(1 - t, 3) * startX + 3 * Math.pow(1 - t, 2) * t * c1X + 3 * (1 - t) * t * t * c2X + t * t * t * endX;
   const y = Math.pow(1 - t, 3) * startY + 3 * Math.pow(1 - t, 2) * t * c1Y + 3 * (1 - t) * t * t * c2Y + t * t * t * endY;
@@ -1684,24 +1737,24 @@ Object.assign(State, {
   roundOffsetMs: 0,
 });
 
-function hashUnit(input) {
-  let h = 2166136261;
-  const str = String(input);
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return (h >>> 0) / 4294967296;
-}
-
 function casinoNow() {
   return Date.now() + (State.roundOffsetMs || 0);
 }
 
+function seededUnit(roundIndex, salt) {
+  let x = (Math.imul((roundIndex >>> 0) ^ salt, 0x9e3779b1) + salt) >>> 0;
+  x ^= x >>> 16;
+  x = Math.imul(x, 0x7feb352d);
+  x ^= x >>> 15;
+  x = Math.imul(x, 0x846ca68b);
+  x ^= x >>> 16;
+  return (x >>> 0) / 4294967296;
+}
+
 function seededCrashPoint(roundIndex) {
   if (ROUND_CRASH_CACHE[roundIndex] != null) return ROUND_CRASH_CACHE[roundIndex];
-  const r = hashUnit('rocket-crash:' + roundIndex);
-  const u = hashUnit('rocket-range:' + roundIndex);
+  const r = seededUnit(roundIndex, 0x6d2b79f5);
+  const u = seededUnit(roundIndex, 0x1b873593);
   const max = Math.max(12, multiplierAt(MAX_FLIGHT_MS - 350));
   let v;
   if (r < 0.12) v = 1.02 + u * 0.34;
@@ -1934,6 +1987,24 @@ function renderRecent() {
   }).join('');
 }
 
+function rollClass(v) {
+  if (v >= 10) return 'moon';
+  if (v >= 5) return 'high';
+  if (v >= 2) return 'mid';
+  return 'low';
+}
+
+function renderRollHistory(round) {
+  if (!rollHistoryListEl || !round) return;
+  const last = round.index - 1;
+  const items = [];
+  for (let i = last; i > last - 20 && i >= 0; i--) {
+    const v = seededCrashPoint(i);
+    items.push(`<span class="roll-pill ${rollClass(v)}">${multText(v)}</span>`);
+  }
+  rollHistoryListEl.innerHTML = items.length ? items.join('') : '<span class="roll-pill">--</span>';
+}
+
 function pushLocalCashout(cashout) {
   State.localCashout = { ...cashout, id: LOCAL_DOT_ID, local: true };
   renderRecent();
@@ -2002,6 +2073,7 @@ function syncGlobalRound(round) {
     State.activeRound = round;
     State.crashAt = round.crashAt;
   }
+  renderRollHistory(round);
 
   if (round.phase === 'betting') {
     State.mode = 'idle';
