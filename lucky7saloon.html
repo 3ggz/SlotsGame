@@ -1647,12 +1647,12 @@ button { border: 0; cursor: pointer; }
   const MIN_ROWS = 2;
   const MAX_ROWS = 7;
   const HEIGHT_WEIGHTS = [
-    { rows: 2, weight: 11 },
-    { rows: 3, weight: 20 },
-    { rows: 4, weight: 27 },
-    { rows: 5, weight: 22 },
-    { rows: 6, weight: 13 },
-    { rows: 7, weight: 7 },
+    { rows: 2, weight: 18 },
+    { rows: 3, weight: 26 },
+    { rows: 4, weight: 26 },
+    { rows: 5, weight: 17 },
+    { rows: 6, weight: 9 },
+    { rows: 7, weight: 4 },
   ];
 
   const SYMBOLS = [
@@ -1664,9 +1664,11 @@ button { border: 0; cursor: pointer; }
     { id: 'king', label: 'K', kind: 'pay', weight: 17 },
     { id: 'queen', label: 'Q', kind: 'pay', weight: 18 },
     { id: 'jack', label: 'J', kind: 'pay', weight: 19 },
-    { id: 'wild', label: 'WILD', kind: 'wild', weight: 4 },
+    { id: 'wild', label: 'WILD', kind: 'wild', weight: 2 },
     { id: 'scatter', label: 'DOOR', kind: 'scatter', weight: 3 },
   ];
+
+  const PAY_SCALE = 0.3;
 
   const PAYTABLE = {
     seven: { 3: 0.5, 4: 1.8, 5: 8, 6: 30 },
@@ -1779,7 +1781,8 @@ button { border: 0; cursor: pointer; }
         localPositions.push(...matches);
       }
 
-      if (reels >= 3 && (symbolId === 'seven' || (hasNaturalMatch && firstNaturalReel < 3))) {
+      const minReels = ['ace', 'king', 'queen', 'jack'].includes(symbolId) ? 4 : 3;
+      if (reels >= minReels && (symbolId === 'seven' || (hasNaturalMatch && firstNaturalReel < 3))) {
         const pay = PAYTABLE[symbolId][reels] || 0;
         if (pay > 0) {
           localPositions.forEach(pos => positionKeys.add(pos.reel + ':' + pos.row));
@@ -1788,7 +1791,7 @@ button { border: 0; cursor: pointer; }
             reels,
             ways,
             multiplier,
-            amount: round2(pay * ways * multiplier),
+            amount: round2(pay * ways * multiplier * PAY_SCALE),
             positions: localPositions,
           });
         }
@@ -1827,6 +1830,7 @@ button { border: 0; cursor: pointer; }
     MIN_ROWS,
     MAX_ROWS,
     SYMBOLS,
+    PAY_SCALE,
     PAYTABLE,
     makeRng,
     pickReelHeights,

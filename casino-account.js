@@ -49,6 +49,279 @@ const FIREBASE_CONFIG = {
 
 const CONFIGURED = Boolean(FIREBASE_CONFIG.projectId);
 
+/* ---------- Shared CSS + HTML for AccountUI (injected at runtime) ---------- */
+const ACCOUNT_UI_CSS = `
+  .cu-chip {
+    position: fixed; top: 14px; right: 64px; z-index: 80;
+    border: 0; cursor: pointer;
+    height: 40px; padding: 0 14px 0 6px;
+    border-radius: 999px;
+    font-family: 'Bungee', cursive;
+    font-size: 11px; letter-spacing: 0.2em;
+    color: #fff0a8;
+    background: rgba(2,8,18,0.7);
+    box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.45), 0 4px 16px rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
+    display: inline-flex; align-items: center; gap: 8px;
+    max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: filter 0.15s, transform 0.1s;
+  }
+  .cu-chip:hover { filter: brightness(1.15); }
+  .cu-chip:active { transform: translateY(2px); }
+  .cu-chip .cu-chip-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 16px; line-height: 1;
+    background: linear-gradient(135deg,#a855f7,#ff2e93);
+    flex-shrink: 0;
+  }
+  .cu-chip:not(.signed-in) .cu-chip-avatar {
+    background: transparent; color: #ffd24a; width: auto; height: auto; margin-left: 6px; font-size: 13px;
+  }
+  @media (max-width: 720px) {
+    .cu-chip { top: 8px; right: 58px; height: 34px; padding: 0 10px 0 4px; font-size: 9px; letter-spacing: 0.14em; gap: 6px; max-width: 150px; }
+    .cu-chip .cu-chip-avatar { width: 24px; height: 24px; font-size: 14px; }
+  }
+
+  .cu-veil {
+    position: fixed; inset: 0; z-index: 120;
+    background: rgba(5,1,15,0.78);
+    backdrop-filter: blur(8px);
+    display: grid; place-items: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s;
+  }
+  .cu-veil.show { opacity: 1; pointer-events: all; }
+  .cu-card {
+    width: min(460px, 94vw); max-height: 90vh; overflow-y: auto;
+    padding: 26px; border-radius: 22px;
+    background:
+      radial-gradient(ellipse at top, rgba(255,46,147,0.20), transparent 60%),
+      linear-gradient(180deg, #1c0a3a, #0a0319);
+    box-shadow:
+      0 30px 60px -10px rgba(0,0,0,0.7),
+      0 18px 36px -18px rgba(0,0,0,0.5),
+      inset 0 0 0 1.5px rgba(255,210,74,0.28);
+    transform: translateY(20px) scale(0.95);
+    transition: transform 0.3s cubic-bezier(.2,.9,.2,1.3);
+    color: #fff; font-family: 'Outfit', sans-serif;
+  }
+  .cu-veil.show .cu-card { transform: translateY(0) scale(1); }
+  .cu-title {
+    font-family: 'Bungee', cursive;
+    font-size: 22px; letter-spacing: 0.1em;
+    color: #fff0a8; text-shadow: 0 0 12px rgba(255,210,74,0.5);
+    text-align: center; margin-bottom: 4px;
+  }
+  .cu-sub {
+    font-size: 12px; text-align: center;
+    color: rgba(255,255,255,0.55); letter-spacing: 0.18em;
+    margin-bottom: 18px;
+  }
+  .cu-google {
+    width: 100%; padding: 12px; margin-bottom: 14px;
+    border: 0; border-radius: 12px; cursor: pointer;
+    font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 14px;
+    color: #1f1f1f; background: #fff;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.6);
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    transition: transform 0.1s, filter 0.15s;
+  }
+  .cu-google:hover { filter: brightness(0.97); }
+  .cu-google:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.6); }
+  .cu-g-mark {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: conic-gradient(from 90deg, #4285F4 0 25%, #34A853 25% 50%, #FBBC05 50% 75%, #EA4335 75%);
+  }
+  .cu-or {
+    font-family: 'Bungee', cursive;
+    font-size: 10px; letter-spacing: 0.32em;
+    color: rgba(255,255,255,0.35);
+    text-align: center; margin: 6px 0 12px; position: relative;
+  }
+  .cu-or::before, .cu-or::after {
+    content: ''; position: absolute; top: 50%;
+    width: 38%; height: 1px; background: rgba(255,255,255,0.1);
+  }
+  .cu-or::before { left: 0; } .cu-or::after { right: 0; }
+  .cu-field {
+    width: 100%; padding: 12px 14px; margin-bottom: 10px;
+    font-family: 'Outfit', sans-serif; font-size: 14px;
+    color: #fff; border: 0; border-radius: 10px;
+    background: rgba(0,0,0,0.5);
+    box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.3);
+    outline: none; transition: box-shadow 0.2s;
+  }
+  .cu-field::placeholder { color: rgba(255,255,255,0.35); }
+  .cu-field:focus { box-shadow: inset 0 0 0 1.5px #22d3ee, 0 0 14px rgba(34,211,238,0.3); }
+  .cu-error {
+    min-height: 18px; margin: 4px 0 10px;
+    font-size: 12px; color: #ff2e93; text-align: center;
+  }
+  .cu-actions {
+    display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px;
+  }
+  .cu-btn {
+    border: 0; padding: 14px; border-radius: 14px;
+    font-family: 'Bungee', cursive; letter-spacing: 0.12em; font-size: 14px;
+    cursor: pointer; transition: transform 0.1s, filter 0.15s;
+  }
+  .cu-btn:active { transform: translateY(2px); }
+  .cu-btn-cancel {
+    background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.6);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+  }
+  .cu-btn-cancel:hover { color: #fff; }
+  .cu-btn-confirm {
+    background: linear-gradient(180deg, #5cffa1, #14b85a);
+    color: #0a0418;
+    box-shadow: 0 5px 0 #0a4a23, inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  .cu-btn-confirm:hover { filter: brightness(1.08); }
+  .cu-toggle {
+    margin-top: 14px; text-align: center; font-size: 12px;
+    color: rgba(255,255,255,0.6);
+  }
+  .cu-toggle button {
+    background: none; border: 0; cursor: pointer;
+    color: #22d3ee; font-family: 'Bungee', cursive;
+    font-size: 11px; letter-spacing: 0.16em;
+    padding: 4px 6px; text-decoration: underline;
+  }
+
+  /* Profile hero */
+  .cu-hero {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    margin-bottom: 18px;
+  }
+  .cu-hero-avatar {
+    width: 84px; height: 84px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 44px; line-height: 1;
+    background: linear-gradient(135deg,#a855f7,#ff2e93);
+    box-shadow: 0 0 24px rgba(255,210,74,0.3), inset 0 0 0 3px rgba(255,255,255,0.08);
+  }
+  .cu-hero-name {
+    font-family: 'Bungee', cursive; font-size: 18px; letter-spacing: 0.12em;
+    color: #fff0a8; text-shadow: 0 0 10px rgba(255,210,74,0.5);
+  }
+  .cu-hero-email { font-size: 12px; color: rgba(255,255,255,0.55); }
+  .cu-section-lbl {
+    font-family: 'Bungee', cursive; font-size: 10px; letter-spacing: 0.28em;
+    color: rgba(255,255,255,0.55); margin: 4px 0 8px;
+  }
+  .cu-avatar-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+    margin-bottom: 16px;
+  }
+  .cu-avatar-opt {
+    aspect-ratio: 1; border: 0; border-radius: 50%;
+    display: grid; place-items: center; font-size: 22px; line-height: 1;
+    cursor: pointer; padding: 0;
+    box-shadow: inset 0 0 0 2px transparent, 0 2px 6px rgba(0,0,0,0.4);
+    transition: transform 0.1s, box-shadow 0.15s;
+  }
+  .cu-avatar-opt:hover { transform: scale(1.08); }
+  .cu-avatar-opt.selected {
+    box-shadow: inset 0 0 0 3px #fff0a8, 0 0 12px rgba(255,210,74,0.55);
+  }
+  .cu-pstats {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    margin-bottom: 18px;
+  }
+  .cu-pstat {
+    padding: 10px 8px 12px; border-radius: 10px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.4));
+    box-shadow: inset 0 0 0 1px rgba(255,210,74,0.18);
+    text-align: center;
+  }
+  .cu-pstat .lbl {
+    font-family: 'Bungee', cursive; font-size: 8px; letter-spacing: 0.22em;
+    color: rgba(255,255,255,0.5); margin-bottom: 4px;
+  }
+  .cu-pstat .val {
+    font-family: 'Geist Mono', monospace; font-weight: 800; font-size: 16px; color: #fff;
+  }
+  .cu-profile-req-note {
+    padding: 10px 12px; margin-bottom: 12px;
+    border-radius: 10px; font-size: 12px;
+    color: #ffe27a; background: rgba(255,210,74,0.08);
+    box-shadow: inset 0 0 0 1px rgba(255,210,74,0.28);
+    text-align: center; line-height: 1.5;
+  }
+  .cu-signout {
+    width: 100%; padding: 12px; border: 0; border-radius: 12px; cursor: pointer;
+    font-family: 'Bungee', cursive; letter-spacing: 0.18em; font-size: 13px;
+    color: #fff; background: rgba(255,46,88,0.16);
+    box-shadow: inset 0 0 0 1.5px rgba(255,46,88,0.45);
+    transition: filter 0.15s, transform 0.1s;
+    margin-top: 8px;
+  }
+  .cu-signout:hover { filter: brightness(1.15); }
+  .cu-signout:active { transform: translateY(2px); }
+`;
+
+const MODAL_HTML = `
+  <div class="cu-card">
+    <!-- SIGN IN -->
+    <div data-view="signin">
+      <div class="cu-title">SIGN IN</div>
+      <div class="cu-sub">SAVE YOUR STATS · COMPETE FOR JACKPOTS</div>
+      <button type="button" class="cu-google" id="cu-google"><span class="cu-g-mark"></span>CONTINUE WITH GOOGLE</button>
+      <div class="cu-or">OR</div>
+      <input class="cu-field" id="cu-email" type="email" placeholder="Email" autocomplete="email" />
+      <input class="cu-field" id="cu-pw" type="password" placeholder="Password" autocomplete="current-password" />
+      <div class="cu-error" id="cu-err-in"></div>
+      <div class="cu-actions">
+        <button class="cu-btn cu-btn-cancel" id="cu-cancel-in" type="button">CANCEL</button>
+        <button class="cu-btn cu-btn-confirm" id="cu-do-signin" type="button">SIGN IN</button>
+      </div>
+      <div class="cu-toggle">New here? <button id="cu-go-signup" type="button">CREATE ACCOUNT</button></div>
+    </div>
+
+    <!-- SIGN UP -->
+    <div data-view="signup" style="display:none">
+      <div class="cu-title">CREATE ACCOUNT</div>
+      <div class="cu-sub">JOIN THE FLOOR · CLAIM A NAME</div>
+      <button type="button" class="cu-google" id="cu-google-up"><span class="cu-g-mark"></span>CONTINUE WITH GOOGLE</button>
+      <div class="cu-or">OR</div>
+      <input class="cu-field" id="cu-name-up" type="text" placeholder="Username" autocomplete="username" maxlength="24" />
+      <input class="cu-field" id="cu-email-up" type="email" placeholder="Email" autocomplete="email" />
+      <input class="cu-field" id="cu-pw-up" type="password" placeholder="Password (min 6 chars)" autocomplete="new-password" />
+      <div class="cu-error" id="cu-err-up"></div>
+      <div class="cu-actions">
+        <button class="cu-btn cu-btn-cancel" id="cu-cancel-up" type="button">CANCEL</button>
+        <button class="cu-btn cu-btn-confirm" id="cu-do-signup" type="button">SIGN UP</button>
+      </div>
+      <div class="cu-toggle">Already have an account? <button id="cu-go-signin" type="button">SIGN IN</button></div>
+    </div>
+
+    <!-- PROFILE (and PROFILE-REQUIRED) -->
+    <div data-view="profile" style="display:none">
+      <div class="cu-hero">
+        <div class="cu-hero-avatar">🎰</div>
+        <div class="cu-hero-name">PLAYER</div>
+        <div class="cu-hero-email"></div>
+      </div>
+      <div class="cu-profile-req-note">Pick a username and avatar to finish setting up your account.</div>
+      <div class="cu-section-lbl">YOUR STATS</div>
+      <div class="cu-pstats">
+        <div class="cu-pstat"><div class="lbl">YOUR BETS</div><div class="val" id="cu-ps-bets">0</div></div>
+        <div class="cu-pstat"><div class="lbl">YOUR WAGERED</div><div class="val" id="cu-ps-wagered">$0</div></div>
+        <div class="cu-pstat"><div class="lbl">YOU WON</div><div class="val" id="cu-ps-won">$0</div></div>
+        <div class="cu-pstat"><div class="lbl">JACKPOTS</div><div class="val" id="cu-ps-jp">0</div></div>
+      </div>
+      <div class="cu-section-lbl">USERNAME</div>
+      <input class="cu-field" id="cu-username" type="text" placeholder="Pick a name (max 24)" maxlength="24" />
+      <div class="cu-section-lbl">AVATAR</div>
+      <div class="cu-avatar-grid" id="cu-avatar-grid"></div>
+      <div class="cu-error" id="cu-err-pr"></div>
+      <div class="cu-actions">
+        <button class="cu-btn cu-btn-cancel" id="cu-profile-cancel" type="button">CANCEL</button>
+        <button class="cu-btn cu-btn-confirm" id="cu-profile-save" type="button">SAVE</button>
+      </div>
+      <button class="cu-signout" id="cu-signout" type="button">SIGN OUT</button>
+    </div>
+  </div>
+`;
+
 /* ---------- no-op stubs (used until Firebase is wired) ---------- */
 const ZERO_STATS = {
   totalSpins: 0, totalWagered: 0, totalWon: 0,
@@ -101,15 +374,26 @@ if (!CONFIGURED) {
         GoogleAuthProvider, signInWithPopup,
         createUserWithEmailAndPassword, signInWithEmailAndPassword,
         signOut, updateProfile,
+        setPersistence, browserLocalPersistence, indexedDBLocalPersistence,
       } = authMod;
       const {
-        getFirestore, doc, setDoc, onSnapshot, increment, serverTimestamp,
+        getFirestore, doc, getDoc, setDoc, onSnapshot, increment, serverTimestamp,
         collection, query, orderBy, limit, addDoc,
       } = fsMod;
 
       const app  = initializeApp(FIREBASE_CONFIG);
       const auth = getAuth(app);
       const db   = getFirestore(app);
+
+      // Explicit local persistence (insurance). Default is already
+      // browser-local on the web SDK, but some browsers/contexts fall
+      // back to in-memory which would log the user out on every nav.
+      // Prefer IndexedDB; localStorage as fallback if IDB is unavailable.
+      try {
+        await setPersistence(auth, indexedDBLocalPersistence);
+      } catch (e) {
+        try { await setPersistence(auth, browserLocalPersistence); } catch (e2) {}
+      }
 
       let currentUser = null;
       let didAnonFallback = false;
@@ -317,6 +601,26 @@ if (!CONFIGURED) {
         recordCashout: recordRocketCashout,
       };
 
+      function subscribeUserDoc(uid, fn) {
+        if (!uid) { try { fn({}); } catch (e) {} return () => {}; }
+        return onSnapshot(doc(db, 'users', uid), snap => {
+          fn(snap.data() || {});
+        }, () => {});
+      }
+      async function saveProfile({ username, avatar }) {
+        if (!currentUser) throw new Error('Not signed in');
+        if (currentUser.isAnonymous) throw new Error('Sign in to save a profile');
+        const patch = { lastSeen: serverTimestamp() };
+        if (typeof username === 'string') {
+          const u = username.trim().slice(0, 24);
+          if (!u) throw new Error('Username is required');
+          patch.username = u;
+          try { await updateProfile(currentUser, { displayName: u }); } catch (e) {}
+        }
+        if (typeof avatar === 'string') patch.avatar = avatar.slice(0, 8);
+        await setDoc(doc(db, 'users', currentUser.uid), patch, { merge: true });
+      }
+
       window.CasinoAccount = {
         configured: true,
         onAuthChange(fn) {
@@ -324,15 +628,324 @@ if (!CONFIGURED) {
           try { fn(currentUser); } catch (e) {}
         },
         user: () => currentUser,
+        subscribeUserDoc,
+        saveProfile,
         signInGoogle: () => signInWithPopup(auth, new GoogleAuthProvider()),
         signInEmail:  (email, pw) => signInWithEmailAndPassword(auth, email, pw),
         signUpEmail:  async (email, pw, displayName) => {
           const cred = await createUserWithEmailAndPassword(auth, email, pw);
-          if (displayName) await updateProfile(cred.user, { displayName });
+          if (displayName) {
+            try { await updateProfile(cred.user, { displayName }); } catch (e) {}
+            try {
+              await setDoc(doc(db, 'users', cred.user.uid), {
+                username: displayName.trim().slice(0, 24),
+                displayName,
+                lastSeen: serverTimestamp(),
+              }, { merge: true });
+            } catch (e) {}
+          }
           return cred;
         },
         signOut: () => signOut(auth),
       };
+
+      /* ============================================================
+         AccountUI — chip + profile modal injected on every page.
+         Auto-mounts on DOMContentLoaded. Stays out of the way of
+         existing top chrome by positioning fixed at top-right,
+         offset left of the settings gear.
+         ============================================================ */
+      const AVATARS = [
+        { id: '🎰', grad: 'linear-gradient(135deg,#ff2e93,#a855f7)' },
+        { id: '💎', grad: 'linear-gradient(135deg,#22d3ee,#a855f7)' },
+        { id: '👑', grad: 'linear-gradient(135deg,#ffd24a,#b8860b)' },
+        { id: '🔥', grad: 'linear-gradient(135deg,#ffb04a,#c41a4d)' },
+        { id: '⭐', grad: 'linear-gradient(135deg,#fff7d1,#ffd24a)' },
+        { id: '🐙', grad: 'linear-gradient(135deg,#ff2e58,#6a3aaf)' },
+        { id: '🎲', grad: 'linear-gradient(135deg,#fff7d1,#999)' },
+        { id: '🍀', grad: 'linear-gradient(135deg,#7cffa1,#1b6e3a)' },
+        { id: '♠',  grad: 'linear-gradient(135deg,#2a2a2a,#0a0a0a)' },
+        { id: '♥',  grad: 'linear-gradient(135deg,#ff7799,#a30033)' },
+        { id: '♦',  grad: 'linear-gradient(135deg,#ff9966,#a3441a)' },
+        { id: '♣',  grad: 'linear-gradient(135deg,#5cffa1,#0a6e3a)' },
+        { id: '🃏', grad: 'linear-gradient(135deg,#fff,#888)' },
+        { id: '🚀', grad: 'linear-gradient(135deg,#ff2e58,#ffd24a)' },
+      ];
+      function avatarLookup(id) {
+        return AVATARS.find(a => a.id === id) || AVATARS[0];
+      }
+
+      let uiState = {
+        view: 'signin',   // signin | signup | profile | profile-required
+        userDoc: {},      // last Firestore users/{uid} snapshot
+        userDocUnsub: null,
+        chosenAvatar: '🎰',
+      };
+
+      function mountAccountUI() {
+        const cssId = 'casino-account-ui-css';
+        if (!document.getElementById(cssId)) {
+          const style = document.createElement('style');
+          style.id = cssId;
+          style.textContent = ACCOUNT_UI_CSS;
+          document.head.appendChild(style);
+        }
+
+        // Inject chip
+        if (!document.getElementById('cu-chip')) {
+          const chip = document.createElement('button');
+          chip.id = 'cu-chip';
+          chip.className = 'cu-chip';
+          chip.title = 'Account';
+          chip.type = 'button';
+          chip.innerHTML = `<span class="cu-chip-avatar" id="cu-chip-av">◆</span><span class="cu-chip-label" id="cu-chip-lbl">SIGN IN</span>`;
+          chip.addEventListener('click', openModal);
+          document.body.appendChild(chip);
+        }
+
+        // Inject modal
+        if (!document.getElementById('cu-veil')) {
+          const veil = document.createElement('div');
+          veil.id = 'cu-veil';
+          veil.className = 'cu-veil';
+          veil.innerHTML = MODAL_HTML;
+          document.body.appendChild(veil);
+          wireModal(veil);
+        }
+
+        renderChip();
+        renderModal();
+
+        // Subscribe to per-user firestore doc, refresh UI on changes.
+        authListeners.push(u => {
+          if (uiState.userDocUnsub) { try { uiState.userDocUnsub(); } catch (e) {} uiState.userDocUnsub = null; }
+          uiState.userDoc = {};
+          if (u && !u.isAnonymous) {
+            uiState.userDocUnsub = subscribeUserDoc(u.uid, data => {
+              uiState.userDoc = data || {};
+              // First-time prompt: signed-in real user with no username yet.
+              if (currentUser && !currentUser.isAnonymous && !uiState.userDoc.username) {
+                if (!document.getElementById('cu-veil').classList.contains('show')) {
+                  openModal('profile-required');
+                } else if (uiState.view !== 'profile-required') {
+                  uiState.view = 'profile-required';
+                  renderModal();
+                }
+              }
+              renderChip();
+              renderModal();
+            });
+          } else {
+            renderChip();
+            renderModal();
+          }
+        });
+      }
+
+      function openModal(view) {
+        if (view) uiState.view = view;
+        else {
+          if (currentUser && !currentUser.isAnonymous) {
+            uiState.view = uiState.userDoc.username ? 'profile' : 'profile-required';
+          } else {
+            uiState.view = 'signin';
+          }
+        }
+        renderModal();
+        document.getElementById('cu-veil').classList.add('show');
+      }
+      function closeModal() {
+        if (uiState.view === 'profile-required') return; // gated
+        document.getElementById('cu-veil').classList.remove('show');
+      }
+
+      function renderChip() {
+        const av  = document.getElementById('cu-chip-av');
+        const lbl = document.getElementById('cu-chip-lbl');
+        const chip = document.getElementById('cu-chip');
+        if (!chip) return;
+        if (!currentUser || currentUser.isAnonymous) {
+          chip.classList.remove('signed-in');
+          av.textContent = '◆';
+          av.style.background = '';
+          lbl.textContent = 'SIGN IN';
+          return;
+        }
+        chip.classList.add('signed-in');
+        const username = uiState.userDoc.username || currentUser.displayName || (currentUser.email ? currentUser.email.split('@')[0] : 'Player');
+        const avatar = avatarLookup(uiState.userDoc.avatar);
+        av.textContent = avatar.id;
+        av.style.background = avatar.grad;
+        lbl.textContent = username.toUpperCase();
+      }
+
+      function renderModal() {
+        const veil = document.getElementById('cu-veil');
+        if (!veil) return;
+        veil.dataset.view = uiState.view;
+        // profile-required reuses the profile DOM; renderProfileView flips chrome.
+        const viewKey = uiState.view === 'profile-required' ? 'profile' : uiState.view;
+        veil.querySelectorAll('[data-view]').forEach(el => { el.style.display = 'none'; });
+        const active = veil.querySelector(`[data-view="${viewKey}"]`);
+        if (active) active.style.display = '';
+        if (viewKey === 'profile') renderProfileView(veil);
+      }
+
+      function renderProfileView(veil) {
+        // Header
+        const username = uiState.userDoc.username || currentUser?.displayName || (currentUser?.email ? currentUser.email.split('@')[0] : 'Player');
+        const avatarId = uiState.userDoc.avatar || uiState.chosenAvatar || '🎰';
+        uiState.chosenAvatar = avatarId;
+        const av = avatarLookup(avatarId);
+
+        const heroAv = veil.querySelector('.cu-hero-avatar');
+        if (heroAv) {
+          heroAv.textContent = av.id;
+          heroAv.style.background = av.grad;
+        }
+        const heroName = veil.querySelector('.cu-hero-name');
+        if (heroName) heroName.textContent = (uiState.userDoc.username || (uiState.view === 'profile-required' ? 'CHOOSE A USERNAME' : username)).toUpperCase();
+        const heroEmail = veil.querySelector('.cu-hero-email');
+        if (heroEmail) heroEmail.textContent = currentUser?.email || '';
+
+        // Username input
+        const nameIn = veil.querySelector('#cu-username');
+        if (nameIn && document.activeElement !== nameIn) {
+          nameIn.value = uiState.userDoc.username || (currentUser?.displayName || '');
+        }
+
+        // Avatar grid
+        const grid = veil.querySelector('#cu-avatar-grid');
+        if (grid) {
+          grid.innerHTML = AVATARS.map(a =>
+            `<button type="button" class="cu-avatar-opt ${a.id === uiState.chosenAvatar ? 'selected' : ''}" data-avatar="${a.id}" style="background:${a.grad}">${a.id}</button>`
+          ).join('');
+          grid.querySelectorAll('.cu-avatar-opt').forEach(btn => {
+            btn.addEventListener('click', () => {
+              uiState.chosenAvatar = btn.dataset.avatar;
+              grid.querySelectorAll('.cu-avatar-opt').forEach(b => b.classList.toggle('selected', b === btn));
+              if (heroAv) {
+                const a = avatarLookup(uiState.chosenAvatar);
+                heroAv.textContent = a.id;
+                heroAv.style.background = a.grad;
+              }
+            });
+          });
+        }
+
+        // Personal stats
+        const d = uiState.userDoc;
+        veil.querySelector('#cu-ps-bets')   .textContent = fmtCount(d.totalSpins   || 0);
+        veil.querySelector('#cu-ps-wagered').textContent = fmtMoney(d.totalWagered || 0);
+        veil.querySelector('#cu-ps-won')    .textContent = fmtMoney(d.totalWon     || 0);
+        veil.querySelector('#cu-ps-jp')     .textContent = fmtCount(d.jackpotsHit  || 0);
+
+        // Hide sign-out and toggle profile-required vs profile chrome.
+        veil.querySelector('.cu-profile-req-note').style.display =
+          uiState.view === 'profile-required' ? 'block' : 'none';
+        veil.querySelector('#cu-signout').style.display =
+          uiState.view === 'profile-required' ? 'none' : 'block';
+        veil.querySelector('#cu-profile-cancel').style.display =
+          uiState.view === 'profile-required' ? 'none' : 'inline-block';
+      }
+
+      function fmtCount(n) { return Math.floor(n).toLocaleString('en-US'); }
+      function fmtMoney(n) {
+        const v = Math.floor(n);
+        if (v >= 1e9) return '$' + (v / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
+        if (v >= 1e6) return '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
+        return '$' + v.toLocaleString('en-US');
+      }
+
+      function wireModal(veil) {
+        const $ = sel => veil.querySelector(sel);
+        const setErr = (id, msg) => { const el = $(id); if (el) el.textContent = msg || ''; };
+        const readableErr = e => {
+          const c = e?.code || '';
+          if (c.includes('invalid-email'))         return 'That email looks invalid.';
+          if (c.includes('email-already-in-use'))  return 'Email already in use.';
+          if (c.includes('weak-password'))         return 'Password too weak (min 6 chars).';
+          if (c.includes('user-not-found'))        return 'No account with that email.';
+          if (c.includes('wrong-password'))        return 'Wrong password.';
+          if (c.includes('invalid-credential'))    return 'Wrong email or password.';
+          if (c.includes('popup-blocked'))         return 'Popup was blocked.';
+          if (c.includes('popup-closed-by-user'))  return '';
+          if (c.includes('network-request-failed')) return 'Network error.';
+          return e?.message || 'Something went wrong.';
+        };
+
+        veil.addEventListener('click', e => { if (e.target === veil) closeModal(); });
+
+        // Sign-in view
+        $('#cu-google').addEventListener('click', async () => {
+          setErr('#cu-err-in', '');
+          try { await window.CasinoAccount.signInGoogle(); } catch (e) { setErr('#cu-err-in', readableErr(e)); }
+        });
+        $('#cu-do-signin').addEventListener('click', async () => {
+          setErr('#cu-err-in', '');
+          const email = $('#cu-email').value.trim();
+          const pw = $('#cu-pw').value;
+          if (!email || !pw) return setErr('#cu-err-in', 'Email and password required.');
+          try { await window.CasinoAccount.signInEmail(email, pw); } catch (e) { setErr('#cu-err-in', readableErr(e)); }
+        });
+        $('#cu-go-signup').addEventListener('click', () => { uiState.view = 'signup'; renderModal(); });
+        $('#cu-cancel-in').addEventListener('click', closeModal);
+        [$('#cu-email'), $('#cu-pw')].forEach(inp => inp.addEventListener('keydown', e => {
+          if (e.key === 'Enter') $('#cu-do-signin').click();
+          if (e.key === 'Escape') closeModal();
+        }));
+
+        // Sign-up view
+        $('#cu-google-up').addEventListener('click', async () => {
+          setErr('#cu-err-up', '');
+          try { await window.CasinoAccount.signInGoogle(); } catch (e) { setErr('#cu-err-up', readableErr(e)); }
+        });
+        $('#cu-do-signup').addEventListener('click', async () => {
+          setErr('#cu-err-up', '');
+          const email = $('#cu-email-up').value.trim();
+          const pw = $('#cu-pw-up').value;
+          const name = $('#cu-name-up').value.trim();
+          if (!name) return setErr('#cu-err-up', 'Pick a username (you can change it later).');
+          if (!email || !pw) return setErr('#cu-err-up', 'Email and password required.');
+          try { await window.CasinoAccount.signUpEmail(email, pw, name); } catch (e) { setErr('#cu-err-up', readableErr(e)); }
+        });
+        $('#cu-go-signin').addEventListener('click', () => { uiState.view = 'signin'; renderModal(); });
+        $('#cu-cancel-up').addEventListener('click', closeModal);
+        [$('#cu-name-up'), $('#cu-email-up'), $('#cu-pw-up')].forEach(inp => inp.addEventListener('keydown', e => {
+          if (e.key === 'Enter') $('#cu-do-signup').click();
+          if (e.key === 'Escape') closeModal();
+        }));
+
+        // Profile view
+        $('#cu-profile-save').addEventListener('click', async () => {
+          setErr('#cu-err-pr', '');
+          const username = $('#cu-username').value.trim();
+          if (!username) return setErr('#cu-err-pr', 'Username is required.');
+          try {
+            await window.CasinoAccount.saveProfile({ username, avatar: uiState.chosenAvatar });
+            if (uiState.view === 'profile-required') uiState.view = 'profile';
+            closeModal();
+          } catch (e) { setErr('#cu-err-pr', readableErr(e)); }
+        });
+        $('#cu-profile-cancel').addEventListener('click', closeModal);
+        $('#cu-signout').addEventListener('click', async () => {
+          try { await window.CasinoAccount.signOut(); } catch (e) {}
+          uiState.view = 'signin';
+          closeModal();
+        });
+        $('#cu-username').addEventListener('keydown', e => {
+          if (e.key === 'Enter') $('#cu-profile-save').click();
+          if (e.key === 'Escape' && uiState.view !== 'profile-required') closeModal();
+        });
+      }
+
+      // Auto-mount when DOM is ready.
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', mountAccountUI, { once: true });
+      } else {
+        mountAccountUI();
+      }
+      window.AccountUI = { open: openModal, close: closeModal };
     } catch (e) {
       initFailed = e;
       console.warn('[casino-account] init failed; staying in offline/no-op mode:', e);

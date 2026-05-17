@@ -59,7 +59,7 @@ run('awards only left-to-right adjacent ways from reel 1', () => {
   assert(sevenWin, 'expected seven win');
   assert.strictEqual(sevenWin.reels, 4);
   assert.strictEqual(sevenWin.ways, 4);
-  assert.strictEqual(sevenWin.amount, core.PAYTABLE.seven[4] * 4 * 2);
+  assert.strictEqual(sevenWin.amount, core.PAYTABLE.seven[4] * 4 * 2 * core.PAY_SCALE);
   assert.strictEqual(result.wins.some(win => win.reels === 6), false);
 });
 
@@ -77,7 +77,20 @@ run('pays pure wild ways once as the top symbol only', () => {
   assert.strictEqual(result.wins[0].symbolId, 'seven');
   assert.strictEqual(result.wins[0].reels, 3);
   assert.strictEqual(result.wins[0].ways, 1);
-  assert.strictEqual(result.amount, core.PAYTABLE.seven[3]);
+  assert.strictEqual(result.amount, core.PAYTABLE.seven[3] * core.PAY_SCALE);
+});
+
+run('requires four reels for low card ways', () => {
+  const grid = [
+    [sym('ace')],
+    [sym('ace')],
+    [sym('ace')],
+    [sym('king')],
+    [sym('queen')],
+    [sym('jack')],
+  ];
+  const result = core.evaluateWays(grid, 1);
+  assert.strictEqual(result.wins.some(win => win.symbolId === 'ace'), false);
 });
 
 run('identifies scatter trigger spin awards', () => {

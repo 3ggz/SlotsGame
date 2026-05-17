@@ -375,6 +375,21 @@ button, input { font: inherit; }
 }
 .multiplier-readout.cash .value { color: #d8ffe8; text-shadow: 0 0 18px rgba(92,255,161,0.95), 0 0 42px rgba(92,255,161,0.40); }
 .multiplier-readout.crash .value { color: #ffd7dd; text-shadow: 0 0 18px rgba(255,77,109,0.95), 0 0 42px rgba(255,46,147,0.38); }
+.multiplier-readout.timer {
+  top: 53%;
+  min-width: min(360px, 72vw);
+  padding: 14px 22px 16px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255,240,168,0.20), transparent 54%),
+    linear-gradient(180deg, rgba(16,5,38,0.76), rgba(5,1,18,0.58));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,210,74,0.22),
+    0 20px 48px rgba(0,0,0,0.36),
+    0 0 28px rgba(255,210,74,0.14);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
 .multiplier-readout.timer .value {
   color: var(--gold-0);
   font-size: clamp(64px, 11vw, 126px);
@@ -441,23 +456,36 @@ button, input { font: inherit; }
 
 .countdown {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  bottom: 12%;
   z-index: 9;
   display: grid;
   place-items: center;
+  width: min(320px, 74vw);
+  min-height: clamp(92px, 16vh, 142px);
+  padding: 8px 20px 14px;
+  border-radius: 30px;
   pointer-events: none;
   opacity: 0;
-  transform: scale(0.96);
+  transform: translate(-50%, 18px) scale(0.96);
   transition: opacity 0.12s, transform 0.12s;
   font-family: 'Bungee Shade', 'Bungee', cursive;
   font-size: clamp(50px, 10vw, 110px);
   letter-spacing: 0.04em;
   color: var(--gold-1);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255,240,168,0.22), transparent 58%),
+    linear-gradient(180deg, rgba(10,4,24,0.76), rgba(5,1,18,0.52));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,210,74,0.22),
+    0 22px 52px rgba(0,0,0,0.40);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   text-shadow: 0 0 26px rgba(255,210,74,0.70), 0 5px 0 rgba(0,0,0,0.48);
 }
 .countdown.show {
   opacity: 1;
-  transform: scale(1);
+  transform: translate(-50%, 0) scale(1);
 }
 
 .side-rail {
@@ -1043,6 +1071,7 @@ const toastEl = document.getElementById('toast');
 
 const BASE_GRAPH_MAX = 18;
 const MAX_GRAPH_MAX = 500;
+const CRASH_HOLD_MS = 4200;
 
 const State = {
   mode: 'idle',
@@ -1061,6 +1090,7 @@ const State = {
   crashY: 0,
   recent: [],
   countdownTimer: 0,
+  crashHold: null,
   graphMax: BASE_GRAPH_MAX,
 };
 
@@ -1550,6 +1580,30 @@ function spawnTrail(x, y, mult) {
 function spawnExplosion(x, y) {
   if (explosionDone) return;
   explosionDone = true;
+  addParticle({
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    life: 0,
+    ttl: 680,
+    size: 24,
+    color: 'gold',
+    boom: true,
+    ring: true,
+  });
+  addParticle({
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    life: 0,
+    ttl: 920,
+    size: 36,
+    color: 'pink',
+    boom: true,
+    ring: true,
+  });
   for (let i = 0; i < 90; i++) {
     const a = Math.random() * Math.PI * 2;
     const speed = rand(80, 420);
@@ -1680,8 +1734,10 @@ function updateParticles(dt) {
     }
     p.x += p.vx * dt;
     p.y += p.vy * dt;
-    p.vx *= (1 - dt * 0.7);
-    p.vy += (p.boom ? 170 : 35) * dt;
+    if (!p.ring) {
+      p.vx *= (1 - dt * 0.7);
+      p.vy += (p.boom ? 170 : 35) * dt;
+    }
   }
   if (particles.length > 520) particles.splice(0, particles.length - 520);
 }
@@ -1691,6 +1747,18 @@ function drawParticles() {
   ctx.globalCompositeOperation = 'screen';
   for (const p of particles) {
     const a = Math.max(0, 1 - p.life / p.ttl);
+    if (p.ring) {
+      const t = p.life / p.ttl;
+      const r = p.size + Math.pow(t, 0.72) * Math.min(W, H) * 0.24;
+      ctx.strokeStyle = particleColor(p, a * 0.74);
+      ctx.shadowColor = particleColor(p, a * 0.85);
+      ctx.shadowBlur = 26;
+      ctx.lineWidth = Math.max(2, (1 - t) * 9);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      continue;
+    }
     ctx.fillStyle = particleColor(p, a);
     ctx.shadowColor = particleColor(p, a * 0.85);
     ctx.shadowBlur = p.boom ? 18 : 10;
@@ -2087,14 +2155,50 @@ function resolveLocalLoss(round) {
   statLastEl.textContent = multText(crashMult);
 }
 
+function crashHoldActive(now = performance.now()) {
+  return !!(State.crashHold && now < State.crashHold.until);
+}
+
+function clearCrashHold(now = performance.now()) {
+  if (State.crashHold && now >= State.crashHold.until) {
+    State.crashHold = null;
+    if (State.mode === 'idle') {
+      State.multiplier = 1;
+      State.peak = 1;
+      State.graphMax = BASE_GRAPH_MAX;
+    }
+    rocketEl.classList.remove('crashed');
+    return true;
+  }
+  return false;
+}
+
 function announceCrash(round) {
   if (!round) return;
   const crashMult = Math.max(1, round.crashAt || State.crashAt);
+  const graphMax = Math.max(State.graphMax || BASE_GRAPH_MAX, graphTarget(round));
+  const p = pathProgress(crashMult, graphMax);
+  const pt = curvePoint(p);
   statLastEl.textContent = multText(crashMult);
+  State.crashHold = {
+    roundId: round.roundId,
+    multiplier: crashMult,
+    x: pt.x,
+    y: pt.y,
+    p,
+    graphMax,
+    until: performance.now() + CRASH_HOLD_MS,
+  };
+  State.rocketX = pt.x;
+  State.rocketY = pt.y;
+  State.rocketP = p;
+  State.graphMax = graphMax;
+  rocketEl.classList.remove('running', 'cash');
+  rocketEl.classList.add('crashed');
   playSfx('bust', 0.72);
   playSfx('loseLow', 0.30);
   crashSynth();
-  spawnExplosion(State.rocketX || W * 0.72, State.rocketY || H * 0.28);
+  spawnExplosion(pt.x || W * 0.72, pt.y || H * 0.28);
   showToast('BURNOUT AT ' + multText(crashMult), 'crash');
 }
 
@@ -2105,10 +2209,11 @@ function syncGlobalRound(round) {
       resolveLocalLoss(previous);
       announceCrash(previous);
     }
+    const keepImpact = crashHoldActive();
     State.activeRound = round;
     State.mode = 'idle';
-    State.multiplier = 1;
-    State.peak = 1;
+    State.multiplier = keepImpact ? State.crashHold.multiplier : 1;
+    State.peak = keepImpact ? State.crashHold.multiplier : 1;
     State.crashAt = round.crashAt;
     State.roundBet = 0;
     State.localRoundId = null;
@@ -2118,11 +2223,13 @@ function syncGlobalRound(round) {
     State.localCashout = null;
     State.hasPlayedLaunchSfx = false;
     State.lastCrashRoundId = null;
-    State.graphMax = BASE_GRAPH_MAX;
-    explosionDone = false;
-    particles = [];
-    rocketEl.classList.remove('running', 'cash', 'crashed');
-    readoutEl.className = 'multiplier-readout';
+    State.graphMax = keepImpact ? State.crashHold.graphMax : BASE_GRAPH_MAX;
+    explosionDone = keepImpact;
+    if (!keepImpact) particles = [];
+    rocketEl.classList.remove('running', 'cash');
+    if (keepImpact) rocketEl.classList.add('crashed');
+    else rocketEl.classList.remove('crashed');
+    readoutEl.className = keepImpact ? 'multiplier-readout crash' : 'multiplier-readout';
     bindCashoutFeed(round.roundId);
   } else {
     State.activeRound = round;
@@ -2133,13 +2240,18 @@ function syncGlobalRound(round) {
   if (round.phase === 'betting') {
     State.mode = 'idle';
     stopThrust();
-    rocketEl.classList.remove('running', 'cash', 'crashed');
-    readoutEl.className = 'multiplier-readout';
+    clearCrashHold();
+    rocketEl.classList.remove('running', 'cash');
+    if (crashHoldActive()) rocketEl.classList.add('crashed');
+    else rocketEl.classList.remove('crashed');
+    readoutEl.className = crashHoldActive() ? 'multiplier-readout crash' : 'multiplier-readout';
     statusDot.style.background = 'var(--neon-cyan)';
   } else if (round.phase === 'running') {
     State.mode = 'running';
+    State.crashHold = null;
     if (!State.hasPlayedLaunchSfx) {
       State.hasPlayedLaunchSfx = true;
+      explosionDone = false;
       rocketEl.classList.remove('crashed');
       rocketEl.classList.add('running');
       startThrust();
@@ -2409,6 +2521,16 @@ function drawCashoutDots(now, visibleP) {
 }
 
 function positionRocket(now) {
+  if (crashHoldActive(now)) {
+    const hold = State.crashHold;
+    State.rocketX = hold.x;
+    State.rocketY = hold.y;
+    State.rocketP = hold.p;
+    rocketEl.style.left = hold.x + 'px';
+    rocketEl.style.top = hold.y + 'px';
+    rocketEl.style.transform = `translate(-50%, -50%) rotate(${pathAngle(hold.p)}deg)`;
+    return;
+  }
   const round = State.activeRound || getGlobalRound(casinoNow());
   let p;
   if (round.phase === 'betting') p = 0.035 + Math.sin(now / 700) * 0.004;
@@ -2431,9 +2553,11 @@ function frame(now) {
 
   const round = getGlobalRound(casinoNow());
   syncGlobalRound(round);
-  State.multiplier = round.multiplier;
+  clearCrashHold(now);
+  const impactActive = round.phase === 'betting' && crashHoldActive(now);
+  State.multiplier = impactActive ? State.crashHold.multiplier : round.multiplier;
   State.peak = Math.max(State.peak, State.multiplier);
-  updateGraphScale(graphTarget(round), dt);
+  updateGraphScale(impactActive ? State.crashHold.graphMax : graphTarget(round), dt);
 
   if (round.phase === 'running') {
     updateThrust(State.multiplier);
@@ -2447,9 +2571,15 @@ function frame(now) {
 
   if (round.phase === 'betting') {
     const seconds = Math.ceil(round.timeToLaunch / 1000);
-    readoutEl.className = 'multiplier-readout timer';
-    multiplierEl.textContent = seconds + 's';
-    captionEl.textContent = 'PLACE BETS';
+    if (impactActive) {
+      readoutEl.className = 'multiplier-readout crash';
+      multiplierEl.textContent = multText(State.crashHold.multiplier);
+      captionEl.textContent = 'BURNOUT';
+    } else {
+      readoutEl.className = 'multiplier-readout timer';
+      multiplierEl.textContent = seconds + 's';
+      captionEl.textContent = 'PLACE BETS';
+    }
     statusEl.textContent = 'BETTING ' + seconds + 'S';
     countdownEl.classList.remove('show');
   } else if (round.phase === 'running') {
@@ -2470,7 +2600,7 @@ function frame(now) {
 
   syncControls();
   drawBackground(now);
-  const drawP = round.phase === 'betting' ? 0.035 : pathProgress(round.multiplier, State.graphMax || BASE_GRAPH_MAX);
+  const drawP = impactActive ? State.crashHold.p : (round.phase === 'betting' ? 0.035 : pathProgress(round.multiplier, State.graphMax || BASE_GRAPH_MAX));
   drawCurve(drawP, now);
   positionRocket(now);
   if (round.phase === 'running') spawnTrail(State.rocketX, State.rocketY, State.multiplier);
