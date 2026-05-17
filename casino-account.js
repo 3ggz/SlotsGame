@@ -704,7 +704,7 @@ if (!CONFIGURED) {
           chip.title = 'Account';
           chip.type = 'button';
           chip.innerHTML = `<span class="cu-chip-avatar" id="cu-chip-av">◆</span><span class="cu-chip-label" id="cu-chip-lbl">SIGN IN</span>`;
-          chip.addEventListener('click', openModal);
+          chip.addEventListener('click', () => openModal());
           document.body.appendChild(chip);
         }
 
@@ -748,13 +748,15 @@ if (!CONFIGURED) {
       }
 
       function openModal(view) {
-        if (view) uiState.view = view;
-        else {
-          if (currentUser && !currentUser.isAnonymous) {
-            uiState.view = uiState.userDoc.username ? 'profile' : 'profile-required';
-          } else {
-            uiState.view = 'signin';
-          }
+        // Defensive: if called as an event handler, view will be the
+        // MouseEvent. Ignore anything that isn't one of our view keys.
+        const valid = view === 'signin' || view === 'signup' || view === 'profile' || view === 'profile-required';
+        if (valid) {
+          uiState.view = view;
+        } else if (currentUser && !currentUser.isAnonymous) {
+          uiState.view = uiState.userDoc.username ? 'profile' : 'profile-required';
+        } else {
+          uiState.view = 'signin';
         }
         renderModal();
         document.getElementById('cu-veil').classList.add('show');
