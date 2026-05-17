@@ -621,6 +621,9 @@ button, input { font: inherit; }
   display: grid;
   gap: 9px;
 }
+.bet-chat-card {
+  margin-top: -2px;
+}
 .chat-list {
   display: grid;
   align-content: end;
@@ -1068,7 +1071,6 @@ button, input { font: inherit; }
   .roll-history-list { justify-content: center; }
   .rocket-table { grid-template-columns: 1fr; }
   .side-rail { grid-template-columns: repeat(2, 1fr); }
-  .chat-card { grid-column: 1 / -1; }
   .flight-card { height: clamp(360px, 52vh, 440px); min-height: 360px; }
   .control-deck { grid-template-columns: 1fr; }
 }
@@ -1108,7 +1110,6 @@ button, input { font: inherit; }
   .multiplier-readout .caption { font-size: 9px; letter-spacing: 0.22em; }
   .side-rail { grid-template-columns: 1fr 1fr; gap: 9px; }
   .rail-card { padding: 10px; border-radius: 15px; }
-  .chat-card { grid-column: 1 / -1; }
   .rail-title { font-size: 8px; letter-spacing: 0.20em; margin-bottom: 8px; }
   .meter-list { gap: 7px; }
   .meter-row { font-size: 10px; gap: 6px; }
@@ -1253,16 +1254,6 @@ button, input { font: inherit; }
           <span class="recent-pill">--</span>
         </div>
       </div>
-      <div class="rail-card chat-card">
-        <div class="rail-title">TABLE CHAT</div>
-        <div class="chat-list" id="rocket-chat-list">
-          <div class="chat-empty">QUIET TABLE</div>
-        </div>
-        <div class="chat-form">
-          <input class="chat-input" id="rocket-chat-input" type="text" maxlength="160" placeholder="Say something..." autocomplete="off" />
-          <button class="chat-send" id="rocket-chat-send" type="button">SEND</button>
-        </div>
-      </div>
     </aside>
   </section>
 
@@ -1300,6 +1291,17 @@ button, input { font: inherit; }
       </div>
       <div class="potential"><span id="potential-label">Stake ready</span><strong id="potential-win">$25</strong></div>
       <button class="launch-btn" id="launch-btn">LAUNCH</button>
+    </div>
+  </section>
+
+  <section class="rail-card chat-card bet-chat-card">
+    <div class="rail-title">TABLE CHAT</div>
+    <div class="chat-list" id="rocket-chat-list">
+      <div class="chat-empty">QUIET TABLE</div>
+    </div>
+    <div class="chat-form">
+      <input class="chat-input" id="rocket-chat-input" type="text" maxlength="160" placeholder="Say something..." autocomplete="off" />
+      <button class="chat-send" id="rocket-chat-send" type="button">SEND</button>
     </div>
   </section>
 </main>
