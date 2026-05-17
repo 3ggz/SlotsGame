@@ -412,11 +412,26 @@ if (!CONFIGURED) {
         }
         currentUser = u;
         if (u && !u.isAnonymous) {
-          setDoc(doc(db, 'users', u.uid), {
-            displayName: u.displayName || (u.email ? u.email.split('@')[0] : 'Player'),
+          // Read first so we can backfill a default username for accounts
+          // that don't have one yet (e.g. fresh Google sign-ins, legacy
+          // email accounts). Auto-filling prevents the profile modal from
+          // auto-popping on every page nav — players can still edit via
+          // the chip whenever they want.
+          const uref = doc(db, 'users', u.uid);
+          const fallback = (u.displayName || (u.email ? u.email.split('@')[0] : 'Player')).trim().slice(0, 24);
+          const baseFields = {
+            displayName: u.displayName || fallback || 'Player',
             photoURL: u.photoURL || null,
             lastSeen: serverTimestamp(),
-          }, { merge: true }).catch(() => {});
+          };
+          getDoc(uref).then(snap => {
+            const existing = snap.exists() ? snap.data() : {};
+            const patch = { ...baseFields };
+            if (!existing.username && fallback) patch.username = fallback;
+            setDoc(uref, patch, { merge: true }).catch(() => {});
+          }).catch(() => {
+            setDoc(uref, baseFields, { merge: true }).catch(() => {});
+          });
         }
         authListeners.forEach(fn => { try { fn(u); } catch (e) {} });
       });
@@ -728,15 +743,6 @@ if (!CONFIGURED) {
           if (u && !u.isAnonymous) {
             uiState.userDocUnsub = subscribeUserDoc(u.uid, data => {
               uiState.userDoc = data || {};
-              // First-time prompt: signed-in real user with no username yet.
-              if (currentUser && !currentUser.isAnonymous && !uiState.userDoc.username) {
-                if (!document.getElementById('cu-veil').classList.contains('show')) {
-                  openModal('profile-required');
-                } else if (uiState.view !== 'profile-required') {
-                  uiState.view = 'profile-required';
-                  renderModal();
-                }
-              }
               renderChip();
               renderModal();
             });
@@ -750,11 +756,11 @@ if (!CONFIGURED) {
       function openModal(view) {
         // Defensive: if called as an event handler, view will be the
         // MouseEvent. Ignore anything that isn't one of our view keys.
-        const valid = view === 'signin' || view === 'signup' || view === 'profile' || view === 'profile-required';
+        const valid = view === 'signin' || view === 'signup' || view === 'profile';
         if (valid) {
           uiState.view = view;
         } else if (currentUser && !currentUser.isAnonymous) {
-          uiState.view = uiState.userDoc.username ? 'profile' : 'profile-required';
+          uiState.view = 'profile';
         } else {
           uiState.view = 'signin';
         }
@@ -762,7 +768,6 @@ if (!CONFIGURED) {
         document.getElementById('cu-veil').classList.add('show');
       }
       function closeModal() {
-        if (uiState.view === 'profile-required') return; // gated
         document.getElementById('cu-veil').classList.remove('show');
       }
 
@@ -811,7 +816,7 @@ if (!CONFIGURED) {
           heroAv.style.background = av.grad;
         }
         const heroName = veil.querySelector('.cu-hero-name');
-        if (heroName) heroName.textContent = (uiState.userDoc.username || (uiState.view === 'profile-required' ? 'CHOOSE A USERNAME' : username)).toUpperCase();
+        if (heroName) heroName.textContent = (uiState.userDoc.username || username).toUpperCase();
         const heroEmail = veil.querySelector('.cu-hero-email');
         if (heroEmail) heroEmail.textContent = currentUser?.email || '';
 
@@ -847,13 +852,10 @@ if (!CONFIGURED) {
         veil.querySelector('#cu-ps-won')    .textContent = fmtMoney(d.totalWon     || 0);
         veil.querySelector('#cu-ps-jp')     .textContent = fmtCount(d.jackpotsHit  || 0);
 
-        // Hide sign-out and toggle profile-required vs profile chrome.
-        veil.querySelector('.cu-profile-req-note').style.display =
-          uiState.view === 'profile-required' ? 'block' : 'none';
-        veil.querySelector('#cu-signout').style.display =
-          uiState.view === 'profile-required' ? 'none' : 'block';
-        veil.querySelector('#cu-profile-cancel').style.display =
-          uiState.view === 'profile-required' ? 'none' : 'inline-block';
+        // Profile is always dismissable now; the required-prompt note
+        // stays hidden because we auto-fill a default username on sign-in.
+        const reqNote = veil.querySelector('.cu-profile-req-note');
+        if (reqNote) reqNote.style.display = 'none';
       }
 
       function fmtCount(n) { return Math.floor(n).toLocaleString('en-US'); }
