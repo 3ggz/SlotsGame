@@ -214,7 +214,7 @@ button { cursor: pointer; }
 
 .roulette-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   align-items: start;
 }
@@ -397,9 +397,16 @@ button { cursor: pointer; }
   position: relative;
   z-index: 4;
   text-align: center;
-  min-height: 90px;
+  min-height: 78px;
   display: grid;
   place-items: center;
+}
+.wheel-bottom-row {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  margin-top: -4px;
 }
 .result-number {
   font-family: 'Bungee Shade', 'Bungee', cursive;
@@ -425,6 +432,46 @@ button { cursor: pointer; }
 }
 .rail-card {
   padding: 14px;
+}
+.hot-cold-bar {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+}
+.status-hot-grid {
+  display: grid;
+  grid-template-columns: minmax(184px, 238px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+.table-status-panel,
+.hot-cold-panel {
+  min-width: 0;
+}
+.table-status-panel {
+  padding: 9px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.22);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 8px 20px rgba(0,0,0,0.16);
+}
+.table-status-panel .rail-title {
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  margin-bottom: 6px;
+}
+.table-status-panel .meter-list { gap: 5px; }
+.table-status-panel .meter-row {
+  padding: 6px 8px;
+  border-radius: 9px;
+}
+.table-status-panel .meter-row span {
+  font-size: 7px;
+  letter-spacing: 0.11em;
+}
+.table-status-panel .meter-row strong { font-size: 13px; }
+.hot-cold-bar .rail-title { margin-bottom: 8px; }
+.hot-cold-bar .hot-cold {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
 }
 .rail-title, .board-title {
   font-family: 'Bungee', cursive;
@@ -474,6 +521,22 @@ button { cursor: pointer; }
   overflow: auto;
   padding-right: 2px;
 }
+.wheel-live-wins {
+  position: absolute;
+  z-index: 7;
+  right: 18px;
+  top: 78px;
+  width: min(238px, 30%);
+  min-height: 220px;
+  pointer-events: none;
+  overflow: hidden;
+}
+.live-popups {
+  max-height: none;
+  overflow: hidden;
+  padding: 0;
+  align-items: flex-end;
+}
 .recent-pill, .chat-msg, .chat-empty {
   border-radius: 11px;
   padding: 7px 9px;
@@ -483,6 +546,32 @@ button { cursor: pointer; }
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
 }
 .recent-pill.win { color: #d8ffe8; box-shadow: inset 0 0 0 1px rgba(92,255,161,0.28); }
+.live-popups .recent-pill {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+  max-width: 100%;
+  text-align: right;
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #d8ffe8;
+  text-shadow: 0 0 10px rgba(92,255,161,0.42), 0 2px 8px rgba(0,0,0,0.72);
+  animation: liveWinDrift 5.2s ease-out both;
+}
+.live-popups .recent-pill strong {
+  color: var(--gold-0);
+}
+.live-popups .recent-pill:nth-child(2) { animation-delay: 0.18s; }
+.live-popups .recent-pill:nth-child(3) { animation-delay: 0.36s; }
+.live-popups .recent-pill:nth-child(4) { animation-delay: 0.54s; }
+@keyframes liveWinDrift {
+  0% { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  12% { opacity: 1; }
+  68% { opacity: 0.94; }
+  100% { opacity: 0; transform: translateY(58px) scale(0.98); }
+}
 .chat-empty { color: rgba(255,255,255,0.45); text-align: center; }
 .chat-name {
   font-family: 'Bungee', cursive;
@@ -732,6 +821,9 @@ button { cursor: pointer; }
   align-items: center;
   padding: 12px;
 }
+.table-chat {
+  margin-top: 12px;
+}
 .chip-row, .control-row {
   display: flex;
   flex-wrap: wrap;
@@ -881,6 +973,20 @@ button { cursor: pointer; }
   .roulette-layout { gap: 10px; }
   .wheel-card { min-height: auto; padding: 12px; }
   .wheel-stage { width: min(360px, 92vw); }
+  .hot-cold-bar { padding: 10px; }
+  .status-hot-grid { grid-template-columns: minmax(154px, 190px) minmax(0, 1fr); gap: 8px; }
+  .table-status-panel .meter-row { padding: 5px 6px; }
+  .table-status-panel .meter-row span { font-size: 6px; }
+  .table-status-panel .meter-row strong { font-size: 11px; }
+  .hot-cold-bar .hot-cold { grid-template-columns: 1fr; gap: 7px; }
+  .wheel-live-wins {
+    right: 12px;
+    top: 70px;
+    width: min(180px, 40%);
+    min-height: 150px;
+  }
+  .live-popups .recent-pill { font-size: 8px; }
+  .result-readout { min-height: 68px; }
   .pocket { width: 24px; height: 15px; margin-left: -12px; margin-top: -7px; font-size: 7px; }
   .ball { width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; }
   .side-rail { grid-template-columns: 1fr; }
@@ -891,6 +997,16 @@ button { cursor: pointer; }
   .outside-grid { grid-template-columns: repeat(2, 1fr); }
   .chip-rail { grid-template-columns: 1fr; bottom: 6px; }
   .total-display { text-align: left; }
+}
+@media (max-width: 480px) {
+  .status-hot-grid { grid-template-columns: 1fr; }
+  .table-status-panel .meter-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .table-status-panel .meter-row {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+    justify-items: start;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .roulette-wheel, .ball, .bet-zone { transition: none; animation: none !important; }
@@ -922,38 +1038,17 @@ button { cursor: pointer; }
     </div>
   </header>
 
-  <section class="roulette-layout">
-    <div>
-      <section class="wheel-card">
-        <div class="phase-hud">
-          <div class="status-pill"><span class="status-dot" id="status-dot"></span><span id="status-text">STANDBY</span></div>
-          <div class="status-pill" id="roulette-player-count">0 PLAYING</div>
-        </div>
-        <div class="wheel-stage">
-          <div class="wheel-glow"></div>
-          <div class="roulette-wheel" id="roulette-wheel"></div>
-          <div class="ball" id="roulette-ball"></div>
-        </div>
-        <div class="result-readout">
-          <div>
-            <div class="result-number" id="result-number">--</div>
-            <div class="result-caption" id="result-caption">PLACE BETS</div>
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <aside class="side-rail">
-      <section class="rail-card">
+  <section class="rail-card hot-cold-bar">
+    <div class="status-hot-grid">
+      <div class="table-status-panel">
         <div class="rail-title">TABLE STATUS</div>
         <div class="meter-list">
           <div class="meter-row hot"><span>Next phase</span><strong id="phase-timer">--</strong></div>
           <div class="meter-row"><span>Total bet</span><strong id="stat-bet">$0</strong></div>
           <div class="meter-row"><span>Last hit</span><strong id="stat-last">--</strong></div>
         </div>
-      </section>
-
-      <section class="rail-card">
+      </div>
+      <div class="hot-cold-panel">
         <div class="rail-title">HOT / COLD</div>
         <div class="hot-cold">
           <div>
@@ -965,22 +1060,33 @@ button { cursor: pointer; }
             <div class="mini-list" id="cold-list"><span class="roll-pill">--</span></div>
           </div>
         </div>
-      </section>
+      </div>
+    </div>
+  </section>
 
-      <section class="rail-card">
-        <div class="rail-title">LIVE WINS</div>
-        <div class="recent-list" id="recent-list"><div class="recent-pill">WAITING FOR ACTION</div></div>
-      </section>
-
-      <section class="rail-card chat-card">
-        <div class="rail-title">TABLE CHAT</div>
-        <div class="chat-list" id="roulette-chat-list"><div class="chat-empty">QUIET TABLE</div></div>
-        <div class="chat-form">
-          <input class="chat-input" id="roulette-chat-input" type="text" maxlength="160" placeholder="Say something..." autocomplete="off" />
-          <button class="chat-send" id="roulette-chat-send" type="button">SEND</button>
+  <section class="roulette-layout">
+    <section class="wheel-card">
+      <div class="phase-hud">
+        <div class="status-pill"><span class="status-dot" id="status-dot"></span><span id="status-text">STANDBY</span></div>
+        <div class="status-pill" id="roulette-player-count">0 PLAYING</div>
+      </div>
+      <div class="wheel-live-wins" aria-label="Live Roulette wins">
+        <div class="recent-list live-popups" id="recent-list"></div>
+      </div>
+      <div class="wheel-stage">
+        <div class="wheel-glow"></div>
+        <div class="roulette-wheel" id="roulette-wheel"></div>
+        <div class="ball" id="roulette-ball"></div>
+      </div>
+      <div class="wheel-bottom-row">
+        <div class="result-readout">
+          <div>
+            <div class="result-number" id="result-number">--</div>
+            <div class="result-caption" id="result-caption">PLACE BETS</div>
+          </div>
         </div>
-      </section>
-    </aside>
+      </div>
+    </section>
   </section>
 
   <section class="bet-board">
@@ -1067,6 +1173,15 @@ button { cursor: pointer; }
       <button class="control-btn secondary" id="btn-rebet" type="button">REBET</button>
       <button class="control-btn" id="btn-double" type="button">DOUBLE</button>
       <div class="total-display">TOTAL BET<strong id="total-bet">$0</strong></div>
+    </div>
+  </section>
+
+  <section class="rail-card chat-card table-chat">
+    <div class="rail-title">TABLE CHAT</div>
+    <div class="chat-list" id="roulette-chat-list"><div class="chat-empty">QUIET TABLE</div></div>
+    <div class="chat-form">
+      <input class="chat-input" id="roulette-chat-input" type="text" maxlength="160" placeholder="Say something..." autocomplete="off" />
+      <button class="chat-send" id="roulette-chat-send" type="button">SEND</button>
     </div>
   </section>
 </main>
@@ -1704,7 +1819,7 @@ function renderRecentWins() {
   const local = [];
   const wins = State.liveWins.slice(-8).reverse();
   if (!wins.length && !local.length) {
-    recentListEl.innerHTML = '<div class="recent-pill">WAITING FOR ACTION</div>';
+    recentListEl.innerHTML = '';
     return;
   }
   recentListEl.innerHTML = wins.map(w => {

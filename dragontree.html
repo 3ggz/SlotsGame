@@ -1,0 +1,2029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Dragon's Fortune Tree — Diamond Casino</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0a0418">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Diamond Casino">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Outfit:wght@400;600;800&family=Geist+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="casino-audio.js"></script>
+<script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
+<style>
+:root {
+  --bg-0: #0a0418;
+  --bg-1: #150828;
+  --gold-0: #fff0a8;
+  --gold-1: #ffd24a;
+  --gold-2: #b8860b;
+  --gold-deep: #5c3d00;
+  --neon-cyan: #22d3ee;
+  --neon-pink: #ff2e93;
+  --neon-violet: #a855f7;
+  --neon-green: #5cffa1;
+  --crimson: #7a0a18;
+  --jade-1: #4fd1a3;
+  --jade-2: #1a8a66;
+  --jade-3: #094a36;
+  --ember: #ff6b1a;
+  --shadow-deep: 0 30px 60px -10px rgba(0,0,0,0.7), 0 18px 36px -18px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Outfit', sans-serif;
+  color: #fff;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* Temple is the page-wide backdrop — fixed so it doesn't scroll. */
+body {
+  background:
+    linear-gradient(180deg, rgba(5,2,8,0.55), rgba(5,2,8,0.78) 60%, rgba(2,1,5,0.92)),
+    radial-gradient(ellipse at 20% 0%, rgba(168,85,247,0.18) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(255,46,147,0.14) 0%, transparent 55%),
+    url('images/dragontree/temple-bg.png') center top / cover fixed,
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%, var(--bg-0));
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 1;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>");
+}
+
+.stage {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: grid;
+  place-items: start center;
+  padding: 20px 14px 110px;
+}
+
+/* ============================================================
+   CABINET
+   ============================================================ */
+.cabinet {
+  position: relative;
+  width: min(1080px, 100%);
+  border-radius: 28px;
+  padding: 18px;
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(255,240,168,0.10), transparent 42%),
+    radial-gradient(ellipse at 86% 18%, rgba(168,85,247,0.10), transparent 48%),
+    linear-gradient(180deg, rgba(28,10,48,0.72) 0%, rgba(20,6,38,0.78) 54%, rgba(10,3,22,0.82) 100%);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  box-shadow:
+    var(--shadow-deep),
+    0 0 60px rgba(255,210,74,0.08),
+    inset 0 0 0 1px rgba(255,210,74,0.28);
+  overflow: hidden;
+}
+.cabinet::after {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border-radius: 20px;
+  pointer-events: none;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--gold-0), var(--gold-1) 30%, var(--gold-deep) 50%, var(--gold-1) 70%, var(--gold-0));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0.4;
+}
+
+/* ============================================================
+   TOPPER — title + paytable button
+   ============================================================ */
+.topper {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: 8px 6px 16px;
+  gap: 10px;
+}
+.title-block { text-align: center; }
+.title-pre {
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.45em;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 10px rgba(34,211,238,0.55);
+  margin-bottom: 4px;
+}
+.title-main {
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(22px, 3.6vw, 32px);
+  line-height: 1;
+  background: linear-gradient(180deg, #fff7d1 0%, var(--gold-1) 50%, var(--gold-2) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 rgba(0,0,0,0.6)) drop-shadow(0 0 14px rgba(255,210,74,0.4));
+  letter-spacing: 0.04em;
+}
+.title-sub {
+  margin-top: 4px;
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
+  letter-spacing: 0.45em;
+  color: rgba(255,255,255,0.45);
+}
+.icon-btn {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  border: 0; cursor: pointer;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.45));
+  color: var(--gold-1);
+  font-family: 'Bungee', cursive;
+  font-size: 18px;
+  display: grid; place-items: center;
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.32);
+  transition: filter 0.15s, transform 0.1s;
+}
+.icon-btn:hover { filter: brightness(1.2); }
+.icon-btn:active { transform: translateY(2px); }
+.icon-btn.back { color: var(--neon-cyan); box-shadow: inset 0 0 0 1px rgba(34,211,238,0.4); text-decoration: none; }
+.icon-btn.back::before { content: '←'; font-size: 22px; line-height: 1; }
+
+/* ============================================================
+   HUD — balance / bet / total / bonus hits
+   ============================================================ */
+.hud {
+  display: grid;
+  grid-template-columns: 1.4fr 1.4fr 1fr 1fr;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(0,0,0,0.38);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.22), inset 0 0 24px rgba(168,85,247,0.08);
+  margin-bottom: 16px;
+}
+.hud-cell {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 8px 6px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.35));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.16);
+  min-width: 0;
+}
+.hud-cell .lbl {
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  color: rgba(255,255,255,0.55);
+  margin-bottom: 4px;
+}
+.hud-cell .val {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: clamp(15px, 2.6vw, 20px);
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255,255,255,0.18);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.hud-cell.balance .val { color: var(--gold-1); text-shadow: 0 0 10px rgba(255,210,74,0.45); }
+.hud-cell.balance .balance-row { display: flex; align-items: center; gap: 8px; }
+.hud-add {
+  width: 22px; height: 22px;
+  border: 0; cursor: pointer;
+  border-radius: 50%;
+  font-family: 'Bungee', cursive;
+  font-size: 14px; line-height: 1;
+  color: #0a3318;
+  background: linear-gradient(180deg, var(--neon-green), #14b85a);
+  box-shadow: 0 3px 0 #0a4a23, inset 0 1px 0 rgba(255,255,255,0.4);
+  display: grid; place-items: center;
+  padding: 0;
+}
+.hud-add:hover { filter: brightness(1.1); }
+.hud-add:active { transform: translateY(2px); box-shadow: 0 1px 0 #0a4a23, inset 0 1px 0 rgba(255,255,255,0.4); }
+.hud-cell.total .val { color: var(--neon-green); text-shadow: 0 0 10px rgba(92,255,161,0.4); }
+
+.hud-cell.bet {
+  position: relative;
+  padding: 6px 6px 6px;
+}
+.bet-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.bet-btn {
+  width: 26px; height: 26px;
+  border-radius: 8px;
+  border: 0; cursor: pointer;
+  font-family: 'Bungee', cursive;
+  font-size: 16px;
+  color: #0a0418;
+  background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 55%, var(--gold-2));
+  box-shadow: 0 3px 0 var(--gold-deep), inset 0 1px 0 rgba(255,255,255,0.45);
+  display: grid; place-items: center;
+  line-height: 1; padding: 0;
+}
+.bet-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--gold-deep), inset 0 1px 0 rgba(255,255,255,0.45); }
+.bet-btn:disabled { filter: grayscale(0.6) brightness(0.6); cursor: not-allowed; }
+
+/* ============================================================
+   SCENE — temple bg layer + tree layer + canopy overlays
+   ============================================================ */
+.scene-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 9 / 14;
+  max-height: min(780px, 84vh);
+  margin: 0 auto;
+  /* Fully transparent — no border, no panel, just a positioning container
+     so the tree sits directly against the temple backdrop. */
+  background: transparent;
+  /* Hard-clip so falling leaves don't bleed onto the strike button below. */
+  overflow: hidden;
+}
+@media (min-width: 760px) {
+  .scene-wrap {
+    /* Keep the same 9:14 aspect as the tree PNG so lantern % positions
+       land on the same branches regardless of viewport width. */
+    aspect-ratio: 9 / 14;
+    max-height: 780px;
+  }
+}
+
+/* ---- subtle dim wash that brightens during the bonus ---- */
+.scene-bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(255,138,58,0.16), transparent 55%),
+    radial-gradient(ellipse at 50% 10%, rgba(168,85,247,0.08), transparent 60%);
+  pointer-events: none;
+  transition: background 0.4s;
+}
+.scene-bg.bright {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(255,210,74,0.4), transparent 55%),
+    radial-gradient(ellipse at 50% 10%, rgba(255,138,58,0.22), transparent 60%);
+}
+
+/* ---- tree: foreground, chroma-keyed sprite ---- */
+.tree-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-size: contain;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 14px 28px rgba(0,0,0,0.75)) drop-shadow(0 0 24px rgba(255,138,58,0.18));
+  transform-origin: 50% 95%;
+  will-change: transform, filter;
+}
+.tree-layer.shake { animation: tree-shake 0.6s cubic-bezier(.36,.07,.19,.97); }
+@keyframes tree-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  15% { transform: translate(-5px, 1px) rotate(-0.7deg); }
+  30% { transform: translate(6px, -2px) rotate(0.7deg); }
+  45% { transform: translate(-7px, 2px) rotate(-0.9deg); }
+  60% { transform: translate(5px, -1px) rotate(0.6deg); }
+  80% { transform: translate(-3px, 1px) rotate(-0.4deg); }
+}
+
+/* ---- ground glow under the tree ---- */
+.ground-glow {
+  position: absolute;
+  left: 50%; bottom: 4%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 60px;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(255,138,58,0.45), rgba(255,107,26,0.18) 40%, transparent 70%);
+  filter: blur(8px);
+  animation: ground-pulse 3s ease-in-out infinite;
+}
+@keyframes ground-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* embers floating up the scene */
+.ember-layer {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 3;
+}
+.ember {
+  position: absolute;
+  bottom: -10px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff5c2, var(--ember));
+  box-shadow: 0 0 6px var(--ember), 0 0 12px rgba(255,107,26,0.6);
+  opacity: 0;
+  animation: ember-rise linear infinite;
+  will-change: transform, opacity;
+}
+@keyframes ember-rise {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0; }
+  10%  { opacity: 0.9; }
+  90%  { opacity: 0.7; }
+  100% { transform: translate(var(--drift, 0), -110%) scale(0.3); opacity: 0; }
+}
+
+/* ============================================================
+   HANGING LANTERNS — 9 prize lanterns on the canopy
+   ============================================================ */
+.canopy { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+
+.lantern {
+  position: absolute;
+  width: 56px;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column;
+  align-items: center;
+  animation: lantern-sway 4s ease-in-out infinite;
+  will-change: transform, filter;
+}
+.lantern .cord {
+  width: 1.5px; height: 22px;
+  background: linear-gradient(180deg, transparent, rgba(20,5,10,0.65));
+  margin-bottom: -2px;
+}
+.lantern .bulb {
+  width: 100%; aspect-ratio: 1 / 1;
+  position: relative;
+  filter:
+    drop-shadow(0 6px 10px rgba(0,0,0,0.7))
+    drop-shadow(0 0 10px var(--glow, rgba(255,107,26,0.5)));
+}
+.lantern .bulb::before {
+  /* lantern body — rendered via background-image set at runtime to the chroma-keyed lantern */
+  content: '';
+  position: absolute; inset: 0;
+  background-image: var(--lantern-src, none);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.lantern .bulb::after {
+  /* tier-colored glow halo behind the lantern */
+  content: '';
+  position: absolute; inset: -18%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--glow, rgba(255,107,26,0.7)) 0%, transparent 65%);
+  opacity: 0.85;
+  z-index: -1;
+  animation: lantern-glow 2.4s ease-in-out infinite;
+}
+.lantern .mult-tag {
+  margin-top: -4px;
+  padding: 2px 8px;
+  background: rgba(10,2,4,0.85);
+  border: 1px solid var(--tag-border, rgba(255,210,74,0.7));
+  color: var(--tag-color, var(--gold-1));
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  text-shadow: 0 0 6px var(--glow, rgba(255,210,74,0.6)), 0 1px 0 #000;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+  white-space: nowrap;
+}
+@keyframes lantern-sway {
+  0%, 100% { transform: translate(-50%, -50%) rotate(-3deg); }
+  50%      { transform: translate(-50%, calc(-50% - 4px)) rotate(3deg); }
+}
+@keyframes lantern-glow {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.08); }
+}
+
+/* tier colors */
+.lantern.common    { --glow: rgba(255,210,74,0.55); --tag-color: var(--gold-1);     --tag-border: rgba(255,210,74,0.7); }
+.lantern.uncommon  { --glow: rgba(79,209,163,0.6);  --tag-color: var(--jade-1);     --tag-border: rgba(79,209,163,0.7); }
+.lantern.rare      { --glow: rgba(255,138,58,0.7);  --tag-color: #ffb070;            --tag-border: rgba(255,138,58,0.7); }
+.lantern.epic      { --glow: rgba(168,85,247,0.7);  --tag-color: #d6b3ff;            --tag-border: rgba(168,85,247,0.7); }
+.lantern.legendary { --glow: rgba(34,211,238,0.75); --tag-color: var(--neon-cyan);   --tag-border: rgba(34,211,238,0.8); }
+.lantern.mythic    { --glow: rgba(255,46,147,0.85); --tag-color: var(--neon-pink);   --tag-border: rgba(255,46,147,0.85); }
+
+.lantern.legendary .bulb::after, .lantern.mythic .bulb::after {
+  animation: lantern-glow 1.4s ease-in-out infinite;
+}
+.lantern.mythic {
+  width: 64px;
+  z-index: 6;
+}
+
+/* SELECTED — when chosen for the bonus reveal */
+.lantern.selected {
+  z-index: 9;
+  animation: lantern-sway 4s ease-in-out infinite, lantern-flare 1.2s ease-out;
+}
+.lantern.selected .bulb {
+  filter:
+    drop-shadow(0 8px 14px rgba(0,0,0,0.75))
+    drop-shadow(0 0 22px var(--glow, rgba(255,138,58,0.9)))
+    brightness(1.4) saturate(1.25);
+}
+.lantern.selected .bulb::after {
+  opacity: 1;
+  inset: -40%;
+  animation: lantern-pop 1.2s ease-out;
+}
+.lantern.selected .mult-tag {
+  transform: scale(1.18);
+  transition: transform 0.25s cubic-bezier(.34,1.6,.64,1);
+  box-shadow: 0 0 16px var(--glow);
+}
+@keyframes lantern-flare {
+  0%   { filter: brightness(1); }
+  20%  { filter: brightness(1.8) saturate(1.3); }
+  100% { filter: brightness(1.4) saturate(1.25); }
+}
+@keyframes lantern-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  35%  { transform: scale(1.5); opacity: 1; }
+  100% { transform: scale(1.1); opacity: 1; }
+}
+
+/* RELEASED — lantern detaches and drifts down */
+.lantern.released { animation: none; }
+
+/* ============================================================
+   FALLING LEAVES — during bonus
+   ============================================================ */
+.falling-layer { position: absolute; inset: 0; pointer-events: none; z-index: 7; overflow: hidden; }
+.falling-leaf {
+  position: absolute;
+  width: 42px; height: 54px;
+  background-image: var(--leaf-src, none);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter:
+    drop-shadow(0 4px 6px rgba(0,0,0,0.55))
+    drop-shadow(0 0 10px rgba(255,138,58,0.45));
+  will-change: transform, opacity;
+}
+
+/* ============================================================
+   BONUS OVERLAY — calligraphic, no dragon silhouette
+   ============================================================ */
+.bonus-overlay {
+  position: absolute; inset: 0;
+  display: none;
+  align-items: center; justify-content: center;
+  z-index: 12;
+  pointer-events: none;
+}
+.bonus-overlay.show { display: flex; }
+
+.bonus-vignette {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0%, transparent 35%, rgba(40,5,8,0.78) 100%),
+    radial-gradient(circle at 50% 50%, rgba(255,215,106,0.45), rgba(255,80,30,0.18) 35%, transparent 65%);
+  animation: bv-anim 1.6s ease-out forwards;
+}
+@keyframes bv-anim {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* concentric expanding rings — three of them, staggered */
+.bonus-ring {
+  position: absolute; left: 50%; top: 50%;
+  border-radius: 50%;
+  border: 3px solid rgba(255,210,74,0.9);
+  box-shadow: 0 0 24px rgba(255,210,74,0.7);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: bring 1.6s cubic-bezier(.2,.6,.3,1) forwards;
+}
+.bonus-ring.r2 { animation-delay: 0.15s; border-color: rgba(255,138,58,0.9); box-shadow: 0 0 24px rgba(255,138,58,0.7); }
+.bonus-ring.r3 { animation-delay: 0.30s; border-color: rgba(79,209,163,0.85); box-shadow: 0 0 24px rgba(79,209,163,0.65); }
+@keyframes bring {
+  0%   { width: 20px; height: 20px; opacity: 1; border-width: 5px; }
+  60%  { opacity: 0.9; }
+  100% { width: 180%; height: 180%; opacity: 0; border-width: 1px; }
+}
+
+/* big calligraphic kanji that brushes in */
+.bonus-kanji {
+  position: absolute;
+  font-family: 'STSong', 'SimSun', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  font-weight: 900;
+  font-size: clamp(140px, 28vw, 240px);
+  line-height: 1;
+  color: rgba(255,46,46,0.92);
+  text-shadow:
+    0 0 18px rgba(255,46,46,0.85),
+    0 0 40px rgba(255,138,58,0.6),
+    0 6px 0 rgba(40,0,0,0.55);
+  transform: translate(-30%, -50%) scale(0);
+  top: 50%; left: 38%;
+  animation: kanji-in 1.6s cubic-bezier(.3,1.4,.5,1) forwards;
+  -webkit-text-stroke: 2px rgba(255,210,74,0.5);
+  opacity: 0;
+}
+.bonus-kanji.k2 {
+  left: 62%;
+  color: rgba(255,210,74,0.95);
+  text-shadow:
+    0 0 18px rgba(255,210,74,1),
+    0 0 40px rgba(255,138,58,0.7),
+    0 6px 0 rgba(40,15,0,0.55);
+  -webkit-text-stroke: 2px rgba(255,46,46,0.45);
+  transform: translate(-70%, -50%) scale(0);
+  animation-delay: 0.18s;
+}
+@keyframes kanji-in {
+  0%   { transform: translate(-30%, -50%) scale(0)   rotate(-12deg); opacity: 0; }
+  18%  { transform: translate(-30%, -50%) scale(1.18) rotate(0deg); opacity: 1; }
+  60%  { transform: translate(-30%, -50%) scale(1)   rotate(0deg); opacity: 1; }
+  100% { transform: translate(-30%, -50%) scale(1.06) rotate(0deg); opacity: 0; }
+}
+.bonus-kanji.k2 {
+  animation: kanji-in-2 1.6s cubic-bezier(.3,1.4,.5,1) forwards;
+  animation-delay: 0.18s;
+}
+@keyframes kanji-in-2 {
+  0%   { transform: translate(-70%, -50%) scale(0)   rotate(12deg); opacity: 0; }
+  18%  { transform: translate(-70%, -50%) scale(1.18) rotate(0deg); opacity: 1; }
+  60%  { transform: translate(-70%, -50%) scale(1)   rotate(0deg); opacity: 1; }
+  100% { transform: translate(-70%, -50%) scale(1.06) rotate(0deg); opacity: 0; }
+}
+
+/* gold particles streaming up from below */
+.bonus-spark {
+  position: absolute;
+  bottom: 0; left: 50%;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff5c2, var(--ember));
+  box-shadow: 0 0 8px var(--ember), 0 0 18px rgba(255,138,58,0.6);
+  opacity: 0;
+  animation: sparkrise 1.4s ease-out forwards;
+}
+@keyframes sparkrise {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  15%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx, 0), -90vh) scale(0.6); }
+}
+
+/* "GOLDEN SHOWER" banner — sits at top, fades in/out */
+.bonus-text {
+  position: absolute;
+  top: 10%;
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(20px, 3.4vw, 30px);
+  letter-spacing: 0.32em;
+  color: var(--gold-1);
+  text-shadow:
+    0 0 14px rgba(255,210,74,1),
+    0 0 30px rgba(255,138,58,0.85),
+    0 4px 0 #000;
+  text-align: center;
+  text-transform: uppercase;
+  animation: btext 1.6s ease-out forwards;
+  opacity: 0;
+}
+@keyframes btext {
+  0%   { transform: translateY(-30px); opacity: 0; }
+  25%  { transform: translateY(0); opacity: 1; }
+  80%  { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-10px); opacity: 0; }
+}
+
+/* ============================================================
+   REVEAL ROW — flip cards with prize images
+   ============================================================ */
+.reveal-row {
+  position: absolute;
+  left: 50%; bottom: 14%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  pointer-events: none;
+}
+.reveal-slot {
+  width: 78px; height: 100px;
+  perspective: 700px;
+}
+.reveal-card {
+  width: 100%; height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(.4,1.6,.6,1);
+  transform: rotateY(0);
+}
+.reveal-card.flipped { transform: rotateY(180deg); }
+.reveal-back, .reveal-front {
+  position: absolute; inset: 0;
+  border-radius: 14px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  border: 2px solid rgba(120,70,0,0.85);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.7), 0 0 16px rgba(255,210,74,0.4);
+  background-size: 110%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.reveal-back {
+  background:
+    radial-gradient(circle at 50% 40%, #b3162a 0%, var(--crimson) 60%, #2a0008 100%);
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: 44px;
+  color: var(--gold-1);
+  text-shadow: 0 0 14px rgba(255,210,74,0.85), 0 2px 0 #000;
+}
+.reveal-back::after { content: '龍'; }
+
+.reveal-front {
+  transform: rotateY(180deg);
+  background-color: #1a0306;
+}
+.reveal-front .face {
+  width: 100%; height: 56px;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  margin-top: 4px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+}
+.reveal-front .m {
+  font-family: 'Bungee', cursive;
+  font-size: 18px;
+  color: var(--gold-1);
+  text-shadow: 0 0 10px rgba(255,210,74,0.7), 0 2px 0 #000;
+  line-height: 1;
+  margin-top: 2px;
+}
+.reveal-front .c {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--neon-green);
+  text-shadow: 0 0 6px rgba(92,255,161,0.55);
+  margin-top: 2px;
+}
+
+.reveal-front.common    { background: radial-gradient(circle at 50% 40%, #4a3300, #1a1000); }
+.reveal-front.uncommon  { background: radial-gradient(circle at 50% 40%, #0b5536, #052218); border-color: var(--jade-2); box-shadow: 0 6px 18px rgba(0,0,0,0.7), 0 0 22px rgba(79,209,163,0.55); }
+.reveal-front.rare      { background: radial-gradient(circle at 50% 40%, #5a1502, #1a0500); border-color: #ff8a3a; box-shadow: 0 6px 18px rgba(0,0,0,0.7), 0 0 24px rgba(255,138,58,0.6); }
+.reveal-front.epic      { background: radial-gradient(circle at 50% 40%, #3a0e5c, #100322); border-color: var(--neon-violet); box-shadow: 0 6px 18px rgba(0,0,0,0.7), 0 0 26px rgba(168,85,247,0.65); }
+.reveal-front.legendary { background: radial-gradient(circle at 50% 40%, #002f3a, #001218); border-color: var(--neon-cyan); box-shadow: 0 6px 22px rgba(0,0,0,0.75), 0 0 32px rgba(34,211,238,0.75); }
+.reveal-front.mythic    { background: radial-gradient(circle at 50% 40%, #3a0030, #100008); border-color: var(--neon-pink); box-shadow: 0 6px 22px rgba(0,0,0,0.8), 0 0 36px rgba(255,46,147,0.85); }
+
+.reveal-front .m.uncommon  { color: var(--jade-1); text-shadow: 0 0 10px rgba(79,209,163,0.7), 0 2px 0 #000; }
+.reveal-front .m.rare      { color: #ffb070; text-shadow: 0 0 10px rgba(255,138,58,0.7), 0 2px 0 #000; }
+.reveal-front .m.epic      { color: #d6b3ff; text-shadow: 0 0 10px rgba(168,85,247,0.75), 0 2px 0 #000; }
+.reveal-front .m.legendary { color: var(--neon-cyan); text-shadow: 0 0 12px rgba(34,211,238,0.85), 0 2px 0 #000; }
+.reveal-front .m.mythic    { color: var(--neon-pink); text-shadow: 0 0 12px rgba(255,46,147,0.9), 0 2px 0 #000; }
+
+.coin-shine {
+  position: absolute; inset: 0;
+  border-radius: 14px;
+  background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.6) 50%, transparent 70%);
+  background-size: 250% 250%;
+  background-position: 100% 100%;
+  animation: shine 0.9s ease-out forwards;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+@keyframes shine { to { background-position: -100% -100%; } }
+
+/* ============================================================
+   TALLY + GRAND PAYOUT BANNERS (over the scene)
+   ============================================================ */
+.tally, .payout-banner, .toast {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 14;
+  text-align: center;
+  pointer-events: none;
+}
+.tally {
+  top: 10%;
+  display: none;
+  padding: 10px 22px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(30,5,8,0.96), rgba(60,12,18,0.96));
+  border: 2px solid rgba(255,210,74,0.55);
+  font-family: 'Bungee', cursive;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  color: var(--gold-1);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.7), 0 0 22px rgba(255,210,74,0.4);
+  min-width: 220px;
+}
+.tally.show { display: block; animation: tally-in 0.3s ease-out; }
+.tally .lbl { font-size: 9px; color: rgba(255,255,255,0.6); margin-bottom: 4px; letter-spacing: 0.3em; }
+.tally .val { font-family: 'Geist Mono', monospace; font-size: 18px; }
+@keyframes tally-in {
+  from { transform: translate(-50%, -16px); opacity: 0; }
+  to   { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.payout-banner {
+  top: 22%;
+  display: none;
+  padding: 16px 28px;
+  border-radius: 18px;
+  background: radial-gradient(ellipse at 50% 25%, #fff5c2 0%, var(--gold-1) 50%, var(--gold-2) 100%);
+  color: var(--crimson);
+  border: 3px solid var(--gold-deep);
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(14px, 2.6vw, 18px);
+  letter-spacing: 0.14em;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.8), 0 0 50px rgba(255,138,58,0.7);
+  min-width: 260px;
+  max-width: 90%;
+}
+.payout-banner.show { display: block; animation: payout-in 0.55s cubic-bezier(.34,1.6,.64,1) forwards; }
+.payout-banner.fade-out { animation: payout-out 0.5s ease-in forwards; }
+.payout-banner .grand {
+  display: block;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: clamp(26px, 5vw, 34px);
+  color: var(--crimson);
+  margin-top: 4px;
+  letter-spacing: 0.02em;
+}
+@keyframes payout-in {
+  0% { transform: translate(-50%, -20px) scale(0); opacity: 0; }
+  60% { transform: translate(-50%, 0) scale(1.08); opacity: 1; }
+  100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+}
+@keyframes payout-out {
+  to { opacity: 0; transform: translate(-50%, -10px) scale(0.95); }
+}
+
+.toast {
+  top: 14%;
+  display: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: rgba(10,4,24,0.92);
+  border: 1.5px solid rgba(255,210,74,0.5);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--gold-1);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+}
+.toast.show { display: block; animation: toast-anim 2.2s ease-out forwards; }
+@keyframes toast-anim {
+  0% { opacity: 0; transform: translate(-50%, -10px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -6px); }
+}
+
+/* ============================================================
+   STRIKE BUTTON
+   ============================================================ */
+.strike-wrap {
+  position: relative;
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+.strike-btn {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 18px 16px;
+  border: 0; cursor: pointer;
+  border-radius: 18px;
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(15px, 2.5vw, 18px);
+  letter-spacing: 0.22em;
+  color: #2a0008;
+  background:
+    radial-gradient(ellipse at 50% 22%, #fff5c2 0%, var(--gold-1) 45%, var(--gold-2) 90%, var(--gold-deep) 100%);
+  box-shadow:
+    0 8px 0 var(--gold-deep),
+    0 14px 30px rgba(0,0,0,0.65),
+    0 0 32px rgba(255,138,58,0.4),
+    inset 0 -4px 6px rgba(120,70,0,0.4),
+    inset 0 2px 8px rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.45), 0 -1px 0 rgba(120,70,0,0.4);
+  transition: transform 0.1s, box-shadow 0.15s, filter 0.15s;
+  overflow: hidden;
+}
+.strike-btn::before, .strike-btn::after {
+  content: '🐉';
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  font-size: 22px;
+  opacity: 0.7;
+}
+.strike-btn::before { left: 16px; }
+.strike-btn::after  { right: 16px; transform: translateY(-50%) scaleX(-1); }
+.strike-btn:hover { filter: brightness(1.08); }
+.strike-btn:active { transform: translateY(4px); box-shadow: 0 4px 0 var(--gold-deep), 0 8px 18px rgba(0,0,0,0.6), inset 0 -3px 5px rgba(120,70,0,0.4), inset 0 2px 6px rgba(255,255,255,0.4); }
+.strike-btn:disabled { filter: grayscale(0.5) brightness(0.6); cursor: not-allowed; }
+.strike-btn.shake { animation: btn-shake 0.4s; }
+@keyframes btn-shake {
+  0%, 100% { transform: translate(0,0); }
+  25% { transform: translate(-3px, 2px); }
+  50% { transform: translate(3px, -1px); }
+  75% { transform: translate(-2px, 1px); }
+}
+
+/* ============================================================
+   RECENT WINS STRIP — under strike button
+   ============================================================ */
+.recent {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.32);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.18);
+}
+.recent .recent-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.recent .recent-title {
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(34,211,238,0.4);
+}
+.recent .recent-empty {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  font-style: italic;
+  text-align: center;
+  padding: 8px 0;
+}
+.recent-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,210,74,0.3) transparent;
+  padding-bottom: 2px;
+}
+.recent-list::-webkit-scrollbar { height: 5px; }
+.recent-list::-webkit-scrollbar-thumb { background: rgba(255,210,74,0.3); border-radius: 999px; }
+.recent-chip {
+  flex-shrink: 0;
+  min-width: 92px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.4));
+  border-left: 3px solid var(--gold-1);
+  display: flex; flex-direction: column;
+  align-items: center;
+  animation: chip-in 0.3s ease-out;
+}
+@keyframes chip-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+.recent-chip.uncommon  { border-left-color: var(--jade-1); }
+.recent-chip.rare      { border-left-color: #ff8a3a; }
+.recent-chip.epic      { border-left-color: var(--neon-violet); }
+.recent-chip.legendary { border-left-color: var(--neon-cyan); }
+.recent-chip.mythic    { border-left-color: var(--neon-pink); }
+.recent-chip .rmult { font-family: 'Bungee', cursive; font-size: 13px; color: var(--gold-1); }
+.recent-chip .ramt  { font-family: 'Geist Mono', monospace; font-weight: 800; font-size: 12px; color: var(--neon-green); margin-top: 2px; }
+.recent-chip .rbet  { font-size: 9px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+/* ============================================================
+   MEGA-FLASH for legendary/mythic
+   ============================================================ */
+.mega-flash {
+  position: fixed; inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  display: none;
+  background: radial-gradient(circle at center, rgba(255,250,200,0.95), rgba(255,180,80,0.4) 50%, transparent 80%);
+}
+.mega-flash.show { display: block; animation: mega-flash-anim 1.8s ease-out forwards; }
+@keyframes mega-flash-anim {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  60% { opacity: 0.4; }
+  100% { opacity: 0; }
+}
+
+/* ============================================================
+   MODALS (intro rules + paytable) — mirror slots styling
+   ============================================================ */
+.modal-veil {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(5,1,15,0.78);
+  backdrop-filter: blur(8px);
+  display: grid; place-items: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+  padding: 16px;
+}
+.modal-veil.show { opacity: 1; pointer-events: all; }
+.modal-card {
+  width: min(540px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 24px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at top, rgba(168,85,247,0.25), transparent 60%),
+    linear-gradient(180deg, #1c0a3a, #0a0319);
+  box-shadow: var(--shadow-deep), inset 0 0 0 1.5px rgba(255,210,74,0.32);
+  transform: translateY(20px) scale(0.95);
+  transition: transform 0.3s cubic-bezier(.2,.9,.2,1.3);
+}
+.modal-veil.show .modal-card { transform: translateY(0) scale(1); }
+.modal-card::-webkit-scrollbar { width: 8px; }
+.modal-card::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 4px; }
+.modal-card::-webkit-scrollbar-thumb { background: rgba(255,210,74,0.4); border-radius: 4px; }
+
+.modal-title {
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  background: linear-gradient(180deg, #fff7d1, var(--gold-1));
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(0,0,0,0.6));
+  text-align: center;
+  margin-bottom: 4px;
+}
+.modal-sub {
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.4em;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(34,211,238,0.5);
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.rules-section {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.3);
+  box-shadow: inset 0 0 0 1px rgba(34,211,238,0.16);
+}
+.rules-section h3 {
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(34,211,238,0.4);
+  margin-bottom: 8px;
+}
+.rules-section p, .rules-section li {
+  font-size: 13px; line-height: 1.55;
+  color: rgba(255,255,255,0.82);
+}
+.rules-section ul { list-style: none; }
+.rules-section li {
+  padding-left: 18px; position: relative;
+  margin-bottom: 4px;
+}
+.rules-section li::before {
+  content: '◆';
+  position: absolute; left: 0; top: 1px;
+  color: var(--gold-1); font-size: 9px;
+}
+
+.payout-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.payout-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.32);
+  border-radius: 10px;
+  border-left: 4px solid var(--gold-1);
+  font-size: 12px;
+}
+.payout-row.uncommon  { border-left-color: var(--jade-1); }
+.payout-row.rare      { border-left-color: #ff8a3a; }
+.payout-row.epic      { border-left-color: var(--neon-violet); }
+.payout-row.legendary { border-left-color: var(--neon-cyan); }
+.payout-row.mythic    { border-left-color: var(--neon-pink); }
+.payout-row .icon {
+  width: 36px; height: 36px;
+  background-size: contain; background-repeat: no-repeat; background-position: center;
+  filter: drop-shadow(0 0 6px rgba(255,210,74,0.4));
+}
+.payout-row .name {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  color: #fff;
+}
+.payout-row .name .tag {
+  display: block;
+  font-family: 'Bungee', cursive;
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  color: rgba(255,255,255,0.5);
+  margin-top: 2px;
+}
+.payout-row .mult {
+  font-family: 'Bungee', cursive;
+  font-size: 18px;
+  color: var(--gold-1);
+  text-shadow: 0 0 8px rgba(255,210,74,0.5);
+}
+.payout-row .pct {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+}
+
+.dont-show {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; color: rgba(255,255,255,0.7);
+  margin: 14px 0 16px;
+  cursor: pointer; user-select: none;
+}
+.dont-show input { width: 16px; height: 16px; accent-color: var(--gold-1); cursor: pointer; }
+
+.btn {
+  border: 0; cursor: pointer;
+  padding: 14px;
+  border-radius: 14px;
+  font-family: 'Bungee', cursive;
+  letter-spacing: 0.14em;
+  font-size: 14px;
+  transition: transform 0.1s, filter 0.15s;
+  width: 100%;
+}
+.btn:active { transform: translateY(2px); }
+.btn-confirm {
+  background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 50%, var(--gold-2));
+  color: #1a0608;
+  box-shadow: 0 5px 0 var(--gold-deep), inset 0 1px 0 rgba(255,255,255,0.4);
+}
+.btn-confirm:hover { filter: brightness(1.08); }
+.btn-cancel {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.65);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+}
+.btn-cancel:hover { color: #fff; }
+
+/* ---- ADD CHIPS modal extras ---- */
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+}
+.amount-input-wrap { position: relative; margin-bottom: 14px; }
+.amount-input-wrap::before {
+  content: '$';
+  position: absolute; left: 16px; top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Geist Mono', monospace;
+  font-size: 26px;
+  color: var(--gold-1);
+  text-shadow: 0 0 8px rgba(255,210,74,0.55);
+}
+.amount-input {
+  width: 100%;
+  padding: 14px 16px 14px 40px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.5);
+  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.42);
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+.amount-input:focus {
+  box-shadow: inset 0 0 0 1.5px var(--neon-cyan), 0 0 18px rgba(34,211,238,0.4);
+}
+.quick-chips {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.quick-chip {
+  padding: 10px 4px;
+  border: 0;
+  border-radius: 10px;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.4));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.2);
+  transition: transform 0.1s, background 0.2s;
+}
+.quick-chip:hover { background: linear-gradient(180deg, rgba(168,85,247,0.25), rgba(0,0,0,0.5)); }
+.quick-chip:active { transform: translateY(2px); }
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+@media (max-width: 540px) {
+  .stage { padding: 12px 8px 110px; }
+  .cabinet { padding: 12px; border-radius: 22px; }
+  .topper { grid-template-columns: 38px 1fr 38px; padding: 4px 2px 12px; gap: 6px; }
+  .icon-btn { width: 34px; height: 34px; font-size: 16px; }
+  .hud { padding: 8px; gap: 6px; }
+  .hud-cell { padding: 6px 4px; }
+  .hud-cell .lbl { font-size: 8px; letter-spacing: 0.18em; }
+  .hud-cell .val { font-size: 13px; }
+  .bet-btn { width: 22px; height: 22px; font-size: 14px; }
+  .scene-wrap { border-radius: 14px; }
+  .lantern { width: 44px; }
+  .lantern.mythic { width: 52px; }
+  .lantern .mult-tag { font-size: 9px; padding: 1px 6px; }
+  .bonus-kanji { font-size: clamp(100px, 32vw, 180px); -webkit-text-stroke-width: 1px; }
+  .bonus-text { font-size: 16px; letter-spacing: 0.22em; }
+  .falling-leaf { width: 32px; height: 42px; }
+  .strike-btn { padding: 14px 14px; letter-spacing: 0.16em; }
+  .strike-btn::before, .strike-btn::after { font-size: 18px; }
+  .reveal-slot { width: 56px; height: 76px; }
+  .reveal-back { font-size: 30px; }
+  .reveal-front .face { height: 38px; }
+  .reveal-front .m { font-size: 14px; }
+  .reveal-front .c { font-size: 8px; }
+  .reveal-row { gap: 6px; }
+  .tally { font-size: 11px; padding: 8px 16px; min-width: 180px; }
+  .tally .val { font-size: 15px; }
+  .payout-banner { padding: 12px 18px; }
+  .payout-banner .grand { font-size: 24px; }
+  .modal-card { padding: 18px; border-radius: 18px; }
+  .modal-title { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="cabinet">
+
+    <!-- TOPPER -->
+    <div class="topper">
+      <a class="icon-btn back" href="index.html" aria-label="back to lobby"></a>
+      <div class="title-block">
+        <div class="title-pre">DIAMOND CASINO</div>
+        <div class="title-main">Dragon's Fortune Tree</div>
+        <div class="title-sub">ANCIENT JADE TEMPLE</div>
+      </div>
+      <button class="icon-btn" id="paytable-btn" aria-label="paytable">ⓘ</button>
+    </div>
+
+    <!-- HUD -->
+    <div class="hud">
+      <div class="hud-cell balance">
+        <div class="lbl">BALANCE</div>
+        <div class="balance-row">
+          <div class="val" id="balance">0</div>
+          <button class="hud-add" id="hud-add" title="Add chips" aria-label="Add chips">+</button>
+        </div>
+      </div>
+      <div class="hud-cell bet">
+        <div class="lbl">BET</div>
+        <div class="bet-row">
+          <button class="bet-btn" id="bet-down" aria-label="lower bet">−</button>
+          <div class="val" id="bet">5</div>
+          <button class="bet-btn" id="bet-up" aria-label="raise bet">+</button>
+        </div>
+      </div>
+      <div class="hud-cell total">
+        <div class="lbl">SESSION WON</div>
+        <div class="val" id="total-won">0</div>
+      </div>
+      <div class="hud-cell">
+        <div class="lbl">BONUS HITS</div>
+        <div class="val" id="bonus-hits">0</div>
+      </div>
+    </div>
+
+    <!-- SCENE -->
+    <div class="scene-wrap" id="scene-wrap">
+      <div class="scene-bg" id="scene-bg"></div>
+      <div class="ember-layer" id="ember-layer"></div>
+      <div class="tree-layer" id="tree-layer"></div>
+      <div class="ground-glow"></div>
+      <div class="canopy" id="canopy"></div>
+      <div class="falling-layer" id="falling-layer"></div>
+      <div class="bonus-overlay" id="bonus-overlay">
+        <div class="bonus-vignette"></div>
+        <div class="bonus-ring r1"></div>
+        <div class="bonus-ring r2"></div>
+        <div class="bonus-ring r3"></div>
+        <div class="bonus-kanji k1">福</div>
+        <div class="bonus-kanji k2">龍</div>
+        <div class="bonus-text">★ GOLDEN SHOWER ★</div>
+      </div>
+      <div class="toast" id="toast"></div>
+      <div class="tally" id="tally"></div>
+      <div class="payout-banner" id="payout-banner"></div>
+      <div class="reveal-row" id="reveal-row"></div>
+    </div>
+
+    <!-- STRIKE -->
+    <div class="strike-wrap">
+      <button class="strike-btn" id="strike-btn">Strike the Tree</button>
+    </div>
+
+    <!-- RECENT WINS -->
+    <div class="recent">
+      <div class="recent-head">
+        <div class="recent-title">RECENT BONUSES</div>
+      </div>
+      <div class="recent-list" id="recent-list">
+        <div class="recent-empty">No bonuses yet — strike the tree.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- mega flash overlay for legendary+ -->
+<div class="mega-flash" id="mega-flash"></div>
+
+<!-- ADD CHIPS MODAL -->
+<div class="modal-veil" id="add-veil">
+  <div class="modal-card">
+    <div class="modal-title">ADD CHIPS</div>
+    <div class="modal-sub">VIRTUAL CURRENCY · INSTANT</div>
+    <div class="amount-input-wrap">
+      <input class="amount-input" id="add-amount" type="number" min="1" placeholder="0" />
+    </div>
+    <div class="quick-chips">
+      <button class="quick-chip" data-amt="100">+100</button>
+      <button class="quick-chip" data-amt="500">+500</button>
+      <button class="quick-chip" data-amt="1000">+1,000</button>
+      <button class="quick-chip" data-amt="10000">+10K</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" id="add-cancel">CANCEL</button>
+      <button class="btn btn-confirm" id="add-confirm">ADD CHIPS</button>
+    </div>
+  </div>
+</div>
+
+<!-- INTRO RULES MODAL -->
+<div class="modal-veil" id="intro-rules-veil">
+  <div class="modal-card">
+    <div class="modal-title">DRAGON'S FORTUNE TREE</div>
+    <div class="modal-sub">JADE TEMPLE · GOLDEN SHOWER</div>
+
+    <div class="rules-section">
+      <h3>HOW TO PLAY</h3>
+      <ul>
+        <li>Set your bet, then tap STRIKE THE TREE</li>
+        <li>Every strike has a <strong>25% chance</strong> to trigger the Golden Shower Bonus</li>
+        <li>When bonus triggers, leaves rain down and 3–5 reveal prize multipliers</li>
+        <li>Multipliers are summed, then paid out as <strong>total × your bet</strong></li>
+      </ul>
+    </div>
+
+    <div class="rules-section">
+      <h3>PRIZE TIERS</h3>
+      <ul>
+        <li><strong>Common</strong> — Lucky Penny, Dragon's Tip (0.5× – 1×)</li>
+        <li><strong>Uncommon</strong> — Temple Offering, Jade Blessing (2× – 5×)</li>
+        <li><strong>Rare</strong> — Dragon's Breath, Golden Scale (8× – 10×)</li>
+        <li><strong>Epic</strong> — Fortune Awakened (20×)</li>
+        <li><strong>Legendary</strong> — Dragon's Hoard (50×)</li>
+        <li><strong>Mythic</strong> — Jade Emperor's Gift (100×)</li>
+      </ul>
+    </div>
+
+    <div class="rules-section">
+      <h3>EXPECTED RETURN</h3>
+      <p>Drop weights are tuned so an average bonus round pays around 6–10× your bet. Mythic prizes are extremely rare — see the paytable for full odds.</p>
+    </div>
+
+    <label class="dont-show">
+      <input type="checkbox" id="intro-dont-show">
+      <span>Don't show this again</span>
+    </label>
+
+    <button class="btn btn-confirm" id="intro-close-btn">LET'S PLAY</button>
+  </div>
+</div>
+
+<!-- PAYTABLE MODAL -->
+<div class="modal-veil" id="paytable-veil">
+  <div class="modal-card">
+    <div class="modal-title">PAYTABLE</div>
+    <div class="modal-sub">PER-LEAF DROP CHANCE</div>
+
+    <div class="payout-grid" id="paytable-grid"></div>
+
+    <div class="rules-section" style="margin-top: 14px;">
+      <h3>BONUS MATH</h3>
+      <p>25% of strikes trigger the bonus. The bonus drops 3–5 prize leaves; their multipliers are summed and paid as <strong>total × bet</strong>. The percentages above show how often each tier appears on any single revealed leaf.</p>
+    </div>
+
+    <button class="btn btn-confirm" id="paytable-close-btn">CLOSE</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   SHARED BALANCE (across casino games)
+   ============================================================ */
+const BALANCE_KEY = 'casino.balance';
+function loadBalance() {
+  const v = parseFloat(localStorage.getItem(BALANCE_KEY));
+  return isNaN(v) || v < 0 ? 1000 : v;
+}
+function persistBalance(v) {
+  try { localStorage.setItem(BALANCE_KEY, String(v)); } catch (e) {}
+}
+
+const fmt = n => {
+  const cents = Math.round(n * 100) / 100;
+  if (Number.isInteger(cents)) return cents.toLocaleString('en-US');
+  return cents.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const State = {
+  balance: loadBalance(),
+  bet: 5,
+  betSteps: [1, 2, 5, 10, 25, 50, 100, 250],
+  spinning: false,
+  totalWon: 0,
+  bonusHits: 0,
+  history: [],
+};
+
+/* Prize tiers (weights tuned so avg bonus ≈ 6–10× bet) */
+const PRIZES = [
+  { mult: 0.5, name: "Lucky Penny",         tier: "common",    weight: 36, art: 'coin' },
+  { mult: 1,   name: "Dragon's Tip",        tier: "common",    weight: 22, art: 'coin' },
+  { mult: 2,   name: "Temple Offering",     tier: "uncommon",  weight: 16, art: 'lantern' },
+  { mult: 5,   name: "Jade Blessing",       tier: "uncommon",  weight: 9,  art: 'lantern' },
+  { mult: 8,   name: "Dragon's Breath",     tier: "rare",      weight: 6,  art: 'leaf' },
+  { mult: 10,  name: "Golden Scale",        tier: "rare",      weight: 5,  art: 'leaf' },
+  { mult: 20,  name: "Fortune Awakened",    tier: "epic",      weight: 4,  art: 'medallion-jade' },
+  { mult: 50,  name: "Dragon's Hoard",      tier: "legendary", weight: 1.6, art: 'medallion-gold' },
+  { mult: 100, name: "Jade Emperor's Gift", tier: "mythic",    weight: 0.4, art: 'dragon-mythic' },
+];
+const TOTAL_WEIGHT = PRIZES.reduce((s, p) => s + p.weight, 0);
+
+/* Tier → CSS class */
+const TIER_RANK = ['common','uncommon','rare','epic','legendary','mythic'];
+
+/* Art lookup → image path (with CSS fallback for assets that may not exist yet) */
+const ART = {
+  'coin':           null,
+  'jade':           null,
+  'lantern':        'images/dragontree/lantern.png',
+  'leaf':           'images/dragontree/leaf.png',
+  'medallion-gold': 'images/dragontree/medallion-gold.png',
+  'medallion-jade': 'images/dragontree/medallion-jade.png',
+  'dragon-mythic':  'images/dragontree/dragon-mythic.png',
+};
+
+/* Art assets generated on black bg need screen blend to drop the black.
+   Declared up here (before any function call uses them) so we don't trip
+   the const temporal-dead-zone. */
+const BLACK_BG_ARTS = new Set(['medallion-gold', 'medallion-jade', 'dragon-mythic']);
+function artUrlFor(artKey) {
+  if (!artKey || artKey === 'coin' || artKey === 'jade') return null;
+  return ART[artKey] || null;
+}
+function artBlendFor(artKey) {
+  return BLACK_BG_ARTS.has(artKey) ? 'screen' : 'normal';
+}
+
+/* ============================================================
+   DOM
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const els = {
+  balance:    $('balance'),
+  bet:        $('bet'),
+  totalWon:   $('total-won'),
+  bonusHits:  $('bonus-hits'),
+  betUp:      $('bet-up'),
+  betDown:    $('bet-down'),
+  sceneWrap:  $('scene-wrap'),
+  sceneBg:    $('scene-bg'),
+  treeLayer:  $('tree-layer'),
+  emberLayer: $('ember-layer'),
+  canopy:     $('canopy'),
+  falling:    $('falling-layer'),
+  bonusOv:    $('bonus-overlay'),
+  toast:      $('toast'),
+  tally:      $('tally'),
+  payout:     $('payout-banner'),
+  reveal:     $('reveal-row'),
+  strike:     $('strike-btn'),
+  recent:     $('recent-list'),
+  megaFlash:  $('mega-flash'),
+  paytableBtn:    $('paytable-btn'),
+  paytableVeil:   $('paytable-veil'),
+  paytableGrid:   $('paytable-grid'),
+  paytableClose:  $('paytable-close-btn'),
+  introVeil:      $('intro-rules-veil'),
+  introClose:     $('intro-close-btn'),
+  introDontShow:  $('intro-dont-show'),
+  hudAdd:         $('hud-add'),
+  addVeil:        $('add-veil'),
+  addAmount:      $('add-amount'),
+  addCancel:      $('add-cancel'),
+  addConfirm:     $('add-confirm'),
+};
+
+/* ============================================================
+   BALANCE / HUD
+   ============================================================ */
+function setBalance(n) {
+  State.balance = Math.max(0, n);
+  persistBalance(State.balance);
+  els.balance.textContent = fmt(State.balance);
+  updateStrikeEnabled();
+}
+function updateStrikeEnabled() {
+  els.strike.disabled = State.spinning || State.balance < State.bet;
+}
+function renderHud() {
+  els.balance.textContent = fmt(State.balance);
+  els.bet.textContent = fmt(State.bet);
+  els.totalWon.textContent = fmt(State.totalWon);
+  els.bonusHits.textContent = State.bonusHits;
+  updateStrikeEnabled();
+}
+
+/* ============================================================
+   BET CONTROLS
+   ============================================================ */
+els.betUp.addEventListener('click', () => {
+  if (State.spinning) return;
+  const i = State.betSteps.indexOf(State.bet);
+  if (i < State.betSteps.length - 1) {
+    State.bet = State.betSteps[i + 1];
+    renderHud();
+  }
+});
+els.betDown.addEventListener('click', () => {
+  if (State.spinning) return;
+  const i = State.betSteps.indexOf(State.bet);
+  if (i > 0) {
+    State.bet = State.betSteps[i - 1];
+    renderHud();
+  }
+});
+
+/* Sync balance whenever another tab/game updates it (e.g. add-cash modal) */
+window.addEventListener('storage', e => {
+  if (e.key === BALANCE_KEY) {
+    State.balance = loadBalance();
+    renderHud();
+  }
+});
+document.addEventListener('jackpot-win', () => {
+  State.balance = loadBalance();
+  renderHud();
+});
+
+/* ============================================================
+   AMBIENT EMBERS
+   ============================================================ */
+function spawnEmbers() {
+  for (let i = 0; i < 26; i++) {
+    const e = document.createElement('div');
+    e.className = 'ember';
+    e.style.left = (Math.random() * 100) + '%';
+    const size = 2 + Math.random() * 4;
+    e.style.width = size + 'px';
+    e.style.height = size + 'px';
+    e.style.animationDuration = (5 + Math.random() * 6) + 's';
+    e.style.animationDelay = (Math.random() * 7) + 's';
+    e.style.setProperty('--drift', (Math.random() * 60 - 30) + 'px');
+    els.emberLayer.appendChild(e);
+  }
+}
+spawnEmbers();
+
+function emberBurst() {
+  for (let i = 0; i < 14; i++) {
+    const e = document.createElement('div');
+    e.className = 'ember';
+    e.style.left = (40 + Math.random() * 20) + '%';
+    e.style.bottom = '30%';
+    e.style.width = '5px'; e.style.height = '5px';
+    e.style.animationDuration = '1.6s';
+    e.style.setProperty('--drift', (Math.random() * 140 - 70) + 'px');
+    els.emberLayer.appendChild(e);
+    setTimeout(() => e.remove(), 1700);
+  }
+}
+
+/* ============================================================
+   ASSET URLS — PNGs are pre-keyed to transparent on disk
+   (see images/dragontree/_keyout.py)
+   ============================================================ */
+const TREE_SRC    = 'images/dragontree/tree.png';
+const LEAF_SRC    = 'images/dragontree/leaf.png';
+const LANTERN_SRC = 'images/dragontree/lantern.png';
+
+els.treeLayer.style.backgroundImage = `url('${TREE_SRC}')`;
+els.falling.style.setProperty('--leaf-src', `url('${LEAF_SRC}')`);
+els.canopy.style.setProperty('--lantern-src', `url('${LANTERN_SRC}')`);
+
+/* ============================================================
+   HANGING LANTERNS — visible in canopy at all times
+   ============================================================ */
+// Coordinates calibrated by reading actual canopy foliage density in tree.png
+// (see images/dragontree/_analyze.py). Each (x,y) lands the lantern bulb on
+// real leaves so the cord visually disappears into the canopy above.
+const TAG_POSITIONS = [
+  // x%, y% within scene-wrap, idx = PRIZES index
+  { x: 42, y: 11, idx: 8 },  // 100× MYTHIC     — apex of canopy
+  { x: 28, y: 18, idx: 7 },  // 50×  LEGENDARY  — upper-left dense burst
+  { x: 60, y: 15, idx: 6 },  // 20×  EPIC       — upper-right inside the canopy
+  { x: 15, y: 28, idx: 5 },  // 10×  RARE       — far-left branch tip
+  { x: 78, y: 28, idx: 4 },  //  8×  RARE       — far-right branch tip
+  { x: 35, y: 24, idx: 3 },  //  5×  UNCOMMON   — inner-left under canopy
+  { x: 52, y: 30, idx: 2 },  //  2×  UNCOMMON   — inner-right under canopy
+  { x: 22, y: 42, idx: 1 },  //  1×  COMMON     — lower-left side branch
+  { x: 68, y: 44, idx: 0 },  // 0.5× COMMON     — lower-right side branch
+];
+
+const lanternEls = [];   // parallel to TAG_POSITIONS — used to find lanterns by PRIZES index
+function renderLanterns() {
+  els.canopy.innerHTML = '';
+  lanternEls.length = 0;
+  TAG_POSITIONS.forEach((pos, i) => {
+    const p = PRIZES[pos.idx];
+    const l = document.createElement('div');
+    l.className = 'lantern ' + p.tier;
+    l.style.left = pos.x + '%';
+    l.style.top = pos.y + '%';
+    l.style.animationDelay = (i * 0.27) + 's';
+    l.innerHTML = `
+      <div class="cord"></div>
+      <div class="bulb"></div>
+      <div class="mult-tag">${p.mult}×</div>
+    `;
+    els.canopy.appendChild(l);
+    lanternEls.push({ el: l, prizeIdx: pos.idx, tier: p.tier });
+  });
+}
+renderLanterns();
+
+/* ============================================================
+   PAYTABLE
+   ============================================================ */
+function tierTagText(tier) {
+  return tier.toUpperCase();
+}
+function renderPaytable() {
+  els.paytableGrid.innerHTML = '';
+  PRIZES.forEach(p => {
+    const pct = (p.weight / TOTAL_WEIGHT * 100);
+    const pctStr = pct < 1 ? pct.toFixed(2) + '%' : pct.toFixed(1) + '%';
+    const row = document.createElement('div');
+    row.className = 'payout-row ' + p.tier;
+    const iconUrl = artUrlFor(p.art);
+    const blend = artBlendFor(p.art);
+    const iconStyle = iconUrl
+      ? `background-image: url('${iconUrl}'); mix-blend-mode: ${blend};`
+      : `background: radial-gradient(circle at 30% 25%, ${p.tier === 'uncommon' ? '#d6ffe6, var(--jade-1) 55%, var(--jade-2)' : '#fff5c2, var(--gold-1) 55%, var(--gold-2)'}); border-radius: 50%;`;
+    row.innerHTML = `
+      <div class="icon" style="${iconStyle}"></div>
+      <div class="name">${p.name}<span class="tag">${tierTagText(p.tier)}</span></div>
+      <div class="mult">${p.mult}×</div>
+      <div class="pct">${pctStr}</div>
+    `;
+    els.paytableGrid.appendChild(row);
+  });
+}
+renderPaytable();
+
+function openPaytable() { els.paytableVeil.classList.add('show'); }
+function closePaytable() { els.paytableVeil.classList.remove('show'); }
+els.paytableBtn.addEventListener('click', openPaytable);
+els.paytableClose.addEventListener('click', closePaytable);
+els.paytableVeil.addEventListener('click', e => { if (e.target === els.paytableVeil) closePaytable(); });
+
+/* ============================================================
+   INTRO RULES — show on first visit
+   ============================================================ */
+const RULES_KEY = 'casino.rules.dragontree.intro';
+const hasFlag = k => { try { return localStorage.getItem(k) === '1'; } catch (e) { return false; } };
+const setFlag = k => { try { localStorage.setItem(k, '1'); } catch (e) {} };
+
+function showIntroRules() { els.introVeil.classList.add('show'); }
+function closeIntroRules() {
+  if (els.introDontShow.checked) setFlag(RULES_KEY);
+  els.introVeil.classList.remove('show');
+}
+els.introClose.addEventListener('click', closeIntroRules);
+els.introVeil.addEventListener('click', e => {
+  if (e.target === els.introVeil) closeIntroRules();
+});
+
+if (!hasFlag(RULES_KEY)) {
+  setTimeout(showIntroRules, 350);
+}
+
+/* ============================================================
+   ADD CHIPS MODAL — same pattern as lobby/slots add-funds
+   ============================================================ */
+function openAdd() {
+  els.addVeil.classList.add('show');
+  els.addAmount.value = '';
+  setTimeout(() => els.addAmount.focus(), 100);
+}
+function closeAdd() { els.addVeil.classList.remove('show'); }
+function confirmAdd() {
+  const amt = parseFloat(els.addAmount.value);
+  if (isNaN(amt) || amt <= 0) { els.addAmount.focus(); return; }
+  setBalance(State.balance + amt);
+  closeAdd();
+}
+els.hudAdd.addEventListener('click', openAdd);
+els.addCancel.addEventListener('click', closeAdd);
+els.addConfirm.addEventListener('click', confirmAdd);
+els.addVeil.addEventListener('click', e => { if (e.target === els.addVeil) closeAdd(); });
+els.addAmount.addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmAdd();
+  if (e.key === 'Escape') closeAdd();
+});
+document.querySelectorAll('#add-veil .quick-chip').forEach(b => {
+  b.addEventListener('click', () => {
+    const cur = parseFloat(els.addAmount.value) || 0;
+    els.addAmount.value = cur + parseInt(b.dataset.amt, 10);
+  });
+});
+
+/* ============================================================
+   WEIGHTED PRIZE PICK
+   ============================================================ */
+function pickPrize() {
+  let r = Math.random() * TOTAL_WEIGHT;
+  for (const p of PRIZES) {
+    if (r < p.weight) return p;
+    r -= p.weight;
+  }
+  return PRIZES[0];
+}
+
+/* ============================================================
+   STRIKE
+   ============================================================ */
+els.strike.addEventListener('click', () => {
+  if (State.spinning || State.balance < State.bet) return;
+  State.spinning = true;
+  setBalance(State.balance - State.bet);
+
+  els.strike.classList.add('shake');
+  els.treeLayer.classList.add('shake');
+  emberBurst();
+  setTimeout(() => {
+    els.strike.classList.remove('shake');
+    els.treeLayer.classList.remove('shake');
+  }, 620);
+
+  setTimeout(() => {
+    const trig = Math.random() < 0.25;
+    if (trig) runBonus();
+    else runConsolation();
+  }, 580);
+});
+
+function runConsolation() {
+  showToast('The dragon sleeps... try again.');
+  // Record the spin as a loss
+  if (window.History && typeof window.History.record === 'function') {
+    try { window.History.record('dragontree', State.bet, -State.bet, null); } catch (e) {}
+  }
+  setTimeout(() => {
+    State.spinning = false;
+    updateStrikeEnabled();
+  }, 1400);
+}
+
+function showToast(msg) {
+  els.toast.textContent = msg;
+  els.toast.classList.remove('show');
+  void els.toast.offsetWidth;
+  els.toast.classList.add('show');
+  setTimeout(() => els.toast.classList.remove('show'), 2300);
+}
+
+/* ============================================================
+   BONUS SEQUENCE
+   ============================================================ */
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function animateCount(from, to, duration, cb) {
+  return new Promise(resolve => {
+    const start = performance.now();
+    function step(t) {
+      const p = Math.min(1, (t - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      cb(from + (to - from) * eased);
+      if (p < 1) requestAnimationFrame(step);
+      else { cb(to); resolve(); }
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+async function runBonus() {
+  State.bonusHits++;
+  els.bonusHits.textContent = State.bonusHits;
+
+  // 1. Pick prizes for the 3–5 reveal cards
+  const revealCount = 3 + Math.floor(Math.random() * 3);
+  const prizes = Array.from({ length: revealCount }, pickPrize);
+
+  // 2. Dramatic overlay: kanji + rings + spark stream
+  els.sceneBg.classList.add('bright');
+  playBonusOverlay();
+
+  await wait(450);
+
+  // 3. Light up the lanterns that match the picked prizes
+  //    Find one lantern per picked prize, with a small stagger
+  const usedEls = new Set();
+  const selectedLanterns = [];
+  prizes.forEach((p, i) => {
+    const idx = PRIZES.indexOf(p);
+    // pick any free lantern whose PRIZES index matches
+    let match = lanternEls.find(l => l.prizeIdx === idx && !usedEls.has(l.el));
+    // if none matches exactly (multiple draws of same tier), fall back to any free lantern of same tier
+    if (!match) match = lanternEls.find(l => l.tier === p.tier && !usedEls.has(l.el));
+    // last resort: any free lantern
+    if (!match) match = lanternEls.find(l => !usedEls.has(l.el));
+    if (!match) return;
+    usedEls.add(match.el);
+    selectedLanterns.push(match.el);
+    setTimeout(() => match.el.classList.add('selected'), 280 + i * 200);
+  });
+
+  await wait(1300);
+
+  els.bonusOv.classList.remove('show');
+  els.sceneBg.classList.remove('bright');
+
+  // 4. Falling leaves
+  const totalLeaves = 22 + Math.floor(Math.random() * 9);
+  spawnFallingLeaves(totalLeaves);
+
+  await wait(550);
+
+  // 5. Build reveal cards
+  const cards = [];
+  els.reveal.innerHTML = '';
+  for (let i = 0; i < revealCount; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'reveal-slot';
+    const tier = prizes[i].tier;
+    const artUrl = artUrlFor(prizes[i].art);
+    const blend = artBlendFor(prizes[i].art);
+    const faceStyle = artUrl
+      ? `background-image: url('${artUrl}'); mix-blend-mode: ${blend};`
+      : '';
+    slot.innerHTML = `
+      <div class="reveal-card">
+        <div class="reveal-back"></div>
+        <div class="reveal-front ${tier}">
+          <div class="face" style="${faceStyle}"></div>
+          <div class="m ${tier}">${prizes[i].mult}×</div>
+          <div class="c">+ $${fmt(prizes[i].mult * State.bet)}</div>
+        </div>
+      </div>
+    `;
+    els.reveal.appendChild(slot);
+    cards.push(slot);
+  }
+
+  await wait(200);
+
+  // 6. Flip each card with a stagger + shine
+  for (let i = 0; i < revealCount; i++) {
+    const card = cards[i].querySelector('.reveal-card');
+    card.classList.add('flipped');
+    const shine = document.createElement('div');
+    shine.className = 'coin-shine';
+    cards[i].querySelector('.reveal-front').appendChild(shine);
+    setTimeout(() => shine.remove(), 1000);
+    await wait(420);
+  }
+
+  // 7. Tally
+  const totalMult = prizes.reduce((s, p) => s + p.mult, 0);
+  const payout = Math.round(totalMult * State.bet * 100) / 100;
+  const topTier = prizes.reduce((best, p) =>
+    TIER_RANK.indexOf(p.tier) > TIER_RANK.indexOf(best.tier) ? p : best, prizes[0]);
+
+  els.tally.innerHTML = `
+    <div class="lbl">TOTAL MULTIPLIER</div>
+    <div class="val">${fmt(totalMult)}×  ·  BET ${fmt(State.bet)}</div>
+  `;
+  els.tally.classList.add('show');
+  await wait(900);
+
+  // 8. Mega-flash for legendary / mythic
+  if (topTier.tier === 'legendary' || topTier.tier === 'mythic') {
+    els.megaFlash.classList.remove('show');
+    void els.megaFlash.offsetWidth;
+    els.megaFlash.classList.add('show');
+    setTimeout(() => { els.megaFlash.classList.remove('show'); }, 1700);
+    await wait(700);
+  }
+
+  // 8. Grand payout banner + count-up
+  els.payout.classList.remove('fade-out');
+  els.payout.innerHTML = `🐉 THE DRAGON AWARDS<span class="grand" id="grand-num">$0</span>`;
+  els.payout.classList.add('show');
+  const grand = $('grand-num');
+  await animateCount(0, payout, 1100, v => { grand.textContent = '$' + fmt(v); });
+
+  // 9. Credit balance with count-up
+  const startBal = State.balance;
+  await animateCount(startBal, startBal + payout, 900, v => {
+    els.balance.textContent = fmt(v);
+  });
+  State.balance = startBal + payout;
+  persistBalance(State.balance);
+  State.totalWon += payout;
+  els.totalWon.textContent = fmt(State.totalWon);
+
+  // 10. Push to recent + global history
+  pushRecent({ bet: State.bet, mult: totalMult, payout, tier: topTier.tier });
+  if (window.History && typeof window.History.record === 'function') {
+    const note = topTier.tier.toUpperCase() === 'MYTHIC' ? 'MYTHIC × ' + fmt(totalMult)
+               : topTier.tier === 'legendary' ? 'LEGENDARY × ' + fmt(totalMult)
+               : null;
+    try { window.History.record('dragontree', State.bet, payout - State.bet, note); } catch (e) {}
+  }
+
+  await wait(1700);
+
+  // 11. Cleanup
+  els.payout.classList.add('fade-out');
+  els.tally.classList.remove('show');
+  await wait(500);
+  els.payout.classList.remove('show');
+  els.payout.classList.remove('fade-out');
+  els.reveal.innerHTML = '';
+  els.falling.innerHTML = '';
+
+  // Un-light the selected lanterns
+  selectedLanterns.forEach(l => l.classList.remove('selected'));
+
+  State.spinning = false;
+  updateStrikeEnabled();
+}
+
+/* ----- Bonus overlay: reset child animations + spawn gold spark stream ----- */
+function playBonusOverlay() {
+  els.bonusOv.classList.add('show');
+  // Reset every child's animation so it replays
+  [...els.bonusOv.children].forEach(c => {
+    c.style.animation = 'none';
+    void c.offsetWidth;
+    c.style.animation = '';
+  });
+  // Spawn ~14 gold sparks rising from the bottom edge
+  for (let i = 0; i < 14; i++) {
+    const sp = document.createElement('div');
+    sp.className = 'bonus-spark';
+    const startX = 20 + Math.random() * 60;          // %
+    const dx = (Math.random() - 0.5) * 200;           // px drift
+    sp.style.left = startX + '%';
+    sp.style.setProperty('--dx', dx + 'px');
+    sp.style.width = (3 + Math.random() * 5) + 'px';
+    sp.style.height = sp.style.width;
+    sp.style.animationDelay = (i * 0.06) + 's';
+    sp.style.animationDuration = (1.1 + Math.random() * 0.8) + 's';
+    els.bonusOv.appendChild(sp);
+    setTimeout(() => sp.remove(), 2100);
+  }
+}
+
+/* ============================================================
+   FALLING LEAVES (Web Animations API for fluid arcs)
+   ============================================================ */
+function spawnFallingLeaves(n) {
+  const w = els.sceneWrap.clientWidth;
+  const h = els.sceneWrap.clientHeight;
+  for (let i = 0; i < n; i++) {
+    const leaf = document.createElement('div');
+    leaf.className = 'falling-leaf';
+    const startX = 10 + Math.random() * 80;
+    const startY = -5 + Math.random() * 25;
+    leaf.style.left = startX + '%';
+    leaf.style.top = startY + '%';
+    const scale = 0.65 + Math.random() * 0.7;
+    leaf.style.transform = `scale(${scale}) rotate(${Math.random() * 360}deg)`;
+    els.falling.appendChild(leaf);
+
+    const drift = (Math.random() - 0.5) * w * 0.45;
+    const fall = h * (0.7 + Math.random() * 0.3);
+    const rot = (Math.random() - 0.5) * 720;
+    const dur = 1800 + Math.random() * 1600;
+    const delay = Math.random() * 700;
+
+    leaf.animate(
+      [
+        { transform: `scale(${scale}) translate(0, 0) rotate(0deg)`, opacity: 1 },
+        { transform: `scale(${scale}) translate(${drift * 0.5}px, ${fall * 0.5}px) rotate(${rot * 0.5}deg)`, opacity: 1, offset: 0.55 },
+        { transform: `scale(${scale * 0.7}) translate(${drift}px, ${fall}px) rotate(${rot}deg)`, opacity: 0 },
+      ],
+      { duration: dur, delay, easing: 'cubic-bezier(.45,.05,.55,.95)', fill: 'forwards' }
+    );
+    setTimeout(() => leaf.remove(), dur + delay + 100);
+  }
+}
+
+/* ============================================================
+   RECENT WINS STRIP
+   ============================================================ */
+function pushRecent(entry) {
+  State.history.unshift(entry);
+  if (State.history.length > 12) State.history.pop();
+  renderRecent();
+}
+function renderRecent() {
+  if (State.history.length === 0) {
+    els.recent.innerHTML = '<div class="recent-empty">No bonuses yet — strike the tree.</div>';
+    return;
+  }
+  els.recent.innerHTML = '';
+  State.history.forEach(h => {
+    const chip = document.createElement('div');
+    chip.className = 'recent-chip ' + h.tier;
+    chip.innerHTML = `
+      <div class="rmult">${fmt(h.mult)}×</div>
+      <div class="ramt">+$${fmt(h.payout)}</div>
+      <div class="rbet">BET $${fmt(h.bet)}</div>
+    `;
+    els.recent.appendChild(chip);
+  });
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+renderHud();
+
+// keyboard: Space / Enter to strike
+document.addEventListener('keydown', e => {
+  if ((e.code === 'Space' || e.key === 'Enter') && !State.spinning) {
+    const open = document.querySelector('.modal-veil.show, .casino-settings-veil.show');
+    if (open) return;
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+    e.preventDefault();
+    if (!els.strike.disabled) els.strike.click();
+  }
+});
+
+// Pause embers when tab hidden (perf)
+document.addEventListener('visibilitychange', () => {
+  const playState = document.hidden ? 'paused' : 'running';
+  els.emberLayer.querySelectorAll('.ember').forEach(e => { e.style.animationPlayState = playState; });
+});
+</script>
+</body>
+</html>

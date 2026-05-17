@@ -580,6 +580,7 @@ body::after {
   overflow: hidden;
   display: grid;
   place-items: center;
+  isolation: isolate;
 }
 .player-badge {
   position: absolute;
@@ -685,7 +686,7 @@ body::after {
   z-index: 1;
 }
 .preview.kraken .kr-anchor {
-  font-size: 56px;
+  font-size: 46px;
   color: #ffd24a;
   text-shadow: 0 0 16px rgba(255,210,74,0.7), 0 2px 0 #4a2a00;
   filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));
@@ -897,17 +898,17 @@ body::after {
    functions so each bounce reads like real gravity. Lands in the center
    slot (index 4 of 7) and fades. */
 @keyframes pkBall {
-  0%   { transform: translate(0, -4px);   opacity: 0; animation-timing-function: ease-in; }
-  4%   { transform: translate(0, 2px);    opacity: 1; animation-timing-function: cubic-bezier(.4,.0,.55,1); }
-  14%  { transform: translate(-3px, 13px); animation-timing-function: cubic-bezier(.4,.0,.55,1); }
-  26%  { transform: translate(6px, 25px);  animation-timing-function: cubic-bezier(.4,.0,.55,1); }
-  38%  { transform: translate(-6px, 38px); animation-timing-function: cubic-bezier(.4,.0,.55,1); }
-  50%  { transform: translate(4px, 50px);  animation-timing-function: cubic-bezier(.4,.0,.55,1); }
-  62%  { transform: translate(-2px, 64px); animation-timing-function: cubic-bezier(.35,.0,.5,1); }
-  72%  { transform: translate(1px, 76px);  animation-timing-function: ease-out; }
-  82%  { transform: translate(0, 82px);    opacity: 1; }
-  92%  { transform: translate(0, 82px);    opacity: 0.4; }
-  100% { transform: translate(0, 82px);    opacity: 0; }
+  0%   { transform: translate(0, -5px);    opacity: 0; animation-timing-function: ease-in; }
+  4%   { transform: translate(0, 3px);     opacity: 1; animation-timing-function: cubic-bezier(.4,.0,.55,1); }
+  14%  { transform: translate(-5px, 19px);  animation-timing-function: cubic-bezier(.4,.0,.55,1); }
+  26%  { transform: translate(9px, 36px);   animation-timing-function: cubic-bezier(.4,.0,.55,1); }
+  38%  { transform: translate(-9px, 55px);  animation-timing-function: cubic-bezier(.4,.0,.55,1); }
+  50%  { transform: translate(7px, 72px);   animation-timing-function: cubic-bezier(.4,.0,.55,1); }
+  62%  { transform: translate(-3px, 91px);  animation-timing-function: cubic-bezier(.35,.0,.5,1); }
+  72%  { transform: translate(2px, 108px);  animation-timing-function: ease-out; }
+  82%  { transform: translate(0, 117px);    opacity: 1; }
+  92%  { transform: translate(0, 117px);    opacity: 0.4; }
+  100% { transform: translate(0, 117px);    opacity: 0; }
 }
 .preview.plinko .pk-slots {
   position: absolute;
@@ -1241,6 +1242,114 @@ body::after {
   100% { transform: rotate(18deg) translateY(4px); }
 }
 
+/* DRAGON'S FORTUNE TREE PREVIEW — backdrop image + floating prize coins + embers */
+.preview.dragontree {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(255,107,26,0.22), transparent 55%),
+    linear-gradient(180deg, #2a0508, #0a0204 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.34);
+  overflow: hidden;
+}
+.preview.dragontree .dt-scene {
+  position: absolute;
+  inset: 0;
+  background-image: url('images/dragontree/scene.png');
+  background-size: cover;
+  background-position: center 18%;
+  filter: brightness(0.95) saturate(1.05);
+}
+.preview.dragontree .dt-vignette {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 38%, rgba(10,2,4,0.55) 100%),
+    linear-gradient(180deg, transparent 60%, rgba(10,2,4,0.6) 100%);
+  pointer-events: none;
+}
+.preview.dragontree .dt-coin {
+  position: absolute;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: 'Bungee', cursive;
+  font-size: 13px;
+  color: #4a2c00;
+  background: radial-gradient(circle at 30% 25%, #fff0a8, #ffd24a 55%, #b8860b 95%);
+  box-shadow:
+    0 0 14px rgba(255,210,74,0.6),
+    0 4px 10px rgba(0,0,0,0.6),
+    inset -3px -4px 8px rgba(120,70,0,0.5),
+    inset 3px 3px 6px rgba(255,250,200,0.6);
+  border: 2px solid rgba(120,70,0,0.7);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.45);
+  animation: dtCoinFloat 3.5s ease-in-out infinite;
+}
+.preview.dragontree .dt-coin::before {
+  content: '';
+  position: absolute; left: 50%; top: -16px;
+  width: 1px; height: 16px;
+  background: linear-gradient(180deg, transparent, rgba(255,210,74,0.6));
+  transform: translateX(-50%);
+}
+.preview.dragontree .dt-coin.c1 { left: 18%;  top: 26%; }
+.preview.dragontree .dt-coin.c2 {
+  left: 50%; top: 14%;
+  width: 52px; height: 52px;
+  font-size: 14px;
+  background: radial-gradient(circle at 30% 25%, #fff8d0, #ff2e93 50%, #8a0050 95%);
+  color: #1a000a;
+  box-shadow: 0 0 22px rgba(255,46,147,0.9), 0 4px 12px rgba(0,0,0,0.7);
+  border-color: #4a0028;
+  text-shadow: 0 0 6px rgba(255,255,255,0.4);
+  /* center-X preserved while floating */
+  animation: dtCoinFloatCentered 3.5s ease-in-out infinite, dtMythicPulse 1.4s ease-in-out infinite;
+}
+.preview.dragontree .dt-coin.c2::before { background: linear-gradient(180deg, transparent, rgba(255,46,147,0.7)); }
+.preview.dragontree .dt-coin.c3 {
+  right: 18%; top: 32%;
+  background: radial-gradient(circle at 30% 25%, #d6ffe6, #4fd1a3 55%, #1a8a66 95%);
+  color: #094a36;
+  box-shadow: 0 0 16px rgba(79,209,163,0.65), 0 4px 10px rgba(0,0,0,0.6);
+  border-color: #094a36;
+}
+.preview.dragontree .dt-coin.c3::before { background: linear-gradient(180deg, transparent, rgba(79,209,163,0.6)); }
+.preview.dragontree .dt-coin.c1 { animation-delay: 0.3s; }
+.preview.dragontree .dt-coin.c3 { animation-delay: 1.1s; }
+
+@keyframes dtCoinFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+@keyframes dtCoinFloatCentered {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(-6px); }
+}
+@keyframes dtMythicPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}
+
+.preview.dragontree .dt-ember {
+  position: absolute;
+  bottom: -6px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff5c2, #ff6b1a);
+  box-shadow: 0 0 6px #ff6b1a, 0 0 12px rgba(255,107,26,0.6);
+  opacity: 0;
+  animation: dtEmberRise 5s linear infinite;
+}
+.preview.dragontree .dt-ember.e1 { left: 22%; animation-delay: 0s;   --d:  10px; }
+.preview.dragontree .dt-ember.e2 { left: 38%; animation-delay: 1.1s; --d: -16px; }
+.preview.dragontree .dt-ember.e3 { left: 54%; animation-delay: 2.3s; --d:  18px; }
+.preview.dragontree .dt-ember.e4 { left: 70%; animation-delay: 3.0s; --d: -22px; }
+.preview.dragontree .dt-ember.e5 { left: 84%; animation-delay: 0.6s; --d:  12px; }
+@keyframes dtEmberRise {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0; }
+  10%  { opacity: 0.9; }
+  90%  { opacity: 0.6; }
+  100% { transform: translate(var(--d, 0), -190px) scale(0.35); opacity: 0; }
+}
+
 .preview.craps {
   background:
     radial-gradient(ellipse at 50% 50%, rgba(255,210,74,0.14), transparent 65%),
@@ -1304,6 +1413,436 @@ body::after {
 .preview.craps .cr-die .pip.b2 { grid-area: 2 / 2; }
 .preview.craps .cr-die .pip.c1 { grid-area: 3 / 1; }
 .preview.craps .cr-die .pip.c3 { grid-area: 3 / 3; }
+
+/* LOBBY COVER POLISH: richer mini-posters for the core tables */
+.preview.slots .reel-strip,
+.preview.kraken .kraken-row,
+.preview.plinko .pk-stage,
+.preview.blackjack .card-fan,
+.preview.craps .cr-dome {
+  position: relative;
+  z-index: 2;
+}
+
+.preview.slots {
+  background:
+    radial-gradient(ellipse at 50% 6%, rgba(255,240,168,0.28), transparent 28%),
+    radial-gradient(ellipse at 18% 78%, rgba(255,46,147,0.20), transparent 48%),
+    radial-gradient(ellipse at 86% 28%, rgba(34,211,238,0.22), transparent 45%),
+    linear-gradient(180deg, #070014 0%, #1b063b 52%, #05010f 100%);
+  box-shadow: inset 0 0 0 1px rgba(34,211,238,0.34), inset 0 -38px 54px rgba(0,0,0,0.38);
+}
+.preview.slots::before {
+  content: '';
+  position: absolute;
+  inset: 18px 16px 28px;
+  border-radius: 18px;
+  background:
+    linear-gradient(90deg, rgba(255,210,74,0.08), transparent 12% 88%, rgba(255,210,74,0.08)),
+    radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.12), transparent 42%),
+    linear-gradient(180deg, rgba(7,1,22,0.96), rgba(27,6,59,0.76) 48%, rgba(2,0,8,0.96));
+  box-shadow:
+    0 16px 28px rgba(0,0,0,0.48),
+    inset 0 0 0 2px rgba(255,210,74,0.34),
+    inset 0 0 34px rgba(168,85,247,0.22);
+}
+.preview.slots::after {
+  content: '';
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 17px;
+  height: 34px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 16% 50%, #fff0a8 0 4px, #ffd24a 5px 8px, transparent 9px),
+    radial-gradient(circle at 31% 50%, #fff0a8 0 4px, #ffd24a 5px 8px, transparent 9px),
+    radial-gradient(circle at 69% 50%, #fff0a8 0 4px, #ffd24a 5px 8px, transparent 9px),
+    radial-gradient(circle at 84% 50%, #fff0a8 0 4px, #ffd24a 5px 8px, transparent 9px),
+    linear-gradient(180deg, rgba(255,210,74,0.18), rgba(7,1,20,0.82));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.26), 0 0 18px rgba(255,210,74,0.16);
+  opacity: 0.95;
+}
+.preview.slots .reel-strip {
+  width: min(100%, 288px);
+  max-width: calc(100% - 16px);
+  justify-content: center;
+  gap: 7px;
+  padding: 10px;
+  border-radius: 15px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.08), transparent 16%),
+    linear-gradient(180deg, rgba(5,1,16,0.86), rgba(0,0,0,0.68));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,210,74,0.24),
+    inset 0 0 24px rgba(0,0,0,0.64),
+    0 10px 22px rgba(0,0,0,0.42);
+}
+.preview.slots .reel-strip::before {
+  content: 'GRAND';
+  position: absolute;
+  left: 50%;
+  top: -20px;
+  transform: translateX(-50%);
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
+  letter-spacing: 0.34em;
+  color: var(--gold-0);
+  text-shadow: 0 0 12px rgba(255,210,74,0.7);
+}
+.preview.slots .reel-sym {
+  position: relative;
+  overflow: hidden;
+  width: 48px;
+  height: 68px;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10), transparent 24%),
+    linear-gradient(180deg, rgba(168,85,247,0.24), rgba(0,0,0,0.64));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,210,74,0.26),
+    inset 0 -18px 22px rgba(0,0,0,0.55),
+    0 0 14px rgba(34,211,238,0.08);
+}
+.preview.slots .reel-sym:not(.diamond)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 0 34%, rgba(255,255,255,0.20) 45%, transparent 56% 100%);
+  transform: translateX(-120%);
+  animation: coverSweep 5.5s ease-in-out infinite;
+}
+
+.preview.kraken {
+  background:
+    radial-gradient(ellipse at 50% 52%, rgba(255,60,95,0.24), transparent 44%),
+    radial-gradient(ellipse at 20% 100%, rgba(34,211,238,0.25), transparent 58%),
+    radial-gradient(ellipse at 86% 0%, rgba(106,58,175,0.42), transparent 58%),
+    linear-gradient(180deg, #010711 0%, #061a2c 54%, #010308 100%);
+  box-shadow: inset 0 0 0 1px rgba(77,255,226,0.26), inset 0 -44px 60px rgba(0,0,0,0.48);
+}
+.preview.kraken::before {
+  background:
+    radial-gradient(ellipse 76px 28px at 16% 86%, transparent 40%, rgba(77,255,226,0.26) 43% 50%, transparent 54%),
+    radial-gradient(ellipse 92px 32px at 88% 74%, transparent 42%, rgba(255,60,95,0.22) 45% 51%, transparent 56%),
+    repeating-linear-gradient(165deg, transparent 0 18px, rgba(77,255,226,0.055) 18px 19px),
+    repeating-linear-gradient(195deg, transparent 0 26px, rgba(106,58,175,0.05) 26px 27px);
+}
+.preview.kraken::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 21% 28%, rgba(196,249,255,0.72) 0 2px, transparent 3px),
+    radial-gradient(circle at 74% 24%, rgba(196,249,255,0.52) 0 1px, transparent 2px),
+    radial-gradient(circle at 36% 72%, rgba(196,249,255,0.44) 0 2px, transparent 3px),
+    radial-gradient(circle at 68% 78%, rgba(196,249,255,0.34) 0 1px, transparent 2px),
+    linear-gradient(180deg, transparent 0 70%, rgba(0,0,0,0.48) 100%);
+  opacity: 0.9;
+  pointer-events: none;
+}
+.preview.kraken .kraken-row {
+  width: min(100%, 272px);
+  max-width: calc(100% - 16px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px 12px;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at 50% 50%, rgba(6,20,35,0.66), rgba(1,3,8,0.26) 68%, transparent 69%);
+  filter: drop-shadow(0 14px 18px rgba(0,0,0,0.45));
+}
+.preview.kraken .kr-eye {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  box-shadow:
+    inset 0 0 0 2px rgba(255,240,168,0.20),
+    0 0 18px rgba(255,60,95,0.68),
+    0 0 36px rgba(77,255,226,0.22);
+}
+.preview.kraken .kr-eye::after {
+  content: '';
+  position: absolute;
+  inset: 16px 28px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255,240,168,0.82), rgba(255,46,147,0.0) 48%);
+  opacity: 0.52;
+}
+.preview.kraken .kr-anchor,
+.preview.kraken .kr-trident {
+  transform-origin: 50% 80%;
+  filter: drop-shadow(0 8px 10px rgba(0,0,0,0.58));
+}
+.preview.kraken .kr-anchor { justify-self: end; }
+.preview.kraken .kr-trident { justify-self: start; }
+
+.preview.plinko {
+  background:
+    radial-gradient(ellipse at 50% 4%, rgba(255,210,74,0.22), transparent 34%),
+    radial-gradient(ellipse at 17% 78%, rgba(255,46,147,0.18), transparent 48%),
+    radial-gradient(ellipse at 83% 72%, rgba(34,211,238,0.22), transparent 48%),
+    linear-gradient(180deg, #070118 0%, #1a0838 56%, #050114 100%);
+  box-shadow: inset 0 0 0 1px rgba(168,85,247,0.42), inset 0 -34px 56px rgba(0,0,0,0.36);
+}
+.preview.plinko::before {
+  content: '';
+  position: absolute;
+  width: 74%;
+  height: 82%;
+  border-radius: 24px 24px 14px 14px;
+  background:
+    linear-gradient(90deg, rgba(34,211,238,0.22), transparent 8% 92%, rgba(255,46,147,0.22)),
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.44));
+  clip-path: polygon(11% 0, 89% 0, 100% 100%, 0 100%);
+  box-shadow: inset 0 0 0 2px rgba(255,210,74,0.28), 0 16px 28px rgba(0,0,0,0.46);
+}
+.preview.plinko::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 15px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--gold-1), var(--neon-pink), transparent);
+  box-shadow: 0 0 16px rgba(255,210,74,0.5);
+}
+.preview.plinko .pk-stage {
+  width: 236px;
+  height: 144px;
+}
+.preview.plinko .pk-peg-grid {
+  top: 16px;
+  gap: 9px;
+}
+.preview.plinko .pk-row {
+  gap: 19px;
+}
+.preview.plinko .pk-peg {
+  width: 8px;
+  height: 8px;
+  box-shadow: 0 0 9px rgba(255,210,74,0.62), 0 0 18px rgba(34,211,238,0.10);
+}
+.preview.plinko .pk-ball {
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.55), 0 0 14px rgba(255,210,74,0.72);
+}
+.preview.plinko .pk-slots {
+  gap: 5px;
+  padding: 0 8px 0;
+}
+.preview.plinko .pk-slot {
+  width: 26px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 10px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.22), 0 4px 8px rgba(0,0,0,0.26);
+}
+
+.preview.blackjack {
+  background:
+    radial-gradient(ellipse at 50% 66%, rgba(92,255,161,0.16), transparent 55%),
+    radial-gradient(ellipse at 50% 100%, #1b794b 0%, transparent 63%),
+    radial-gradient(ellipse at 16% 18%, rgba(255,210,74,0.18), transparent 36%),
+    linear-gradient(180deg, #062a18 0%, #03180b 66%, #010704 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.34), inset 0 -42px 56px rgba(0,0,0,0.38);
+}
+.preview.blackjack::before {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 14px;
+  height: 78px;
+  border-radius: 50% 50% 10px 10px / 70% 70% 10px 10px;
+  background:
+    radial-gradient(ellipse at 50% 86%, rgba(255,210,74,0.22), transparent 52%),
+    linear-gradient(180deg, rgba(255,210,74,0.18), rgba(4,42,22,0.72));
+  box-shadow: inset 0 0 0 2px rgba(255,210,74,0.24), 0 -8px 22px rgba(0,0,0,0.22);
+}
+.preview.blackjack::after {
+  content: '';
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  bottom: 24px;
+  height: 22px;
+  background:
+    radial-gradient(circle at 12% 50%, #fff0a8 0 5px, #ffd24a 6px 9px, transparent 10px),
+    radial-gradient(circle at 22% 50%, #ff9ccd 0 5px, #ff2e93 6px 9px, transparent 10px),
+    radial-gradient(circle at 78% 50%, #9fffe1 0 5px, #22d3ee 6px 9px, transparent 10px),
+    radial-gradient(circle at 88% 50%, #fff0a8 0 5px, #ffd24a 6px 9px, transparent 10px);
+  opacity: 0.92;
+}
+.preview.blackjack .card-fan {
+  width: 244px;
+  height: 156px;
+  filter: drop-shadow(0 16px 16px rgba(0,0,0,0.34));
+}
+.preview.blackjack .pcard {
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.92), rgba(255,255,255,0.98) 40%, rgba(230,224,212,0.96)),
+    #fff;
+  box-shadow:
+    0 12px 22px rgba(0,0,0,0.48),
+    inset 0 0 0 1px rgba(0,0,0,0.07),
+    inset 0 0 0 4px rgba(255,255,255,0.28);
+}
+.preview.blackjack .pcard::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 7px;
+  border: 1px solid rgba(184,134,11,0.20);
+  pointer-events: none;
+}
+.preview.blackjack .c1 { left: 3px; top: 22px; transform: rotate(-16deg); }
+.preview.blackjack .c2 { left: 82px; top: 5px; transform: rotate(0deg) translateY(-2px); }
+.preview.blackjack .c3 { left: 160px; top: 22px; transform: rotate(16deg); }
+.game-card[data-game="multihandblackjack"] .preview.blackjack {
+  background:
+    radial-gradient(ellipse at 28% 76%, rgba(92,255,161,0.18), transparent 40%),
+    radial-gradient(ellipse at 50% 72%, rgba(34,211,238,0.16), transparent 50%),
+    radial-gradient(ellipse at 75% 74%, rgba(255,46,147,0.14), transparent 42%),
+    radial-gradient(ellipse at 50% 100%, #1b794b 0%, transparent 62%),
+    linear-gradient(180deg, #062a18 0%, #03180b 66%, #010704 100%);
+}
+.game-card[data-game="multihandblackjack"] .preview.blackjack .card-fan::after {
+  content: '';
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 1px;
+  height: 32px;
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at 18% 50%, transparent 0 17px, rgba(255,210,74,0.42) 18px 19px, transparent 20px),
+    radial-gradient(ellipse at 50% 50%, transparent 0 17px, rgba(34,211,238,0.42) 18px 19px, transparent 20px),
+    radial-gradient(ellipse at 82% 50%, transparent 0 17px, rgba(255,46,147,0.42) 18px 19px, transparent 20px);
+  opacity: 0.95;
+}
+.game-card[data-game="multihandblackjack"] .preview.blackjack .pcard {
+  width: 76px;
+  height: 108px;
+}
+.game-card[data-game="multihandblackjack"] .preview.blackjack .c1 { left: 13px; top: 32px; transform: rotate(-19deg); }
+.game-card[data-game="multihandblackjack"] .preview.blackjack .c2 { left: 84px; top: 13px; transform: rotate(0deg); }
+.game-card[data-game="multihandblackjack"] .preview.blackjack .c3 { left: 154px; top: 32px; transform: rotate(19deg); }
+
+.preview.craps {
+  background:
+    radial-gradient(ellipse at 50% 46%, rgba(255,210,74,0.17), transparent 56%),
+    radial-gradient(ellipse at 22% 0%, rgba(168,85,247,0.32), transparent 64%),
+    radial-gradient(ellipse at 80% 100%, rgba(34,211,238,0.14), transparent 54%),
+    linear-gradient(180deg, #0a0418 0%, #1a0838 54%, #05020e 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.36), inset 0 -38px 56px rgba(0,0,0,0.40);
+}
+.preview.craps::before {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 20px;
+  height: 82px;
+  border-radius: 50% 50% 16px 16px / 62% 62% 16px 16px;
+  background:
+    linear-gradient(90deg, transparent 0 17%, rgba(255,210,74,0.20) 17% 18%, transparent 18% 31%, rgba(255,210,74,0.20) 31% 32%, transparent 32% 68%, rgba(255,210,74,0.20) 68% 69%, transparent 69% 82%, rgba(255,210,74,0.20) 82% 83%, transparent 83% 100%),
+    radial-gradient(ellipse at 50% 92%, rgba(92,255,161,0.18), transparent 48%),
+    linear-gradient(180deg, rgba(13,74,42,0.84), rgba(5,25,17,0.94));
+  box-shadow: inset 0 0 0 2px rgba(255,210,74,0.26), 0 10px 22px rgba(0,0,0,0.42);
+}
+.preview.craps::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 36px;
+  height: 16px;
+  background:
+    radial-gradient(circle at 12% 50%, #ff9ccd 0 4px, #ff2e93 5px 7px, transparent 8px),
+    radial-gradient(circle at 21% 50%, #fff0a8 0 4px, #ffd24a 5px 7px, transparent 8px),
+    radial-gradient(circle at 79% 50%, #9fffe1 0 4px, #22d3ee 5px 7px, transparent 8px),
+    radial-gradient(circle at 88% 50%, #fff0a8 0 4px, #ffd24a 5px 7px, transparent 8px);
+  pointer-events: none;
+}
+.preview.craps .cr-dome {
+  width: 146px;
+  height: 112px;
+  background:
+    radial-gradient(ellipse 62% 30% at 50% 13%, rgba(255,255,255,0.56), transparent 68%),
+    radial-gradient(circle at 35% 42%, rgba(34,211,238,0.14), transparent 32%),
+    radial-gradient(circle at 50% 64%, rgba(168,85,247,0.22), rgba(10,4,24,0.66) 70%);
+  box-shadow:
+    inset 0 0 28px rgba(168,85,247,0.34),
+    inset 0 -8px 16px rgba(0,0,0,0.56),
+    inset 0 4px 10px rgba(255,255,255,0.22),
+    0 0 30px rgba(255,210,74,0.20),
+    0 16px 22px rgba(0,0,0,0.40);
+}
+.preview.craps .cr-dome::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 21px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+  opacity: 0.86;
+}
+.preview.craps .cr-die {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  transform: rotate(-10deg);
+}
+.preview.craps .cr-die + .cr-die {
+  transform: rotate(12deg) translateY(-2px);
+}
+.game-card[data-game="standardcraps"] .preview.craps::before {
+  background:
+    linear-gradient(90deg, transparent 0 18%, rgba(255,210,74,0.24) 18% 19%, transparent 19% 81%, rgba(255,210,74,0.24) 81% 82%, transparent 82% 100%),
+    radial-gradient(ellipse at 50% 92%, rgba(92,255,161,0.18), transparent 48%),
+    linear-gradient(180deg, rgba(15,86,47,0.88), rgba(5,25,17,0.94));
+}
+.game-card[data-game="easycraps"] .preview.craps {
+  background:
+    radial-gradient(ellipse at 50% 46%, rgba(92,255,161,0.18), transparent 56%),
+    radial-gradient(ellipse at 24% 0%, rgba(34,211,238,0.26), transparent 64%),
+    radial-gradient(ellipse at 80% 100%, rgba(255,210,74,0.14), transparent 54%),
+    linear-gradient(180deg, #06160f 0%, #123522 54%, #030a07 100%);
+}
+.game-card[data-game="easycraps"] .preview.craps .cr-dome {
+  box-shadow:
+    inset 0 0 28px rgba(34,211,238,0.24),
+    inset 0 -8px 16px rgba(0,0,0,0.56),
+    inset 0 4px 10px rgba(255,255,255,0.22),
+    0 0 30px rgba(92,255,161,0.18),
+    0 16px 22px rgba(0,0,0,0.40);
+}
+.game-card[data-game="craplesscraps"] .preview.craps {
+  background:
+    radial-gradient(ellipse at 50% 46%, rgba(255,210,74,0.18), transparent 56%),
+    radial-gradient(ellipse at 20% 0%, rgba(255,46,147,0.26), transparent 64%),
+    radial-gradient(ellipse at 80% 100%, rgba(168,85,247,0.22), transparent 54%),
+    linear-gradient(180deg, #0a0418 0%, #23073c 54%, #05020e 100%);
+}
+.game-card[data-game="craplesscraps"] .preview.craps::before {
+  background:
+    linear-gradient(90deg, transparent 0 10%, rgba(255,210,74,0.22) 10% 11%, transparent 11% 23%, rgba(255,210,74,0.22) 23% 24%, transparent 24% 76%, rgba(255,210,74,0.22) 76% 77%, transparent 77% 89%, rgba(255,210,74,0.22) 89% 90%, transparent 90% 100%),
+    radial-gradient(ellipse at 50% 92%, rgba(255,46,147,0.16), transparent 48%),
+    linear-gradient(180deg, rgba(33,9,62,0.86), rgba(10,4,24,0.96));
+}
+
+@keyframes coverSweep {
+  0%, 62% { transform: translateX(-120%); opacity: 0; }
+  70% { opacity: 0.82; }
+  88%, 100% { transform: translateX(135%); opacity: 0; }
+}
 
 /* card meta */
 .game-title {
@@ -1520,24 +2059,37 @@ body::after {
   .games { grid-template-columns: 1fr; gap: 16px; }
   .game-card { padding: 16px; border-radius: 18px; }
   .preview { height: 140px; margin-bottom: 12px; }
+  .preview.slots::before { inset: 13px 10px 20px; border-radius: 14px; }
+  .preview.slots::after { left: 18px; right: 18px; bottom: 11px; height: 25px; }
+  .preview.slots .reel-strip { gap: 5px; padding: 7px; }
+  .preview.slots .reel-strip::before { top: -16px; font-size: 7px; }
   .preview.slots .reel-sym { width: 44px; height: 56px; font-size: 22px; }
   .preview.slots .reel-sym.diamond::after { width: 26px; height: 26px; }
   .preview.kraken .kr-anchor { font-size: 40px; }
   .preview.kraken .kr-eye { width: 54px; height: 54px; }
   .preview.kraken .kr-trident { font-size: 36px; }
-  .preview.kraken .kraken-row { gap: 10px; }
+  .preview.kraken .kraken-row { gap: 10px; padding: 12px 14px 10px; }
+  .preview.blackjack::before { left: 5%; right: 5%; bottom: 8px; height: 60px; }
+  .preview.blackjack::after { left: 18px; right: 18px; bottom: 16px; transform: scale(0.86); }
   .preview.blackjack .card-fan { width: 180px; height: 130px; }
   .preview.blackjack .pcard { width: 64px; height: 92px; padding: 6px; }
   .preview.blackjack .pcard .rank, .preview.blackjack .pcard .bot { font-size: 15px; }
   .preview.blackjack .pcard .suit-center { font-size: 22px; }
-  .preview.blackjack .c2 { left: 56px; }
-  .preview.blackjack .c3 { left: 112px; }
-  .preview.plinko .pk-stage { width: 128px; height: 78px; }
-  .preview.plinko .pk-peg-grid { gap: 5px; top: 9px; }
-  .preview.plinko .pk-row { gap: 11px; }
+  .preview.blackjack .c1 { left: 0; top: 22px; }
+  .preview.blackjack .c2 { left: 58px; top: 8px; }
+  .preview.blackjack .c3 { left: 116px; top: 22px; }
+  .game-card[data-game="multihandblackjack"] .preview.blackjack .pcard { width: 62px; height: 88px; }
+  .game-card[data-game="multihandblackjack"] .preview.blackjack .c1 { left: 8px; top: 32px; }
+  .game-card[data-game="multihandblackjack"] .preview.blackjack .c2 { left: 58px; top: 14px; }
+  .game-card[data-game="multihandblackjack"] .preview.blackjack .c3 { left: 110px; top: 32px; }
+  .preview.plinko::before { width: 82%; height: 84%; border-radius: 18px 18px 12px 12px; }
+  .preview.plinko .pk-stage { width: 170px; height: 108px; }
+  .preview.plinko .pk-peg-grid { gap: 6px; top: 12px; }
+  .preview.plinko .pk-row { gap: 13px; }
   .preview.plinko .pk-peg { width: 5px; height: 5px; }
-  .preview.plinko .pk-ball { width: 8px; height: 8px; margin-left: -4px; }
-  .preview.plinko .pk-slot { width: 15px; height: 14px; font-size: 7px; }
+  .preview.plinko .pk-ball { width: 9px; height: 9px; margin-left: -4.5px; }
+  .preview.plinko .pk-slots { gap: 3px; padding: 0 4px; }
+  .preview.plinko .pk-slot { width: 18px; height: 16px; font-size: 7px; }
   .preview.rocket .rk-stage { width: 154px; height: 102px; }
   .preview.rocket .rk-logo span { font-size: 6px; letter-spacing: 0.22em; }
   .preview.rocket .rk-logo b { font-size: 14px; }
@@ -1552,20 +2104,22 @@ body::after {
   .preview.rocket .rk-dot.d2 { left: 78px; top: 57px; }
   .preview.rocket .rk-dot.d3 { left: 112px; top: 40px; }
   @keyframes pkBall {
-    0%   { transform: translate(0, -3px);   opacity: 0; animation-timing-function: ease-in; }
-    4%   { transform: translate(0, 2px);    opacity: 1; animation-timing-function: cubic-bezier(.4,.0,.55,1); }
-    14%  { transform: translate(-3px, 10px); animation-timing-function: cubic-bezier(.4,.0,.55,1); }
-    26%  { transform: translate(5px, 20px);  animation-timing-function: cubic-bezier(.4,.0,.55,1); }
-    38%  { transform: translate(-5px, 30px); animation-timing-function: cubic-bezier(.4,.0,.55,1); }
-    50%  { transform: translate(3px, 40px);  animation-timing-function: cubic-bezier(.4,.0,.55,1); }
-    62%  { transform: translate(-2px, 50px); animation-timing-function: cubic-bezier(.35,.0,.5,1); }
-    72%  { transform: translate(0, 60px);    animation-timing-function: ease-out; }
-    82%  { transform: translate(0, 66px);    opacity: 1; }
-    92%  { transform: translate(0, 66px);    opacity: 0.4; }
-    100% { transform: translate(0, 66px);    opacity: 0; }
+    0%   { transform: translate(0, -3px);    opacity: 0; animation-timing-function: ease-in; }
+    4%   { transform: translate(0, 2px);     opacity: 1; animation-timing-function: cubic-bezier(.4,.0,.55,1); }
+    14%  { transform: translate(-3px, 13px);  animation-timing-function: cubic-bezier(.4,.0,.55,1); }
+    26%  { transform: translate(5px, 25px);   animation-timing-function: cubic-bezier(.4,.0,.55,1); }
+    38%  { transform: translate(-5px, 39px);  animation-timing-function: cubic-bezier(.4,.0,.55,1); }
+    50%  { transform: translate(4px, 52px);   animation-timing-function: cubic-bezier(.4,.0,.55,1); }
+    62%  { transform: translate(-2px, 66px);  animation-timing-function: cubic-bezier(.35,.0,.5,1); }
+    72%  { transform: translate(1px, 80px);   animation-timing-function: ease-out; }
+    82%  { transform: translate(0, 89px);     opacity: 1; }
+    92%  { transform: translate(0, 89px);     opacity: 0.4; }
+    100% { transform: translate(0, 89px);     opacity: 0; }
   }
-  .preview.craps .cr-dome { width: 96px; height: 74px; gap: 6px; }
-  .preview.craps .cr-die { width: 22px; height: 22px; padding: 2px; }
+  .preview.craps::before { left: 5%; right: 5%; bottom: 13px; height: 60px; }
+  .preview.craps::after { left: 13%; right: 13%; bottom: 25px; transform: scale(0.86); }
+  .preview.craps .cr-dome { width: 104px; height: 80px; gap: 6px; }
+  .preview.craps .cr-die { width: 23px; height: 23px; padding: 2px; }
   .preview.craps .cr-die .pip { width: 3px; height: 3px; }
   .balance-bar { padding: 12px 16px; gap: 10px; width: 100%; }
   .game-desc { min-height: auto; font-size: 12px; }
@@ -1809,6 +2363,30 @@ body::after {
       <div class="game-meta">
         <span class="meta-pill">GLOBAL</span>
         <span class="meta-pill">0 + 00</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="dragontree.html" data-game="dragontree">
+      <div class="preview dragontree">
+        <div class="dt-scene"></div>
+        <div class="dt-vignette"></div>
+        <div class="dt-coin c1"><span>50×</span></div>
+        <div class="dt-coin c2"><span>100×</span></div>
+        <div class="dt-coin c3"><span>20×</span></div>
+        <div class="dt-ember e1"></div>
+        <div class="dt-ember e2"></div>
+        <div class="dt-ember e3"></div>
+        <div class="dt-ember e4"></div>
+        <div class="dt-ember e5"></div>
+      </div>
+      <div class="game-title">DRAGON'S FORTUNE TREE</div>
+      <div class="game-tagline">JADE TEMPLE · GOLDEN SHOWER</div>
+      <div class="game-desc">Strike the elder tree of the jade temple. Trigger the Golden Shower Bonus to rain dragon-scale leaves and reveal prize multipliers up to 100×.</div>
+      <div class="game-meta">
+        <span class="meta-pill">BONUS HUNT</span>
+        <span class="meta-pill">100× MAX</span>
         <span class="meta-pill hot">NEW</span>
       </div>
       <div class="play-cta">PLAY</div>
