@@ -2123,8 +2123,9 @@ function renderPresenceBadges(counts) {
   counts = counts || {};
   presenceBadges.forEach((badge, game) => {
     const count = Number(counts[game]) || 0;
-    const show = count > 1;
-    badge.textContent = show ? `×${count}` : '';
+    const visibleCount = game === 'rocket' ? Math.max(1, count) : count;
+    const show = visibleCount > 0;
+    badge.textContent = show ? `×${visibleCount}` : '';
     badge.classList.toggle('show', show);
   });
 }

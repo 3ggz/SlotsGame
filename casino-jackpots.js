@@ -195,6 +195,49 @@
       0%   { opacity: 1; transform: translate(0, 0) scale(1); }
       100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
     }
+
+    /* Casino-wide flyby banner when ANYONE hits a jackpot.
+       Top-right, slides in, holds ~5s, slides out. Non-blocking. */
+    .cj-flyby {
+      position: fixed;
+      top: 64px; right: 18px;
+      z-index: 150;
+      max-width: min(360px, 80vw);
+      padding: 10px 14px 10px 12px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(26,6,64,0.95), rgba(10,3,25,0.95));
+      box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.5),
+                  0 10px 24px rgba(0,0,0,0.5),
+                  0 0 24px rgba(255,210,74,0.18);
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px;
+      display: inline-flex; align-items: center; gap: 9px;
+      white-space: nowrap;
+      transform: translateX(calc(100% + 32px));
+      opacity: 0;
+      transition: transform 0.55s cubic-bezier(.22,1,.36,1), opacity 0.35s;
+      pointer-events: none;
+    }
+    .cj-flyby.show { transform: translateX(0); opacity: 1; }
+    .cj-flyby .cj-fb-kind {
+      padding: 3px 8px 2px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #ffe27a, #ffb73e);
+      color: #1a0640;
+      font-family: 'Bungee', cursive;
+      font-size: 8px;
+      letter-spacing: 0.20em;
+      flex-shrink: 0;
+    }
+    .cj-flyby .cj-fb-who  { color: #fff0a8; font-weight: 700; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+    .cj-flyby .cj-fb-amt  { color: #5cffa1; font-family: 'Geist Mono', monospace; font-weight: 800; }
+    .cj-flyby .cj-fb-mid  { color: rgba(255,255,255,0.55); }
+    @media (max-width: 720px) {
+      .cj-flyby { top: 56px; right: 8px; font-size: 11px; padding: 8px 12px 8px 10px; gap: 7px; }
+      .cj-flyby .cj-fb-kind { font-size: 7px; letter-spacing: 0.16em; padding: 2px 6px 1px; }
+      .cj-flyby .cj-fb-who { max-width: 90px; }
+    }
   `;
 
   function injectOverlayOnce() {
@@ -286,6 +329,94 @@
   function closeOverlay() {
     const veil = document.getElementById('cj-veil');
     if (veil) veil.classList.remove('show');
+  }
+
+  // -----------------------------------------------------------
+  // Casino-wide flyby banner. Subscribes to recentJackpots so
+  // EVERY page shows a discreet toast when ANYONE hits a jackpot.
+  // The player's own wins are skipped — they already got the
+  // full-screen celebration.
+  // -----------------------------------------------------------
+  const seenJackpotIds = new Set();
+  let bannerEl = null;
+  const bannerQueue = [];
+  let bannerShowing = false;
+  let firstJackpotSnapshot = true;
+
+  function ensureBanner() {
+    if (bannerEl) return bannerEl;
+    bannerEl = document.createElement('div');
+    bannerEl.className = 'cj-flyby';
+    bannerEl.innerHTML = `
+      <span class="cj-fb-kind"></span>
+      <span class="cj-fb-who"></span>
+      <span class="cj-fb-mid">won</span>
+      <span class="cj-fb-amt"></span>
+    `;
+    document.body.appendChild(bannerEl);
+    return bannerEl;
+  }
+
+  function fmtBannerMoney(v) {
+    const cents = Math.round(Number(v) || 0);
+    if (cents >= 1e9) return '$' + (cents / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
+    if (cents >= 1e6) return '$' + (cents / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
+    return '$' + cents.toLocaleString('en-US');
+  }
+
+  function showNextBanner() {
+    if (bannerShowing) return;
+    const job = bannerQueue.shift();
+    if (!job) return;
+    bannerShowing = true;
+    const el = ensureBanner();
+    el.querySelector('.cj-fb-kind').textContent = (job.kind || 'JACKPOT').toUpperCase();
+    el.querySelector('.cj-fb-who').textContent  = job.player || 'Anonymous';
+    el.querySelector('.cj-fb-amt').textContent  = fmtBannerMoney(job.amount);
+    // Defer adding .show so the transition runs from the off-screen start.
+    requestAnimationFrame(() => el.classList.add('show'));
+    setTimeout(() => {
+      el.classList.remove('show');
+      setTimeout(() => {
+        bannerShowing = false;
+        showNextBanner();
+      }, 600);
+    }, 5000);
+  }
+
+  function enqueueBanner(entry) {
+    bannerQueue.push(entry);
+    showNextBanner();
+  }
+
+  function handleJackpotFeed(list) {
+    if (!Array.isArray(list)) return;
+    // First snapshot is the historical backlog — mark everything seen
+    // without showing banners, so we only flyby for NEW hits.
+    if (firstJackpotSnapshot) {
+      firstJackpotSnapshot = false;
+      for (const j of list) seenJackpotIds.add(j.id);
+      return;
+    }
+    // Iterate oldest-to-newest so the queue order matches chronological.
+    const newOnes = [];
+    for (const j of list) {
+      if (!j || !j.id || seenJackpotIds.has(j.id)) continue;
+      seenJackpotIds.add(j.id);
+      newOnes.push(j);
+    }
+    newOnes.reverse();
+    const myUid = (window.CasinoAccount && window.CasinoAccount.user && window.CasinoAccount.user()?.uid) || null;
+    for (const j of newOnes) {
+      // Skip our own wins — the full celebration already played.
+      if (myUid && j.uid && j.uid === myUid) continue;
+      enqueueBanner({
+        kind:   j.kind || 'JACKPOT',
+        player: j.player || 'Anonymous',
+        amount: j.amount || 0,
+        game:   j.game,
+      });
+    }
   }
 
   // -----------------------------------------------------------
@@ -409,6 +540,15 @@
       currentPools() { return lastSnapshot; },
       tiers: TIERS.map(t => ({ ...t })),
     };
+
+    // Subscribe to the casino-wide recentJackpots feed for the
+    // non-intrusive flyby banner shown on every page.
+    try {
+      if (window.CasinoStats && typeof window.CasinoStats.subscribeJackpots === 'function') {
+        window.CasinoStats.subscribeJackpots(handleJackpotFeed, 12);
+      }
+    } catch (e) { console.warn('[casino-jackpots] flyby feed subscribe failed:', e); }
+
     console.log('[casino-jackpots] Firestore wired; /globals/jackpots subscribed');
   }
 
@@ -455,12 +595,28 @@
   // Returns a Promise that resolves to { kind, amount } when the
   // bet triggers a jackpot, or null otherwise.
   // -----------------------------------------------------------
+  // Per-game eligibility rate: how often a bet from this game
+  // actually counts toward the jackpot system. Defaults to 1.0
+  // (every bet counts). Cheap, high-volume games are discounted
+  // so they can't farm trigger rolls by spamming tiny stakes.
+  const GAME_ELIGIBILITY = {
+    plinko: 0.1, // 1 in 10 balls counts — others are jackpot no-ops
+  };
+
   async function processBet(game, bet) {
     if (!docRef || !fs) {
       console.debug('[casino-jackpots] skipped contribute (firestore not ready)', { game, bet });
       return null;
     }
     if (!Number.isFinite(bet) || bet <= 0) return null;
+
+    // Roll eligibility for the game. Skipped rolls don't contribute
+    // to pools either, so a spammer can't game the contribution side.
+    const eligibility = GAME_ELIGIBILITY[game];
+    if (eligibility != null && Math.random() >= eligibility) {
+      console.debug('[casino-jackpots] skipped (game eligibility)', { game, bet, eligibility });
+      return null;
+    }
 
     // Roll the dice for each tier BEFORE running the transaction.
     // Fixed per-spin probabilities — bet size doesn't change odds,
