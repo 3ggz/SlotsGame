@@ -210,6 +210,23 @@ const ACCOUNT_UI_CSS = `
     box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.3);
     outline: none; transition: box-shadow 0.2s;
   }
+  /* Username input + dice randomizer button, side-by-side. */
+  .cu-name-row {
+    display: flex; gap: 8px; align-items: stretch; margin-bottom: 10px;
+  }
+  .cu-name-row .cu-field { margin-bottom: 0; flex: 1; }
+  .cu-shuffle {
+    flex-shrink: 0;
+    width: 44px;
+    border: 0; cursor: pointer;
+    border-radius: 10px;
+    background: rgba(168,85,247,0.18);
+    color: #fff; font-size: 18px; line-height: 1;
+    box-shadow: inset 0 0 0 1.5px rgba(168,85,247,0.4);
+    transition: filter 0.15s, transform 0.1s, background 0.15s;
+  }
+  .cu-shuffle:hover { filter: brightness(1.2); background: rgba(168,85,247,0.32); }
+  .cu-shuffle:active { transform: translateY(2px); }
   .cu-field::placeholder { color: rgba(255,255,255,0.35); }
   .cu-field:focus { box-shadow: inset 0 0 0 1.5px #22d3ee, 0 0 14px rgba(34,211,238,0.3); }
   .cu-error {
@@ -406,7 +423,10 @@ const MODAL_HTML = `
       <div class="cu-sub">JOIN THE FLOOR · CLAIM A NAME</div>
       <button type="button" class="cu-google" id="cu-google-up"><span class="cu-g-mark"></span>CONTINUE WITH GOOGLE</button>
       <div class="cu-or">OR</div>
-      <input class="cu-field" id="cu-name-up" type="text" placeholder="Username" autocomplete="username" maxlength="24" />
+      <div class="cu-name-row">
+        <input class="cu-field" id="cu-name-up" type="text" placeholder="Username" autocomplete="username" maxlength="24" />
+        <button class="cu-shuffle" id="cu-shuffle-up" type="button" title="Random username">🎲</button>
+      </div>
       <input class="cu-field" id="cu-email-up" type="email" placeholder="Email" autocomplete="email" />
       <input class="cu-field" id="cu-pw-up" type="password" placeholder="Password (min 6 chars)" autocomplete="new-password" />
       <div class="cu-error" id="cu-err-up"></div>
@@ -433,7 +453,10 @@ const MODAL_HTML = `
         <div class="cu-pstat"><div class="lbl">JACKPOTS</div><div class="val" id="cu-ps-jp">0</div></div>
       </div>
       <div class="cu-section-lbl">USERNAME</div>
-      <input class="cu-field" id="cu-username" type="text" placeholder="Pick a name (max 24)" maxlength="24" />
+      <div class="cu-name-row">
+        <input class="cu-field" id="cu-username" type="text" placeholder="Pick a name (max 24)" maxlength="24" />
+        <button class="cu-shuffle" id="cu-shuffle-profile" type="button" title="Random username">🎲</button>
+      </div>
       <div class="cu-section-lbl">AVATAR</div>
       <div class="cu-avatar-grid" id="cu-avatar-grid"></div>
       <div class="cu-error" id="cu-err-pr"></div>
@@ -488,6 +511,7 @@ window.CasinoStats = {
   recordRound() {},
   subscribe(fn) { try { fn(ZERO_STATS); } catch (e) {} return () => {}; },
   subscribeJackpots(fn) { try { fn([]); } catch (e) {} return () => {}; },
+  subscribePresence(fn) { try { fn({}); } catch (e) {} return () => {}; },
 };
 
 window.RocketLive = {
@@ -553,6 +577,53 @@ if (!CONFIGURED) {
       let currentUser = null;
       let didAnonFallback = false;
       const authListeners = [];
+      const PRESENCE_COLLECTION = 'tablePresence';
+      const PRESENCE_STALE_MS = 60000;
+      const PRESENCE_HEARTBEAT_MS = 15000;
+      const GAME_BY_FILE = {
+        'index.html': 'lobby',
+        '': 'lobby',
+        'slots.html': 'slots',
+        'kraken.html': 'kraken',
+        'lucky7saloon.html': 'lucky7saloon',
+        'plinko.html': 'plinko',
+        'rocket.html': 'rocket',
+        'blackjack.html': 'blackjack',
+        'multihandblackjack.html': 'multihandblackjack',
+        'standardcraps.html': 'standardcraps',
+        'easycraps.html': 'easycraps',
+        'craplesscraps.html': 'craplesscraps',
+      };
+      let presenceTimer = null;
+
+      function currentGameKey() {
+        const file = decodeURIComponent((location.pathname.split('/').pop() || 'index.html')).toLowerCase();
+        return GAME_BY_FILE[file] || file.replace(/\.html$/, '') || 'lobby';
+      }
+
+      function writePresence() {
+        if (!currentUser) return Promise.resolve();
+        return setDoc(doc(db, PRESENCE_COLLECTION, currentUser.uid), {
+          uid: currentUser.uid,
+          player: playerLabel(currentUser),
+          anonymous: !!currentUser.isAnonymous,
+          game: currentGameKey(),
+          page: location.pathname.split('/').pop() || 'index.html',
+          lastSeen: Date.now(),
+          updatedAt: serverTimestamp(),
+        }, { merge: true }).catch(() => {});
+      }
+
+      function startPresenceHeartbeat() {
+        if (presenceTimer) clearInterval(presenceTimer);
+        writePresence();
+        presenceTimer = setInterval(writePresence, PRESENCE_HEARTBEAT_MS);
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') writePresence();
+      });
+      window.addEventListener('pagehide', () => { writePresence(); });
       onAuthStateChanged(auth, u => {
         // First emission represents the persisted auth state (Firebase
         // delays it until IndexedDB has been read). If there's no user,
@@ -566,6 +637,7 @@ if (!CONFIGURED) {
           return; // wait for the next emission carrying the new anon user
         }
         currentUser = u;
+        if (u) startPresenceHeartbeat();
         if (u && !u.isAnonymous) {
           // Read first so we can backfill a default username for accounts
           // that don't have one yet (e.g. fresh Google sign-ins, legacy
@@ -718,6 +790,34 @@ if (!CONFIGURED) {
         }, () => {});
       }
 
+      function subscribePresence(fn) {
+        const ref = collection(db, PRESENCE_COLLECTION);
+        let docs = [];
+        let timer = null;
+        const emit = () => {
+          const now = Date.now();
+          const counts = {};
+          for (const d of docs) {
+            const lastSeen = Number(d.lastSeen) || 0;
+            const game = String(d.game || '');
+            if (!game || now - lastSeen > PRESENCE_STALE_MS) continue;
+            counts[game] = (counts[game] || 0) + 1;
+          }
+          try { fn(counts); } catch (e) {}
+        };
+        const off = onSnapshot(ref, snap => {
+          docs = [];
+          snap.forEach(d => docs.push(d.data() || {}));
+          emit();
+        }, () => {});
+        timer = setInterval(emit, 10000);
+        emit();
+        return () => {
+          try { off(); } catch (e) {}
+          if (timer) clearInterval(timer);
+        };
+      }
+
       function waitForCurrentUser(timeout = 5000) {
         if (currentUser) return Promise.resolve(currentUser);
         return new Promise(resolve => {
@@ -791,6 +891,7 @@ if (!CONFIGURED) {
         recordRound,
         subscribe,
         subscribeJackpots,
+        subscribePresence,
       };
 
       window.RocketLive = {
@@ -999,6 +1100,14 @@ if (!CONFIGURED) {
         const active = veil.querySelector(`[data-view="${viewKey}"]`);
         if (active) active.style.display = '';
         if (viewKey === 'profile') renderProfileView(veil);
+        // When the signup view opens, pre-fill the username with a
+        // random suggestion (only if it's currently empty — don't blow
+        // away whatever they've already typed if they're toggling
+        // between signin/signup tabs).
+        if (viewKey === 'signup') {
+          const nameField = veil.querySelector('#cu-name-up');
+          if (nameField && !nameField.value) nameField.value = randomGuestTag();
+        }
         // Volume section shows for signin and profile, hides during signup
         // to keep the create-account flow focused.
         const volSection = veil.querySelector('.cu-vol-section');
@@ -1144,6 +1253,16 @@ if (!CONFIGURED) {
         });
         $('#cu-go-signin').addEventListener('click', () => { uiState.view = 'signin'; renderModal(); });
         $('#cu-cancel-up').addEventListener('click', closeModal);
+        $('#cu-shuffle-up').addEventListener('click', () => {
+          const f = $('#cu-name-up');
+          f.value = randomGuestTag();
+          f.focus();
+        });
+        $('#cu-shuffle-profile').addEventListener('click', () => {
+          const f = $('#cu-username');
+          f.value = randomGuestTag();
+          f.focus();
+        });
         [$('#cu-name-up'), $('#cu-email-up'), $('#cu-pw-up')].forEach(inp => inp.addEventListener('keydown', e => {
           if (e.key === 'Enter') $('#cu-do-signup').click();
           if (e.key === 'Escape') closeModal();
