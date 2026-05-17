@@ -175,18 +175,6 @@ button, input { font: inherit; }
     linear-gradient(180deg, rgba(26,8,56,0.82), rgba(5,1,18,0.38));
   box-shadow: inset 0 0 0 1px rgba(255,210,74,0.18), 0 18px 38px rgba(0,0,0,0.20);
 }
-.game-header::before,
-.game-header::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: min(110px, 12vw);
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,210,74,0.70), transparent);
-  filter: drop-shadow(0 0 8px rgba(255,210,74,0.48));
-}
-.game-header::before { left: 22px; }
-.game-header::after { right: 22px; transform: scaleX(-1); }
 .title-block { position: relative; z-index: 1; min-width: 0; text-align: left; }
 .game-header .pre {
   font-family: 'Bungee', cursive;
@@ -999,8 +987,6 @@ button, input { font: inherit; }
 }
 
 @media (max-width: 920px) {
-  .game-header::before,
-  .game-header::after { width: 12vw; opacity: 0.64; }
   .game-header { grid-template-columns: 1fr; justify-items: stretch; }
   .title-block { text-align: center; }
   .roll-history-label { text-align: center; }
@@ -2121,6 +2107,8 @@ Object.assign(State, {
   activeRound: null,
   liveCashouts: [],
   cashoutRoundId: null,
+  heldCashouts: [],
+  recentRenderKey: '',
   unsubscribeCashouts: null,
   lastCrashRoundId: null,
   hasPlayedLaunchSfx: false,
@@ -2360,6 +2348,10 @@ function mergedCashouts() {
   return out;
 }
 
+function snapshotCashouts() {
+  return mergedCashouts().map(c => ({ ...c }));
+}
+
 function escapeHTML(s) {
   return String(s).replace(/[&<>"']/g, ch => ({
     '&': '&amp;',
@@ -2370,8 +2362,16 @@ function escapeHTML(s) {
   }[ch]));
 }
 
-function renderRecent() {
-  const list = mergedCashouts().slice(-12).reverse();
+function renderRecent(round = State.activeRound || getGlobalRound(casinoNow())) {
+  const holdingPrevious = round && round.phase === 'betting' && round.timeToLaunch > 3000 && State.heldCashouts.length;
+  const list = (holdingPrevious ? State.heldCashouts : mergedCashouts()).slice(-12).reverse();
+  const key = [
+    holdingPrevious ? 'hold' : 'live',
+    round ? round.roundId : '',
+    list.map(c => `${c.local ? '1' : '0'}:${c.player}:${Number(c.multiplier).toFixed(2)}`).join('|'),
+  ].join('::');
+  if (State.recentRenderKey === key) return;
+  State.recentRenderKey = key;
   if (!list.length) {
     recentListEl.innerHTML = '<span class="recent-pill">WAITING</span><span class="recent-pill">FOR</span><span class="recent-pill">DOTS</span>';
     return;
@@ -2502,6 +2502,7 @@ function announceCrash(round) {
 function syncGlobalRound(round) {
   const previous = State.activeRound;
   if (!previous || previous.roundId !== round.roundId) {
+    const previousCashouts = previous ? snapshotCashouts() : [];
     if (previous) {
       resolveLocalLoss(previous);
       announceCrash(previous);
@@ -2518,6 +2519,8 @@ function syncGlobalRound(round) {
     State.localCashed = false;
     State.localResolved = false;
     State.localCashout = null;
+    State.heldCashouts = previousCashouts;
+    State.recentRenderKey = '';
     State.hasPlayedLaunchSfx = false;
     State.lastCrashRoundId = null;
     State.graphMax = keepImpact ? State.crashHold.graphMax : BASE_GRAPH_MAX;
@@ -2536,6 +2539,10 @@ function syncGlobalRound(round) {
 
   if (round.phase === 'betting') {
     State.mode = 'idle';
+    if (round.timeToLaunch <= 3000 && State.heldCashouts.length) {
+      State.heldCashouts = [];
+      State.recentRenderKey = '';
+    }
     stopThrust();
     clearCrashHold();
     rocketEl.classList.remove('running', 'cash');
@@ -2944,6 +2951,7 @@ function frame(now) {
   }
 
   syncControls();
+  if (round.phase === 'betting') renderRecent(round);
   drawBackground(now);
   const drawP = impactActive ? State.crashHold.p : (round.phase === 'betting' ? 0.035 : pathProgress(round.multiplier, State.graphMax || BASE_GRAPH_MAX));
   drawCurve(drawP, now);
