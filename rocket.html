@@ -375,6 +375,18 @@ button, input { font: inherit; }
 }
 .multiplier-readout.cash .value { color: #d8ffe8; text-shadow: 0 0 18px rgba(92,255,161,0.95), 0 0 42px rgba(92,255,161,0.40); }
 .multiplier-readout.crash .value { color: #ffd7dd; text-shadow: 0 0 18px rgba(255,77,109,0.95), 0 0 42px rgba(255,46,147,0.38); }
+.multiplier-readout.timer .value {
+  color: var(--gold-0);
+  font-size: clamp(64px, 11vw, 126px);
+  text-shadow:
+    0 0 16px rgba(255,210,74,0.92),
+    0 0 38px rgba(255,210,74,0.38),
+    0 4px 0 rgba(0,0,0,0.45);
+}
+.multiplier-readout.timer .caption {
+  color: rgba(223,251,255,0.86);
+  text-shadow: 0 0 12px rgba(34,211,238,0.52);
+}
 
 .rocket-wrap {
   position: absolute;
@@ -1113,7 +1125,7 @@ function chooseCrashPoint() {
 
 function multiplierAt(elapsedMs) {
   const t = Math.max(0, elapsedMs / 1000);
-  return 1 + Math.pow(t, 1.56) * 0.37 + t * 0.055;
+  return 1 + t * 0.012 + Math.pow(t, 2) * 0.020 + Math.pow(t, 3) * 0.0048;
 }
 
 function curvePoint(p) {
@@ -1797,12 +1809,13 @@ function seededCrashPoint(roundIndex) {
   const u = seededUnit(roundIndex, 0x1b873593);
   const max = Math.max(12, multiplierAt(MAX_FLIGHT_MS - 350));
   let v;
-  if (r < 0.12) v = 1.02 + u * 0.34;
-  else if (r < 0.48) v = 1.36 + u * 1.44;
-  else if (r < 0.78) v = 2.80 + u * 3.70;
-  else if (r < 0.93) v = 6.50 + u * 7.50;
-  else if (r < 0.988) v = 14 + u * 16;
-  else v = 30 + u * (max - 30);
+  if (r < 0.22) v = 1.01 + u * 0.19;
+  else if (r < 0.50) v = 1.20 + u * 0.50;
+  else if (r < 0.72) v = 1.70 + u * 1.05;
+  else if (r < 0.86) v = 2.75 + u * 2.00;
+  else if (r < 0.95) v = 4.75 + u * 4.75;
+  else if (r < 0.99) v = 9.50 + u * 14.50;
+  else v = 24 + u * (max - 24);
   const crashAt = Math.round(Math.min(v, max) * 100) / 100;
   ROUND_CRASH_CACHE[roundIndex] = crashAt;
   return crashAt;
@@ -2432,25 +2445,23 @@ function frame(now) {
     if (State.multiplier > 6 && Math.random() < 0.004) playSfx('high', 0.12);
   }
 
-  multiplierEl.textContent = multText(State.multiplier);
   if (round.phase === 'betting') {
     const seconds = Math.ceil(round.timeToLaunch / 1000);
-    captionEl.textContent = 'NEXT LAUNCH';
+    readoutEl.className = 'multiplier-readout timer';
+    multiplierEl.textContent = seconds + 's';
+    captionEl.textContent = 'PLACE BETS';
     statusEl.textContent = 'BETTING ' + seconds + 'S';
-    if (round.timeToLaunch <= 3300) {
-      countdownEl.textContent = String(seconds);
-      countdownEl.classList.add('show');
-    } else {
-      countdownEl.classList.remove('show');
-    }
+    countdownEl.classList.remove('show');
   } else if (round.phase === 'running') {
     countdownEl.classList.remove('show');
+    multiplierEl.textContent = multText(State.multiplier);
     captionEl.textContent = State.localCashed ? 'BANKED' : (State.multiplier >= 10 ? 'SKY HIGH' : State.multiplier >= 4 ? 'RISING FAST' : 'GLOBAL FLIGHT');
     statusEl.textContent = 'CLIMBING';
     statusDot.style.background = 'var(--neon-cyan)';
     if (!State.localCashed) readoutEl.className = 'multiplier-readout';
   } else {
     countdownEl.classList.remove('show');
+    multiplierEl.textContent = multText(State.multiplier);
     captionEl.textContent = 'ROUND ENDED';
     statusEl.textContent = 'CRASHED';
     statusDot.style.background = 'var(--danger)';

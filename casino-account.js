@@ -111,13 +111,21 @@ if (!CONFIGURED) {
       const auth = getAuth(app);
       const db   = getFirestore(app);
 
-      // Every visitor gets an anonymous uid so per-user stats and
-      // jackpot attribution work without forcing a sign-in.
-      signInAnonymously(auth).catch(() => {});
-
       let currentUser = null;
+      let didAnonFallback = false;
       const authListeners = [];
       onAuthStateChanged(auth, u => {
+        // First emission represents the persisted auth state (Firebase
+        // delays it until IndexedDB has been read). If there's no user,
+        // start an anonymous session so writes work without a sign-in.
+        // Crucially, we DO NOT call signInAnonymously() unconditionally —
+        // doing so would replace a real (Google/Email) session with a
+        // fresh anon user on every page navigation.
+        if (!u && !didAnonFallback) {
+          didAnonFallback = true;
+          signInAnonymously(auth).catch(() => {});
+          return; // wait for the next emission carrying the new anon user
+        }
         currentUser = u;
         if (u && !u.isAnonymous) {
           setDoc(doc(db, 'users', u.uid), {
