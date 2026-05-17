@@ -98,8 +98,14 @@ button, input { font: inherit; }
 }
 .lobby-link::before { content: '<'; font-size: 14px; line-height: 1; }
 .history-btn::before { content: '#'; font-size: 13px; line-height: 1; }
-.lobby-link:hover, .history-btn:hover { filter: brightness(1.15); }
-.lobby-link:active, .history-btn:active { transform: translateY(2px); }
+.rules-btn {
+  left: 252px;
+  color: var(--gold-0);
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.38), 0 3px 0 rgba(0,0,0,0.5);
+}
+.rules-btn::before { content: '?'; font-size: 13px; line-height: 1; }
+.lobby-link:hover, .history-btn:hover, .rules-btn:hover { filter: brightness(1.15); }
+.lobby-link:active, .history-btn:active, .rules-btn:active { transform: translateY(2px); }
 
 .balance-link {
   position: fixed;
@@ -419,13 +425,13 @@ button, input { font: inherit; }
     drop-shadow(0 0 24px rgba(34,211,238,0.20));
   transition: filter 0.18s;
 }
-.rocket-wrap.running { animation: rocketShake 0.12s linear infinite; }
+.rocket-wrap.running { animation: rocketShake var(--shake-speed, 0.12s) linear infinite; }
 .rocket-wrap.cash { filter: drop-shadow(0 24px 24px rgba(0,0,0,0.38)) drop-shadow(0 0 28px rgba(92,255,161,0.60)); }
 .rocket-wrap.crashed { opacity: 0; transition: opacity 0.12s; }
 @keyframes rocketShake {
-  0% { margin-left: -1px; margin-top: 0; }
-  50% { margin-left: 1px; margin-top: -1px; }
-  100% { margin-left: 0; margin-top: 1px; }
+  0% { margin-left: calc(var(--shake-amp, 1px) * -1); margin-top: 0; }
+  50% { margin-left: var(--shake-amp, 1px); margin-top: calc(var(--shake-amp, 1px) * -1); }
+  100% { margin-left: 0; margin-top: var(--shake-amp, 1px); }
 }
 .rocket-svg {
   width: 100%;
@@ -757,6 +763,38 @@ button, input { font: inherit; }
   background: linear-gradient(180deg, #d8ffe8, #5cffa1 58%, #10a85a);
   box-shadow: 0 0 16px rgba(92,255,161,0.28), inset 0 0 0 1px rgba(255,255,255,0.28);
 }
+.auto-bet-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 4px;
+  color: rgba(255,255,255,0.58);
+  font-size: 12px;
+}
+.auto-bet-toggle {
+  min-width: 118px;
+  min-height: 34px;
+  border: 0;
+  border-radius: 11px;
+  cursor: pointer;
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  color: rgba(255,240,168,0.86);
+  background: linear-gradient(180deg, rgba(255,210,74,0.18), rgba(0,0,0,0.36));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.26), 0 3px 0 rgba(0,0,0,0.32);
+  transition: transform 0.1s, filter 0.15s, box-shadow 0.15s;
+}
+.auto-bet-toggle[aria-pressed="true"] {
+  color: #06190d;
+  background: linear-gradient(180deg, #d8ffe8, #5cffa1 58%, #10a85a);
+  box-shadow: 0 0 18px rgba(92,255,161,0.28), inset 0 0 0 1px rgba(255,255,255,0.28), 0 3px 0 #064d25;
+}
+.auto-bet-toggle:hover { filter: brightness(1.12); }
+.auto-bet-toggle:active { transform: translateY(2px); }
+.auto-bet-toggle:disabled { cursor: wait; filter: grayscale(0.35) brightness(0.72); }
 
 .action-card {
   display: grid;
@@ -854,6 +892,112 @@ button, input { font: inherit; }
 .toast.win { color: #d8ffe8; box-shadow: inset 0 0 0 1px rgba(92,255,161,0.42), 0 0 28px rgba(92,255,161,0.20), 0 20px 42px rgba(0,0,0,0.52); }
 .toast.crash { color: #ffd7df; box-shadow: inset 0 0 0 1px rgba(255,77,109,0.42), 0 0 28px rgba(255,46,147,0.22), 0 20px 42px rgba(0,0,0,0.52); }
 
+.modal-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(5,1,16,0.76);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: opacity 0.2s ease;
+}
+.modal-veil.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.modal-card {
+  width: min(560px, 100%);
+  max-height: min(760px, 92vh);
+  overflow: auto;
+  padding: 24px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(255,210,74,0.16), transparent 56%),
+    radial-gradient(ellipse at 80% 100%, rgba(34,211,238,0.12), transparent 62%),
+    linear-gradient(180deg, rgba(26,8,56,0.96), rgba(7,2,21,0.98));
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,210,74,0.28),
+    0 32px 80px rgba(0,0,0,0.62);
+  transform: translateY(14px) scale(0.98);
+  transition: transform 0.2s ease;
+}
+.modal-veil.show .modal-card { transform: translateY(0) scale(1); }
+.modal-title {
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(28px, 7vw, 42px);
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  color: var(--gold-1);
+  text-shadow: 0 5px 0 rgba(0,0,0,0.48), 0 0 18px rgba(255,210,74,0.28);
+}
+.modal-sub {
+  margin: 8px 0 18px;
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--neon-cyan);
+}
+.rules-section {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.22);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.rules-section h3 {
+  margin: 0 0 8px;
+  font-family: 'Bungee', cursive;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--gold-0);
+}
+.rules-section ul {
+  margin: 0;
+  padding-left: 18px;
+  color: rgba(255,255,255,0.78);
+  line-height: 1.45;
+}
+.rules-section li { margin: 5px 0; }
+.dont-show {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 14px;
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.72);
+}
+.dont-show input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold-1);
+}
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.btn {
+  min-height: 46px;
+  border: 0;
+  border-radius: 13px;
+  cursor: pointer;
+  font-family: 'Bungee', cursive;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+}
+.btn-confirm {
+  color: #120800;
+  background: linear-gradient(180deg, #fff4be, #ffd24a 48%, #b8860b);
+  box-shadow: 0 5px 0 #5c3d00, inset 0 1px 0 rgba(255,255,255,0.48), 0 0 22px rgba(255,210,74,0.26);
+}
+
 @media (max-width: 920px) {
   .game-header::before,
   .game-header::after { width: 12vw; opacity: 0.64; }
@@ -868,7 +1012,7 @@ button, input { font: inherit; }
 }
 
 @media (max-width: 720px) {
-  .lobby-link, .history-btn {
+  .lobby-link, .history-btn, .rules-btn {
     top: 8px;
     height: 32px;
     padding: 0 11px;
@@ -878,6 +1022,7 @@ button, input { font: inherit; }
   }
   .lobby-link { left: 8px; }
   .history-btn { left: 102px; }
+  .rules-btn { left: 196px; }
   .balance-link {
     top: 8px;
     right: 8px;
@@ -921,6 +1066,16 @@ button, input { font: inherit; }
   .button-row { gap: 6px; }
   .mini-btn, .target-btn { min-height: 32px; font-size: 9px; letter-spacing: 0.08em; }
   .launch-btn { min-height: 66px; font-size: 17px; }
+  .modal-veil { padding: 10px; align-items: start; }
+  .modal-card { max-height: calc(100vh - 20px); padding: 16px; border-radius: 18px; }
+  .modal-title { font-size: 28px; }
+  .modal-sub { margin-bottom: 10px; }
+  .rules-section { margin-top: 10px; padding: 10px; }
+  .rules-section h3 { font-size: 10px; margin-bottom: 6px; }
+  .rules-section ul { line-height: 1.32; }
+  .rules-section li { margin: 3px 0; }
+  .dont-show { margin: 10px 0; font-size: 8px; }
+  .btn { min-height: 42px; font-size: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -939,6 +1094,7 @@ button, input { font: inherit; }
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>
+<button class="history-btn rules-btn" id="btn-rules" title="Rules">RULES</button>
 <div class="balance-link">
   <span class="label">BAL</span>
   <span class="value">$<span id="balance">0</span></span>
@@ -1063,6 +1219,10 @@ button, input { font: inherit; }
     </div>
 
     <div class="control-card action-card">
+      <div class="auto-bet-strip">
+        <span id="auto-bet-label">Auto bet off</span>
+        <button class="auto-bet-toggle" id="auto-bet-toggle" type="button" aria-pressed="false">AUTO BET</button>
+      </div>
       <div class="potential"><span id="potential-label">Stake ready</span><strong id="potential-win">$25</strong></div>
       <button class="launch-btn" id="launch-btn">LAUNCH</button>
     </div>
@@ -1070,6 +1230,38 @@ button, input { font: inherit; }
 </main>
 
 <div class="toast" id="toast"></div>
+
+<div class="modal-veil" id="intro-rules-veil">
+  <div class="modal-card">
+    <div class="modal-title">ROCKET</div>
+    <div class="modal-sub">GLOBAL CRASH TABLE</div>
+    <div class="rules-section">
+      <h3>How it plays</h3>
+      <ul>
+        <li>Everyone in the lobby plays the same global round.</li>
+        <li>Place a bet during the 15-second betting window.</li>
+        <li>Cash out before the rocket crashes to win your bet times the live multiplier.</li>
+        <li>If the rocket crashes first, that bet is lost at the crash multiplier shown.</li>
+      </ul>
+    </div>
+    <div class="rules-section">
+      <h3>Table tools</h3>
+      <ul>
+        <li>Auto Cash can bank your active bet at a chosen multiplier.</li>
+        <li>Auto Bet keeps placing the current stake each new betting window until turned off.</li>
+        <li>Green dots mark player cashouts on the trail; your cashout appears as YOU.</li>
+        <li>Above 5x, the graph zooms out and the rocket gets more dramatic.</li>
+      </ul>
+    </div>
+    <label class="dont-show">
+      <input type="checkbox" id="intro-dont-show">
+      <span>Don't show these rules on start</span>
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-confirm" id="intro-play-btn">PLAY</button>
+    </div>
+  </div>
+</div>
 
 <script>
 if (window.SettingsUI) SettingsUI.mount();
@@ -1126,6 +1318,8 @@ const betWrap = document.getElementById('bet-wrap');
 const targetWrap = document.getElementById('target-wrap');
 const autoCard = document.getElementById('auto-card');
 const autoToggle = document.getElementById('auto-toggle');
+const autoBetToggle = document.getElementById('auto-bet-toggle');
+const autoBetLabel = document.getElementById('auto-bet-label');
 const launchBtn = document.getElementById('launch-btn');
 const potentialLabelEl = document.getElementById('potential-label');
 const potentialWinEl = document.getElementById('potential-win');
@@ -1137,8 +1331,13 @@ const recentListEl = document.getElementById('recent-list');
 const sessionBetsEl = document.getElementById('session-bets');
 const rollHistoryListEl = document.getElementById('roll-history-list');
 const toastEl = document.getElementById('toast');
+const rulesBtn = document.getElementById('btn-rules');
+const introRulesVeil = document.getElementById('intro-rules-veil');
+const introDontShow = document.getElementById('intro-dont-show');
+const introPlayBtn = document.getElementById('intro-play-btn');
 
-const BASE_GRAPH_MAX = 18;
+const RULES_INTRO_KEY = 'casino.rules.rocket.intro';
+const BASE_GRAPH_MAX = 5;
 const MAX_GRAPH_MAX = 500;
 const CRASH_HOLD_MS = 4200;
 
@@ -1253,7 +1452,9 @@ function pathProgress(mult, scaleMax) {
 function graphTarget(round) {
   if (!round || round.phase === 'betting') return BASE_GRAPH_MAX;
   const live = round.phase === 'running' ? Math.max(1, round.multiplier) : Math.max(1, round.crashAt);
-  return clamp(Math.max(BASE_GRAPH_MAX, live * 1.45), BASE_GRAPH_MAX, MAX_GRAPH_MAX);
+  if (live <= BASE_GRAPH_MAX) return BASE_GRAPH_MAX;
+  const over = live / BASE_GRAPH_MAX;
+  return clamp(BASE_GRAPH_MAX * Math.pow(over, 1.35), BASE_GRAPH_MAX, MAX_GRAPH_MAX);
 }
 
 function updateGraphScale(target, dt) {
@@ -1925,6 +2126,8 @@ Object.assign(State, {
   hasPlayedLaunchSfx: false,
   lastPhase: '',
   roundOffsetMs: 0,
+  autoBetEnabled: false,
+  lastAutoBetRoundId: null,
   graphMax: BASE_GRAPH_MAX,
 });
 
@@ -2406,6 +2609,12 @@ function syncControls() {
   document.querySelectorAll('.mini-btn').forEach(btn => { btn.disabled = !canPlace; });
   targetInput.disabled = !State.autoEnabled;
   document.querySelectorAll('.target-btn').forEach(btn => { btn.disabled = false; });
+  autoBetToggle.disabled = phase !== 'betting' && phase !== 'running';
+  autoBetToggle.textContent = State.autoBetEnabled ? 'AUTO ON' : 'AUTO BET';
+  autoBetToggle.setAttribute('aria-pressed', State.autoBetEnabled ? 'true' : 'false');
+  autoBetLabel.textContent = State.autoBetEnabled
+    ? (localBetInRound ? 'Auto bet armed' : 'Auto bet next round')
+    : 'Auto bet off';
 
   statBetEl.textContent = money(localBetInRound ? State.localBet : State.bet);
   statTargetEl.textContent = State.autoEnabled ? State.target.toFixed(2) + 'x' : 'OFF';
@@ -2474,6 +2683,29 @@ function startRound() {
   syncControls();
 }
 
+function setAutoBet(enabled) {
+  State.autoBetEnabled = !!enabled;
+  if (!State.autoBetEnabled) State.lastAutoBetRoundId = null;
+  showToast(State.autoBetEnabled ? 'AUTO BET ARMED' : 'AUTO BET OFF', State.autoBetEnabled ? 'win' : '');
+  syncControls();
+}
+
+function maybeAutoBet(round) {
+  if (!State.autoBetEnabled || !round || round.phase !== 'betting') return;
+  if (hasLocalBet(round.roundId) || State.lastAutoBetRoundId === round.roundId) return;
+  const bet = getBet();
+  if (bet <= 0 || bet > balance) {
+    State.lastAutoBetRoundId = round.roundId;
+    setAutoBet(false);
+    flash(betWrap);
+    playSfx('loseLow', 0.5);
+    showToast('AUTO BET PAUSED - CHECK BALANCE', 'crash');
+    return;
+  }
+  State.lastAutoBetRoundId = round.roundId;
+  startRound();
+}
+
 function cashOut(auto) {
   const round = State.activeRound || getGlobalRound(casinoNow());
   if (round.phase !== 'running' || !hasLocalBet(round.roundId) || State.localCashed || State.localResolved) return;
@@ -2523,7 +2755,7 @@ function resetRound() {
 }
 
 function drawCurve(p, now) {
-  const targetP = clamp(p, 0.035, 1.04);
+  const targetP = clamp(p, 0.035, 1);
   const active = curvePoint(targetP);
   const scaleMax = State.graphMax || BASE_GRAPH_MAX;
 
@@ -2548,7 +2780,7 @@ function drawCurve(p, now) {
     ctx.restore();
   }
 
-  strokePath(1.02, 'rgba(255,255,255,0.08)', 3, null, 1);
+  strokePath(1, 'rgba(255,255,255,0.08)', 3, null, 1);
   const glow = ctx.createLinearGradient(W * 0.08, H * 0.78, active.x, active.y);
   glow.addColorStop(0, 'rgba(34,211,238,0.92)');
   glow.addColorStop(0.42, 'rgba(92,255,161,0.88)');
@@ -2618,12 +2850,15 @@ function drawCashoutDots(now, visibleP) {
 function positionRocket(now) {
   if (crashHoldActive(now)) {
     const hold = State.crashHold;
+    const holdDrama = rocketDrama(hold.multiplier || State.multiplier);
     State.rocketX = hold.x;
     State.rocketY = hold.y;
     State.rocketP = hold.p;
     rocketEl.style.left = hold.x + 'px';
     rocketEl.style.top = hold.y + 'px';
-    rocketEl.style.transform = `translate(-50%, -50%) rotate(${pathAngle(hold.p)}deg)`;
+    rocketEl.style.setProperty('--shake-amp', holdDrama.shake + 'px');
+    rocketEl.style.setProperty('--shake-speed', holdDrama.speed + 's');
+    rocketEl.style.transform = `translate(-50%, -50%) rotate(${pathAngle(hold.p)}deg) scale(${holdDrama.scale})`;
     return;
   }
   const round = State.activeRound || getGlobalRound(casinoNow());
@@ -2638,7 +2873,21 @@ function positionRocket(now) {
   rocketEl.style.left = pt.x + 'px';
   rocketEl.style.top = pt.y + 'px';
   const angle = pathAngle(p);
-  rocketEl.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+  const drama = rocketDrama(round.phase === 'running' ? round.multiplier : 1);
+  rocketEl.style.setProperty('--shake-amp', drama.shake + 'px');
+  rocketEl.style.setProperty('--shake-speed', drama.speed + 's');
+  rocketEl.style.transform = `translate(-50%, -50%) rotate(${angle}deg) scale(${drama.scale})`;
+}
+
+function rocketDrama(multiplier) {
+  const m = Math.max(1, Number(multiplier || 1));
+  if (m < 5) return { scale: 1, shake: 1, speed: 0.12 };
+  const t = clamp(Math.log(m / 5) / Math.log(60), 0, 1);
+  return {
+    scale: 1 + t * 0.34,
+    shake: 1 + t * 5.4,
+    speed: 0.12 - t * 0.055,
+  };
 }
 
 function frame(now) {
@@ -2653,6 +2902,7 @@ function frame(now) {
   State.multiplier = impactActive ? State.crashHold.multiplier : round.multiplier;
   State.peak = Math.max(State.peak, State.multiplier);
   updateGraphScale(impactActive ? State.crashHold.graphMax : graphTarget(round), dt);
+  maybeAutoBet(round);
 
   if (round.phase === 'running') {
     updateThrust(State.multiplier);
@@ -2735,18 +2985,42 @@ autoToggle.addEventListener('click', () => {
   if (State.autoEnabled) setTarget('off');
   else setTarget(getTarget(), true);
 });
+autoBetToggle.addEventListener('click', () => {
+  playSfx('buttonSoft', 0.55);
+  setAutoBet(!State.autoBetEnabled);
+});
 launchBtn.addEventListener('click', () => {
   ensureAudio();
-  if (State.mode === 'idle') startRound();
-  else if (State.mode === 'running') cashOut(false);
+  const round = State.activeRound || getGlobalRound(casinoNow());
+  if (round.phase === 'betting') startRound();
+  else if (round.phase === 'running') cashOut(false);
 });
 document.addEventListener('keydown', e => {
   if (e.code === 'Space') {
     const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
     if (tag === 'input') return;
+    if (document.querySelector('.modal-veil.show')) return;
     e.preventDefault();
     launchBtn.click();
   }
+});
+
+function showIntroRules() {
+  introRulesVeil.classList.add('show');
+}
+function closeIntroRules() {
+  if (introDontShow.checked) {
+    try { localStorage.setItem(RULES_INTRO_KEY, '1'); } catch (e) {}
+  }
+  introRulesVeil.classList.remove('show');
+}
+rulesBtn.addEventListener('click', showIntroRules);
+introPlayBtn.addEventListener('click', closeIntroRules);
+introRulesVeil.addEventListener('click', e => {
+  if (e.target === introRulesVeil) closeIntroRules();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && introRulesVeil.classList.contains('show')) closeIntroRules();
 });
 
 resizeCanvas();
@@ -2754,6 +3028,11 @@ setBet(25);
 setTarget(2, false);
 renderRecent();
 syncControls();
+try {
+  if (localStorage.getItem(RULES_INTRO_KEY) !== '1') showIntroRules();
+} catch (e) {
+  showIntroRules();
+}
 requestAnimationFrame(frame);
 </script>
 </body>
