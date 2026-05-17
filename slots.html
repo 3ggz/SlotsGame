@@ -423,6 +423,10 @@ body.is-spinning .symbol::before {
     filter: drop-shadow(0 2px 5px rgba(0,0,0,0.55));
     transition: filter 0.25s;
   }
+  body.is-spinning .symbol::before {
+    filter: none !important;
+    transition: none !important;
+  }
   .sym-diamond::before {
     /* Drop hue-rotate animation entirely on mobile — single shadow only */
     animation: diamondPulse 3.2s ease-in-out infinite;
@@ -2956,6 +2960,7 @@ function updateJackpotDisplay() {
 const REEL_COUNT = 5;
 const ROW_COUNT = 3;
 const STRIP_LEN = 14; // logical symbols per reel strip — kept small so off-screen symbols aren't a paint cost
+const reelSpinJobs = new Map();
 
 function pickSymbol(extraDiamondBoost = 0) {
   const totalW = SYMBOLS.reduce((s, x) => s + x.weight + (x.bonus ? extraDiamondBoost : 0), 0);
@@ -3012,6 +3017,24 @@ function spinReel(reelIndex, finalTriple, duration, onStop) {
   return new Promise(resolve => {
     const reel = document.querySelector(`.reel[data-reel="${reelIndex}"]`);
     const strip = reel.querySelector('.strip');
+    const prior = reelSpinJobs.get(reelIndex);
+    if (prior && prior.timers) prior.timers.forEach(id => clearTimeout(id));
+    const job = { token: Symbol('spin'), timers: [] };
+    reelSpinJobs.set(reelIndex, job);
+    const isCurrent = () => reelSpinJobs.get(reelIndex)?.token === job.token;
+    const later = (fn, ms) => {
+      const id = setTimeout(() => {
+        job.timers = job.timers.filter(t => t !== id);
+        if (isCurrent()) fn();
+      }, ms);
+      job.timers.push(id);
+      return id;
+    };
+    const finish = () => {
+      if (!isCurrent()) return;
+      reelSpinJobs.delete(reelIndex);
+      resolve();
+    };
 
     const symbolH = reel.clientHeight / 3;
     const items = makeStrip(finalTriple);
@@ -3038,11 +3061,11 @@ function spinReel(reelIndex, finalTriple, duration, onStop) {
     strip.style.transition = `transform ${duration}ms cubic-bezier(0.22, 0.78, 0.18, 1)`;
     strip.style.transform = `translateY(0px)`;
 
-    setTimeout(() => {
+    later(() => {
       // Soft overshoot — a gentle dip then settle, no springy snap
       strip.style.transition = 'transform 220ms cubic-bezier(.25,.46,.45,.94)';
       strip.style.transform = `translateY(6px)`;
-      setTimeout(() => {
+      later(() => {
         strip.style.transition = 'transform 280ms cubic-bezier(.25,.46,.45,.94)';
         strip.style.transform = `translateY(0px)`;
       }, 200);
@@ -3055,7 +3078,7 @@ function spinReel(reelIndex, finalTriple, duration, onStop) {
 
       Audio.reelStop();
       if (onStop) onStop(reelIndex, finalTriple);
-      resolve();
+      later(finish, 520);
     }, duration);
   });
 }
