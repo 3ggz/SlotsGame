@@ -51,8 +51,13 @@ const CONFIGURED = Boolean(FIREBASE_CONFIG.projectId);
 
 /* ---------- Shared CSS + HTML for AccountUI (injected at runtime) ---------- */
 const ACCOUNT_UI_CSS = `
+  /* Hide the legacy standalone history buttons — history is now an
+     entry inside the profile modal. Saves top-chrome real estate so
+     the account chip can sit top-left without crowding balance. */
+  .btn-history, .history-btn { display: none !important; }
+
   .cu-chip {
-    position: fixed; top: 14px; right: 64px; z-index: 80;
+    position: fixed; top: 14px; left: 14px; z-index: 80;
     border: 0; cursor: pointer;
     height: 40px; padding: 0 14px 0 6px;
     border-radius: 999px;
@@ -66,6 +71,9 @@ const ACCOUNT_UI_CSS = `
     max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     transition: filter 0.15s, transform 0.1s;
   }
+  /* On game pages there's already a .lobby-link top-left; slide the
+     chip right of it. :has() handles this without per-page CSS edits. */
+  body:has(.lobby-link) .cu-chip { left: 122px; }
   .cu-chip:hover { filter: brightness(1.15); }
   .cu-chip:active { transform: translateY(2px); }
   .cu-chip .cu-chip-avatar {
@@ -78,8 +86,14 @@ const ACCOUNT_UI_CSS = `
     background: transparent; color: #ffd24a; width: auto; height: auto; margin-left: 6px; font-size: 13px;
   }
   @media (max-width: 720px) {
-    .cu-chip { top: 8px; right: 58px; height: 34px; padding: 0 10px 0 4px; font-size: 9px; letter-spacing: 0.14em; gap: 6px; max-width: 150px; }
+    .cu-chip { top: 8px; left: 8px; height: 34px; padding: 0 10px 0 4px; font-size: 9px; letter-spacing: 0.14em; gap: 6px; max-width: 150px; }
+    body:has(.lobby-link) .cu-chip { left: 100px; }
     .cu-chip .cu-chip-avatar { width: 24px; height: 24px; font-size: 14px; }
+    /* On game pages on mobile, drop the username text — icon-only
+       chip is plenty to free up room from the balance pill. */
+    body:has(.lobby-link) .cu-chip.signed-in .cu-chip-label { display: none; }
+    body:has(.lobby-link) .cu-chip.signed-in { padding: 0; width: 34px; justify-content: center; }
+    body:has(.lobby-link) .cu-chip.signed-in .cu-chip-avatar { width: 26px; height: 26px; }
   }
 
   .cu-veil {
@@ -246,16 +260,28 @@ const ACCOUNT_UI_CSS = `
     box-shadow: inset 0 0 0 1px rgba(255,210,74,0.28);
     text-align: center; line-height: 1.5;
   }
-  .cu-signout {
-    width: 100%; padding: 12px; border: 0; border-radius: 12px; cursor: pointer;
-    font-family: 'Bungee', cursive; letter-spacing: 0.18em; font-size: 13px;
-    color: #fff; background: rgba(255,46,88,0.16);
-    box-shadow: inset 0 0 0 1.5px rgba(255,46,88,0.45);
-    transition: filter 0.15s, transform 0.1s;
-    margin-top: 8px;
+  .cu-foot-actions {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-top: 12px;
   }
-  .cu-signout:hover { filter: brightness(1.15); }
-  .cu-signout:active { transform: translateY(2px); }
+  .cu-foot-btn {
+    padding: 12px; border: 0; border-radius: 12px; cursor: pointer;
+    font-family: 'Bungee', cursive; letter-spacing: 0.16em; font-size: 12px;
+    transition: filter 0.15s, transform 0.1s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .cu-foot-btn:hover { filter: brightness(1.15); }
+  .cu-foot-btn:active { transform: translateY(2px); }
+  .cu-foot-history {
+    color: #22d3ee;
+    background: rgba(34,211,238,0.10);
+    box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.45);
+  }
+  .cu-signout {
+    color: #fff;
+    background: rgba(255,46,88,0.16);
+    box-shadow: inset 0 0 0 1.5px rgba(255,46,88,0.45);
+  }
 `;
 
 const MODAL_HTML = `
@@ -317,7 +343,10 @@ const MODAL_HTML = `
         <button class="cu-btn cu-btn-cancel" id="cu-profile-cancel" type="button">CANCEL</button>
         <button class="cu-btn cu-btn-confirm" id="cu-profile-save" type="button">SAVE</button>
       </div>
-      <button class="cu-signout" id="cu-signout" type="button">SIGN OUT</button>
+      <div class="cu-foot-actions">
+        <button class="cu-foot-btn cu-foot-history" id="cu-open-history" type="button">⌛ VIEW HISTORY</button>
+        <button class="cu-foot-btn cu-signout" id="cu-signout" type="button">SIGN OUT</button>
+      </div>
     </div>
   </div>
 `;
@@ -937,6 +966,15 @@ if (!CONFIGURED) {
           } catch (e) { setErr('#cu-err-pr', readableErr(e)); }
         });
         $('#cu-profile-cancel').addEventListener('click', closeModal);
+        $('#cu-open-history').addEventListener('click', () => {
+          closeModal();
+          // Defer so closeModal's transition can start before HistoryUI's veil layers.
+          setTimeout(() => {
+            if (window.HistoryUI && typeof window.HistoryUI.open === 'function') {
+              window.HistoryUI.open({ scope: 'all', game: null });
+            }
+          }, 100);
+        });
         $('#cu-signout').addEventListener('click', async () => {
           try { await window.CasinoAccount.signOut(); } catch (e) {}
           uiState.view = 'signin';
