@@ -646,7 +646,12 @@ if (!CONFIGURED) {
           }
           return cred;
         },
-        signOut: () => signOut(auth),
+        signOut: async () => {
+          // Re-arm the anon fallback so the post-signOut null emission
+          // kicks off a fresh anonymous session and writes keep working.
+          didAnonFallback = false;
+          return signOut(auth);
+        },
       };
 
       /* ============================================================
