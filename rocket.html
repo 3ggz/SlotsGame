@@ -1184,7 +1184,7 @@ button, input { font: inherit; }
       <canvas id="flight"></canvas>
       <div class="flight-hud">
         <div class="status-pill"><span class="status-dot" id="status-dot"></span><span id="status-text">STANDBY</span></div>
-        <div class="status-pill player-count-pill" id="rocket-player-count">👤 1 PLAYING</div>
+        <div class="status-pill player-count-pill" id="rocket-player-count">👤 0 PLAYING</div>
       </div>
       <div class="multiplier-readout" id="readout">
         <div class="value" id="multiplier">1.00x</div>
@@ -2417,7 +2417,7 @@ function syncRocketClock() {
 
 function renderRocketPlayerCount(counts) {
   const raw = counts && Number(counts.rocket);
-  const count = Math.max(1, Number.isFinite(raw) ? raw : 0);
+  const count = Math.max(0, Number.isFinite(raw) ? raw : 0);
   if (rocketPlayerCountEl) rocketPlayerCountEl.textContent = `👤 ${count} PLAYING`;
 }
 
