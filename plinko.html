@@ -679,10 +679,13 @@ function slotThud() {
    100 drops. Under (close to) binomial distribution these tables target
    ~93-96% RTP, with max payout 200× at the top tier. */
 const MULTIPLIERS = {
+  // 8 rows: only 256 binomial outcomes, so P(edge) is 1/256 vs 1/65536
+  // for 16 rows — same multiplier shape pays out massively more often.
+  // Tables nerfed accordingly (binomial RTP ~93/85/77% across L/M/H).
   8: {
-    low:  [4.5, 2.0, 1.1, 1.0, 0.5, 1.0, 1.1, 2.0, 4.5],
-    med:  [9,   3.0, 1.3, 0.7, 0.4, 0.7, 1.3, 3.0, 9],
-    high: [18,  4.5, 1.5, 0.3, 0.2, 0.3, 1.5, 4.5, 18],
+    low:  [3,   1.5, 1.1, 1.0, 0.5, 1.0, 1.1, 1.5, 3],
+    med:  [5,   2.0, 1.2, 0.7, 0.4, 0.7, 1.2, 2.0, 5],
+    high: [10,  3.0, 1.3, 0.3, 0.2, 0.3, 1.3, 3.0, 10],
   },
   12: {
     low:  [7,   2.5, 1.5, 1.3, 1.1, 1.0, 0.5, 1.0, 1.1, 1.3, 1.5, 2.5, 7],
