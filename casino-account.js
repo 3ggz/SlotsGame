@@ -49,6 +49,27 @@ const FIREBASE_CONFIG = {
 
 const CONFIGURED = Boolean(FIREBASE_CONFIG.projectId);
 
+/* Random guest-tag generator. Used the first time a new anonymous
+   account is created so the player has a stable display name and
+   avatar attached to their session for the jackpot ticker, profile
+   chip, etc. */
+const GUEST_ADJ = [
+  'Lucky', 'Golden', 'Silver', 'Cosmic', 'Mighty', 'Diamond', 'Wild',
+  'Quick', 'Royal', 'Foxy', 'Bold', 'Sneaky', 'Brave', 'Sly', 'Crafty',
+  'Jolly', 'Cool', 'Slick', 'Flashy', 'Smooth', 'Hot', 'Bright',
+];
+const GUEST_NOUN = [
+  'Fox', 'Wolf', 'Eagle', 'Dragon', 'Tiger', 'Cobra', 'Falcon', 'Bear',
+  'Lion', 'Shark', 'Hawk', 'Bull', 'Stag', 'Jaguar', 'Phoenix',
+  'Panther', 'Raven', 'Viper', 'Lynx', 'Bison', 'Wolverine', 'Kraken',
+];
+function randomGuestTag() {
+  const adj  = GUEST_ADJ[Math.floor(Math.random() * GUEST_ADJ.length)];
+  const noun = GUEST_NOUN[Math.floor(Math.random() * GUEST_NOUN.length)];
+  const num  = Math.floor(Math.random() * 9000 + 1000);
+  return `${adj}${noun}${num}`;
+}
+
 /* ---------- Shared CSS + HTML for AccountUI (injected at runtime) ---------- */
 const ACCOUNT_UI_CSS = `
   /* ---- shell theming: dark root + themed scrollbars ----
@@ -566,6 +587,36 @@ if (!CONFIGURED) {
           }).catch(() => {
             setDoc(uref, baseFields, { merge: true }).catch(() => {});
           });
+        } else if (u && u.isAnonymous) {
+          // First time as this anonymous UID? Assign a stable guest tag
+          // + random avatar so jackpot ticker, chip, and history show a
+          // consistent identity for the rest of their session. Firebase
+          // keeps the anon UID in IndexedDB so a returning visitor on
+          // the same browser reuses the same tag — they only get a new
+          // one if they explicitly sign out or clear storage.
+          const uref = doc(db, 'users', u.uid);
+          getDoc(uref).then(snap => {
+            const existing = snap.exists() ? snap.data() : {};
+            if (!existing.username) {
+              const tag = randomGuestTag();
+              const avatar = randomAvatarId();
+              setDoc(uref, {
+                username: tag,
+                avatar,
+                displayName: tag,
+                anonymous: true,
+                lastSeen: serverTimestamp(),
+              }, { merge: true }).catch(() => {});
+              // Mirror the tag onto the Firebase user so playerLabel()
+              // (used by the jackpot ticker) picks it up immediately.
+              updateProfile(u, { displayName: tag }).catch(() => {});
+            } else {
+              setDoc(uref, { lastSeen: serverTimestamp() }, { merge: true }).catch(() => {});
+              if (!u.displayName && existing.username) {
+                updateProfile(u, { displayName: existing.username }).catch(() => {});
+              }
+            }
+          }).catch(() => {});
         }
         authListeners.forEach(fn => { try { fn(u); } catch (e) {} });
       });
@@ -796,10 +847,15 @@ if (!CONFIGURED) {
           return cred;
         },
         signOut: async () => {
-          // Re-arm the anon fallback so the post-signOut null emission
-          // kicks off a fresh anonymous session and writes keep working.
-          didAnonFallback = false;
-          return signOut(auth);
+          // Blank slate on sign-out: reset chip balance + clear the
+          // local history log, then sign Firebase out and full-reload.
+          // The reload guarantees every game widget, balance pill,
+          // history modal, and account chip paints from $1000 with a
+          // fresh guest tag.
+          try { localStorage.setItem('casino.balance', '1000'); } catch (e) {}
+          try { localStorage.removeItem('casino.history'); } catch (e) {}
+          try { await signOut(auth); } catch (e) {}
+          location.reload();
         },
       };
 
@@ -827,6 +883,9 @@ if (!CONFIGURED) {
       ];
       function avatarLookup(id) {
         return AVATARS.find(a => a.id === id) || AVATARS[0];
+      }
+      function randomAvatarId() {
+        return AVATARS[Math.floor(Math.random() * AVATARS.length)].id;
       }
 
       let uiState = {
@@ -910,13 +969,18 @@ if (!CONFIGURED) {
         const lbl = document.getElementById('cu-chip-lbl');
         const chip = document.getElementById('cu-chip');
         if (!chip) return;
-        if (!currentUser || currentUser.isAnonymous) {
+        // No user at all (Firebase init failed / pre-auth) — show the
+        // generic SIGN IN affordance.
+        if (!currentUser) {
           chip.classList.remove('signed-in');
           av.textContent = '◆';
           av.style.background = '';
           lbl.textContent = 'SIGN IN';
           return;
         }
+        // Both anonymous guests (with assigned tag/avatar) and real
+        // users render the same way — the avatar circle IS the chip,
+        // and the underlying tag is consistent across the session.
         chip.classList.add('signed-in');
         const username = uiState.userDoc.username || currentUser.displayName || (currentUser.email ? currentUser.email.split('@')[0] : 'Player');
         const avatar = avatarLookup(uiState.userDoc.avatar);
