@@ -594,6 +594,19 @@ if (!CONFIGURED) {
         'easycraps.html': 'easycraps',
         'craplesscraps.html': 'craplesscraps',
       };
+      const localPresenceId = (() => {
+        const key = 'casino.presence.tab';
+        try {
+          let id = sessionStorage.getItem(key);
+          if (!id) {
+            id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
+            sessionStorage.setItem(key, id);
+          }
+          return id;
+        } catch (e) {
+          return String(Date.now()) + Math.random().toString(16).slice(2);
+        }
+      })();
       let presenceTimer = null;
 
       function currentGameKey() {
@@ -603,8 +616,10 @@ if (!CONFIGURED) {
 
       function writePresence() {
         if (!currentUser) return Promise.resolve();
-        return setDoc(doc(db, PRESENCE_COLLECTION, currentUser.uid), {
+        const docId = `${currentUser.uid}_${localPresenceId}`.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 160);
+        return setDoc(doc(db, PRESENCE_COLLECTION, docId), {
           uid: currentUser.uid,
+          sessionId: localPresenceId,
           player: playerLabel(currentUser),
           anonymous: !!currentUser.isAnonymous,
           game: currentGameKey(),

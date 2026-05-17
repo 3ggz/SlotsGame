@@ -54,10 +54,11 @@ service cloud.firestore {
     match /tablePresence/{id} {
       allow read: if true;
       allow create, update: if request.auth != null
-        && id == request.auth.uid
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.game is string
         && request.resource.data.game.size() < 64
+        && request.resource.data.sessionId is string
+        && request.resource.data.sessionId.size() < 96
         && request.resource.data.player is string
         && request.resource.data.player.size() < 64
         && request.resource.data.lastSeen is number;
