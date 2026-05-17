@@ -3176,7 +3176,12 @@ async function doSpin(opts = {}) {
   const anticipate4and5 = after3 >= 3 && after3 < 5;
   const anticipate5     = after4 >= 4 && after4 < 5;
 
-  const baseDur = [520, 720, 920, 1120, 1340];
+  /* Reels stop in a staggered cascade. The first three are tight at
+     200 ms spacing; the 4th and 5th get a wider 320 ms gap so each
+     thud rings out cleanly before the next lands — previously the
+     4th felt clipped because reel 5's flash + thud started while
+     reel 4's were still resolving. */
+  const baseDur = [520, 720, 920, 1240, 1560];
   const dur = [...baseDur];
   if (anticipate4and5) { dur[3] += 950; dur[4] += 950; }
   if (anticipate5) { dur[4] += 750; }

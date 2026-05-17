@@ -785,7 +785,7 @@ button, input { font: inherit; }
   gap: 7px;
   margin-top: 8px;
 }
-.mini-btn, .target-btn {
+.mini-btn, .target-btn, .bet-add-btn {
   border: 0;
   min-height: 34px;
   border-radius: 10px;
@@ -798,8 +798,16 @@ button, input { font: inherit; }
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10), 0 3px 0 rgba(0,0,0,0.32);
   transition: transform 0.1s, filter 0.15s, color 0.15s, box-shadow 0.15s;
 }
-.mini-btn:hover, .target-btn:hover { filter: brightness(1.14); }
-.mini-btn:active, .target-btn:active { transform: translateY(2px); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10), 0 1px 0 rgba(0,0,0,0.32); }
+.mini-btn:hover, .target-btn:hover, .bet-add-btn:hover { filter: brightness(1.14); }
+.mini-btn:active, .target-btn:active, .bet-add-btn:active { transform: translateY(2px); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10), 0 1px 0 rgba(0,0,0,0.32); }
+.bet-adder-row {
+  margin-top: 7px;
+}
+.bet-add-btn {
+  color: #d8ffe8;
+  background: linear-gradient(180deg, rgba(92,255,161,0.18), rgba(0,0,0,0.38));
+  box-shadow: inset 0 0 0 1px rgba(92,255,161,0.24), 0 3px 0 rgba(0,0,0,0.32), 0 0 14px rgba(92,255,161,0.10);
+}
 .target-btn.active {
   color: #061c22;
   background: linear-gradient(180deg, #dffbff, #22d3ee 58%, #087f96);
@@ -811,7 +819,7 @@ button, input { font: inherit; }
   background: linear-gradient(180deg, rgba(255,210,74,0.20), rgba(0,0,0,0.36));
   box-shadow: inset 0 0 0 1px rgba(255,210,74,0.28), 0 3px 0 rgba(0,0,0,0.32);
 }
-.mini-btn:disabled, .target-btn:disabled {
+.mini-btn:disabled, .target-btn:disabled, .bet-add-btn:disabled {
   cursor: not-allowed;
   filter: grayscale(0.45) brightness(0.68);
 }
@@ -1129,7 +1137,7 @@ button, input { font: inherit; }
   .action-card { order: -1; }
   .control-input { height: 44px; font-size: 21px; }
   .button-row { gap: 6px; }
-  .mini-btn, .target-btn { min-height: 32px; font-size: 9px; letter-spacing: 0.08em; }
+  .mini-btn, .target-btn, .bet-add-btn { min-height: 32px; font-size: 9px; letter-spacing: 0.08em; }
   .launch-btn { min-height: 66px; font-size: 17px; }
   .modal-veil { padding: 10px; align-items: start; }
   .modal-card { max-height: calc(100vh - 20px); padding: 16px; border-radius: 18px; }
@@ -1268,6 +1276,12 @@ button, input { font: inherit; }
         <button class="mini-btn" data-bet="25">$25</button>
         <button class="mini-btn" data-bet="100">$100</button>
         <button class="mini-btn" data-bet="max">MAX</button>
+      </div>
+      <div class="button-row bet-adder-row" aria-label="Add to bet">
+        <button class="bet-add-btn" data-add-bet="5">+$5</button>
+        <button class="bet-add-btn" data-add-bet="25">+$25</button>
+        <button class="bet-add-btn" data-add-bet="100">+$100</button>
+        <button class="bet-add-btn" data-add-bet="500">+$500</button>
       </div>
     </div>
 
@@ -1588,7 +1602,7 @@ function syncControls() {
   State.target = getTarget();
   betInput.disabled = locked;
   targetInput.disabled = locked;
-  document.querySelectorAll('.mini-btn, .target-btn').forEach(btn => { btn.disabled = locked; });
+  document.querySelectorAll('.mini-btn, .bet-add-btn, .target-btn').forEach(btn => { btn.disabled = locked; });
   statBetEl.textContent = money(locked ? State.roundBet : State.bet);
   statTargetEl.textContent = State.target.toFixed(2) + 'x';
   statPeakEl.textContent = multText(State.peak);
@@ -2764,7 +2778,7 @@ function syncControls() {
 
   const canPlace = phase === 'betting' && !localBetInRound;
   betInput.disabled = !canPlace;
-  document.querySelectorAll('.mini-btn').forEach(btn => { btn.disabled = !canPlace; });
+  document.querySelectorAll('.mini-btn, .bet-add-btn').forEach(btn => { btn.disabled = !canPlace; });
   targetInput.disabled = !State.autoEnabled;
   document.querySelectorAll('.target-btn').forEach(btn => { btn.disabled = false; });
   autoBetToggle.disabled = phase !== 'betting' && phase !== 'running';
@@ -3135,6 +3149,15 @@ document.querySelectorAll('.mini-btn').forEach(btn => {
     playSfx('chipSelect', 0.55);
     if (btn.dataset.bet === 'max') setBet(Math.max(1, Math.floor(balance * 100) / 100));
     else setBet(parseFloat(btn.dataset.bet));
+  });
+});
+document.querySelectorAll('.bet-add-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    playSfx('chipSelect', 0.5);
+    const add = parseFloat(btn.dataset.addBet);
+    if (!Number.isFinite(add) || add <= 0) return;
+    const maxBet = Math.max(1, Math.floor(balance * 100) / 100);
+    setBet(Math.min(maxBet, getBet() + add));
   });
 });
 document.querySelectorAll('.target-btn').forEach(btn => {

@@ -316,15 +316,26 @@ body::before {
 .scene-bg {
   position: absolute; inset: 0;
   background:
-    radial-gradient(ellipse at 50% 100%, rgba(255,138,58,0.16), transparent 55%),
-    radial-gradient(ellipse at 50% 10%, rgba(168,85,247,0.08), transparent 60%);
+    radial-gradient(ellipse at 50% 18%, rgba(255,210,74,0.12), transparent 34%),
+    linear-gradient(180deg, rgba(6,1,16,0.28), rgba(4,1,12,0.5) 56%, rgba(4,0,8,0.2)),
+    url('images/dragontree/japanese-park-bg.png') center bottom / cover no-repeat;
   pointer-events: none;
-  transition: background 0.4s;
+  filter: brightness(0.68) saturate(0.96) contrast(1.08);
+  transform: scale(1.015);
+  transition: filter 0.4s;
+}
+.scene-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 43%, transparent 0 22%, rgba(5,1,14,0.34) 58%, rgba(4,0,10,0.74) 100%),
+    linear-gradient(90deg, rgba(4,0,10,0.46), transparent 28% 72%, rgba(4,0,10,0.46));
+  mix-blend-mode: multiply;
 }
 .scene-bg.bright {
-  background:
-    radial-gradient(ellipse at 50% 100%, rgba(255,210,74,0.4), transparent 55%),
-    radial-gradient(ellipse at 50% 10%, rgba(255,138,58,0.22), transparent 60%);
+  filter: brightness(0.84) saturate(1.08) contrast(1.04);
 }
 
 /* ---- tree: foreground, chroma-keyed sprite ---- */
@@ -341,6 +352,7 @@ body::before {
   z-index: 2;
 }
 .tree-layer.shake { animation: tree-shake 0.6s cubic-bezier(.36,.07,.19,.97); }
+.tree-field.shake { animation: tree-field-shake 0.42s cubic-bezier(.36,.07,.19,.97); }
 .tree-field.awake .tree-layer {
   animation: tree-awake 2.2s ease-out;
   filter:
@@ -355,6 +367,14 @@ body::before {
   45% { transform: translate(-7px, 2px) rotate(-0.9deg); }
   60% { transform: translate(5px, -1px) rotate(0.6deg); }
   80% { transform: translate(-3px, 1px) rotate(-0.4deg); }
+}
+@keyframes tree-field-shake {
+  0%, 100% { transform: translateX(-50%) translate(0, 0) rotate(0); }
+  15% { transform: translateX(-50%) translate(-5px, 1px) rotate(-0.7deg); }
+  30% { transform: translateX(-50%) translate(6px, -2px) rotate(0.7deg); }
+  45% { transform: translateX(-50%) translate(-7px, 2px) rotate(-0.9deg); }
+  60% { transform: translateX(-50%) translate(5px, -1px) rotate(0.6deg); }
+  80% { transform: translateX(-50%) translate(-3px, 1px) rotate(-0.4deg); }
 }
 @keyframes tree-awake {
   0%   { transform: scale(1); filter: drop-shadow(0 14px 28px rgba(0,0,0,0.75)) drop-shadow(0 0 24px rgba(255,138,58,0.18)); }
@@ -1669,7 +1689,8 @@ const AudioFX = (() => {
     treeHit4: 'sfx/dragontreesounds/tree hit 4.mp3',
     fell1: 'sfx/dragontreesounds/fell 1.mp3',
     fell2: 'sfx/dragontreesounds/fell 2.mp3',
-    finalWin: 'sfx/dragontreesounds/final win sound.mp3'
+    finalWin: 'sfx/dragontreesounds/final win sound.mp3',
+    bonusTransition: 'sfx/dragontreesounds/dragon tree bonus transition.mp3'
   };
   const groups = {
     treeHit: ['treeHit1', 'treeHit2', 'treeHit3', 'treeHit4'],
@@ -1719,6 +1740,8 @@ const State = {
   bonusHits: 0,
   history: [],
 };
+const HIT_PACE = 0.7;
+const paced = ms => Math.round(ms * HIT_PACE);
 
 const BONUS_TRIGGER_CHANCE = 0.15;
 const REVEAL_COUNT_WEIGHTS = [
@@ -2071,19 +2094,19 @@ els.strike.addEventListener('click', () => {
   setBalance(State.balance - State.bet);
 
   els.strike.classList.add('shake');
-  els.treeLayer.classList.add('shake');
+  els.treeField.classList.add('shake');
   spawnStrikePulses();
   emberBurst();
   setTimeout(() => {
     els.strike.classList.remove('shake');
-    els.treeLayer.classList.remove('shake');
-  }, 620);
+    els.treeField.classList.remove('shake');
+  }, paced(620));
 
   setTimeout(() => {
     const trig = Math.random() < BONUS_TRIGGER_CHANCE;
     if (trig) runBonus();
     else runConsolation();
-  }, 580);
+  }, paced(580));
 });
 
 function runConsolation() {
@@ -2095,7 +2118,7 @@ function runConsolation() {
   setTimeout(() => {
     State.spinning = false;
     updateStrikeEnabled();
-  }, 1400);
+  }, paced(1400));
 }
 
 function showToast(msg) {
@@ -2274,12 +2297,12 @@ async function runBonus() {
     try { window.History.record('dragontree', State.bet, payout - State.bet, note); } catch (e) {}
   }
 
-  await wait(1700);
+  await wait(paced(1700));
 
   // 11. Cleanup
   els.payout.classList.add('fade-out');
   els.tally.classList.remove('show');
-  await wait(500);
+  await wait(paced(500));
   els.payout.classList.remove('show');
   els.payout.classList.remove('fade-out');
   els.reveal.innerHTML = '';
@@ -2289,6 +2312,7 @@ async function runBonus() {
   selectedLanterns.forEach(l => l.classList.remove('selected'));
   els.treeField.classList.remove('awake');
 
+  AudioFX.play('bonusTransition', 0.7);
   State.spinning = false;
   updateStrikeEnabled();
 }

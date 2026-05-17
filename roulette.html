@@ -276,6 +276,175 @@ button { cursor: pointer; }
   background: var(--neon-cyan);
   box-shadow: 0 0 10px currentColor;
 }
+.wheel-timer {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  min-width: 124px;
+  padding: 7px 12px 8px;
+  border-radius: 14px;
+  text-align: center;
+  background:
+    radial-gradient(circle at top, rgba(255,210,74,0.22), transparent 68%),
+    rgba(5,1,18,0.72);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.30), 0 10px 24px rgba(0,0,0,0.34);
+  pointer-events: none;
+}
+.wheel-timer span {
+  display: block;
+  font-family: 'Bungee', cursive;
+  font-size: 7px;
+  letter-spacing: 0.22em;
+  color: rgba(255,255,255,0.58);
+}
+.wheel-timer strong {
+  display: block;
+  margin-top: 1px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--gold-1);
+  text-shadow: 0 0 18px rgba(255,210,74,0.34);
+}
+.wheel-timer.urgent {
+  animation: timerPulse 0.74s ease-in-out infinite;
+}
+@keyframes timerPulse {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(255,210,74,0.30), 0 10px 24px rgba(0,0,0,0.34); }
+  50% { box-shadow: inset 0 0 0 1px rgba(255,46,147,0.55), 0 0 28px rgba(255,46,147,0.28); }
+}
+.spin-bet-map {
+  position: absolute;
+  z-index: 6;
+  left: 18px;
+  top: 96px;
+  width: 176px;
+  padding: 10px;
+  border-radius: 16px;
+  opacity: 0;
+  transform: translateX(-10px) scale(0.98);
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at top, rgba(92,255,161,0.12), transparent 58%),
+    linear-gradient(180deg, rgba(3,52,29,0.86), rgba(2,23,16,0.92));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.24), 0 18px 36px rgba(0,0,0,0.30);
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+.spin-bet-map-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 7px;
+  font-family: 'Bungee', cursive;
+  font-size: 7px;
+  letter-spacing: 0.16em;
+  color: var(--gold-0);
+}
+.spin-bet-map-title strong {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0;
+  color: var(--gold-1);
+}
+.mini-felt {
+  display: grid;
+  gap: 3px;
+}
+.mini-zero-row,
+.mini-number-grid {
+  display: grid;
+  gap: 3px;
+}
+.mini-zero-row { grid-template-columns: 1fr 1fr; }
+.mini-number-grid { grid-template-columns: repeat(3, 1fr); }
+.mini-cell {
+  position: relative;
+  min-height: 17px;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: 8px;
+  color: rgba(255,255,255,0.42);
+  background: rgba(255,255,255,0.045);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+.mini-cell.red { background: rgba(122,16,35,0.34); }
+.mini-cell.black { background: rgba(12,12,18,0.62); }
+.mini-cell.green { background: rgba(8,80,43,0.38); }
+.mini-cell.bet {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.86);
+  box-shadow: 0 0 12px rgba(255,210,74,0.20), inset 0 0 0 1px rgba(255,255,255,0.32);
+}
+.mini-cell.bet.red {
+  background: linear-gradient(180deg, #d52d4e, #6c061c);
+}
+.mini-cell.bet.black {
+  background: linear-gradient(180deg, #242330, #050509);
+}
+.mini-cell.bet.green {
+  background: linear-gradient(180deg, #17b96b, #075734);
+}
+.mini-chip-dot {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  min-width: 12px;
+  height: 12px;
+  padding: 0 2px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-family: 'Geist Mono', monospace;
+  font-size: 7px;
+  font-weight: 900;
+  color: #130b08;
+  background: var(--gold-0);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.44);
+}
+.mini-bet-list {
+  display: grid;
+  gap: 4px;
+  margin-top: 7px;
+  max-height: 74px;
+  overflow: hidden;
+}
+.mini-bet-line {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: center;
+  font-family: 'Bungee', cursive;
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.78);
+}
+.mini-bet-line span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.mini-bet-line strong {
+  font-family: 'Geist Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0;
+  color: var(--gold-1);
+}
+.mini-empty {
+  padding: 11px 6px;
+  text-align: center;
+  font-family: 'Bungee', cursive;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.52);
+}
 .wheel-stage {
   position: relative;
   z-index: 2;
@@ -514,6 +683,12 @@ button { cursor: pointer; }
   color: #fff;
 }
 .meter-row.hot strong { color: var(--neon-green); }
+.meter-row.urgent {
+  box-shadow: inset 0 0 0 1px rgba(255,46,147,0.42), 0 0 18px rgba(255,46,147,0.14);
+}
+.meter-row.urgent strong {
+  color: var(--neon-pink);
+}
 .hot-cold {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -641,6 +816,9 @@ button { cursor: pointer; }
 }
 .felt {
   position: relative;
+  --table-max: 700px;
+  width: min(100%, calc(var(--table-max) + 20px));
+  margin: 0 auto;
   padding: 10px;
   border-radius: 18px;
   background:
@@ -650,6 +828,17 @@ button { cursor: pointer; }
     linear-gradient(180deg, var(--felt), var(--felt-dark));
   box-shadow: inset 0 0 0 2px rgba(255,210,74,0.32), inset 0 0 44px rgba(0,0,0,0.56);
 }
+.zero-row,
+.outside-grid,
+.number-area,
+.dozen-grid,
+.column-grid,
+.builder,
+.bet-list {
+  width: min(100%, var(--table-max));
+  margin-left: auto;
+  margin-right: auto;
+}
 .zero-row {
   display: grid;
   grid-template-columns: 1fr 1fr 2.2fr;
@@ -658,9 +847,10 @@ button { cursor: pointer; }
 }
 .number-area {
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
+  grid-template-columns: 150px minmax(0, 1fr);
   gap: 8px;
   margin-top: 8px;
+  justify-content: center;
 }
 .row-handles {
   display: grid;
@@ -670,12 +860,12 @@ button { cursor: pointer; }
 .row-handle-set {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 3px;
+  gap: 5px;
 }
 .roulette-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-auto-rows: 38px;
+  grid-auto-rows: 36px;
   gap: 4px;
 }
 .bet-zone {
@@ -693,6 +883,11 @@ button { cursor: pointer; }
   background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.34));
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.11);
   transition: transform 0.12s, filter 0.12s, box-shadow 0.12s;
+}
+.row-handles .bet-zone {
+  font-family: 'Bungee', cursive;
+  font-size: 12px;
+  letter-spacing: 0.06em;
 }
 .bet-zone:hover { filter: brightness(1.12); transform: translateY(-1px); }
 .bet-zone:disabled { opacity: 0.58; cursor: not-allowed; transform: none; }
@@ -734,6 +929,15 @@ button { cursor: pointer; }
   color: #0a0418;
   background: radial-gradient(circle at 35% 28%, #fff7d1, var(--gold-1) 60%, var(--gold-2));
   box-shadow: 0 2px 0 rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.28);
+  cursor: pointer;
+  z-index: 2;
+  transition: transform 0.12s, box-shadow 0.12s, filter 0.12s;
+}
+.chip-badge:hover,
+.chip-badge.selected {
+  filter: brightness(1.12);
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 0 0 2px var(--neon-cyan), 0 3px 0 rgba(0,0,0,0.45), 0 0 18px rgba(34,211,238,0.44);
 }
 .outside-grid, .dozen-grid, .column-grid {
   display: grid;
@@ -744,8 +948,8 @@ button { cursor: pointer; }
 .outside-grid { grid-template-columns: repeat(6, 1fr); }
 .outside-grid .bet-zone, .dozen-grid .bet-zone, .column-grid .bet-zone {
   font-family: 'Bungee', cursive;
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-size: 12px;
+  letter-spacing: 0.13em;
 }
 .builder {
   display: grid;
@@ -815,6 +1019,9 @@ button { cursor: pointer; }
   background: rgba(0,0,0,0.30);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
 }
+.bet-line.editing {
+  box-shadow: inset 0 0 0 1px rgba(34,211,238,0.54), 0 0 16px rgba(34,211,238,0.16);
+}
 .bet-line .name {
   font-family: 'Bungee', cursive;
   font-size: 9px;
@@ -866,8 +1073,8 @@ button { cursor: pointer; }
 }
 .chip[data-chip="5"] { background-color: #ef4452; }
 .chip[data-chip="25"] { background-color: #2cba63; }
-.chip[data-chip="100"] { background-color: #24242d; color: #fff; }
-.chip[data-chip="500"] { background-color: #a855f7; color: #fff; }
+.chip[data-chip="100"] { background-color: #24242d; color: #101010; font-size: 12px; }
+.chip[data-chip="500"] { background-color: #a855f7; color: #101010; font-size: 12px; }
 .chip.active {
   box-shadow: 0 0 0 3px var(--neon-cyan), 0 4px 0 rgba(0,0,0,0.48), 0 0 22px rgba(34,211,238,0.52);
 }
@@ -879,6 +1086,16 @@ button { cursor: pointer; }
   color: rgba(255,255,255,0.76);
   background: rgba(255,255,255,0.07);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14);
+}
+.control-btn.edit-action {
+  color: #fff;
+  background: linear-gradient(180deg, rgba(255,46,147,0.72), rgba(112,12,52,0.88));
+  box-shadow: 0 3px 0 rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.16);
+}
+.control-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  transform: none;
 }
 .total-display {
   min-width: 132px;
@@ -919,11 +1136,24 @@ body[data-phase="betting"] .result-number {
 body[data-phase="betting"] .result-caption {
   font-size: 9px;
 }
+body[data-phase="betting"] .wheel-timer {
+  top: 9px;
+  min-width: 112px;
+  padding: 5px 10px 6px;
+}
+body[data-phase="betting"] .wheel-timer strong {
+  font-size: 22px;
+}
 body[data-phase="spinning"] .roulette-layout,
 body[data-phase="result"] .roulette-layout {
   order: 3;
   opacity: 1;
   transform: translateY(0);
+}
+body[data-phase="spinning"] .spin-bet-map,
+body[data-phase="result"] .spin-bet-map {
+  opacity: 1;
+  transform: translateX(0) scale(1);
 }
 body[data-phase="spinning"] .chip-rail,
 body[data-phase="result"] .chip-rail {
@@ -1056,6 +1286,20 @@ body[data-phase="result"] .hot-cold-bar {
     width: min(180px, 40%);
     min-height: 150px;
   }
+  .wheel-timer {
+    top: 10px;
+    min-width: 104px;
+    padding: 5px 9px 6px;
+  }
+  .wheel-timer strong { font-size: 22px; }
+  .spin-bet-map {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: min(250px, 100%);
+    margin: 2px auto 8px;
+  }
+  .mini-bet-list { max-height: 50px; }
   .live-popups .recent-pill { font-size: 8px; }
   .result-readout { min-height: 68px; }
   .pocket { width: 24px; height: 15px; margin-left: -12px; margin-top: -7px; font-size: 7px; }
@@ -1063,8 +1307,11 @@ body[data-phase="result"] .hot-cold-bar {
   .side-rail { grid-template-columns: 1fr; }
   .zero-row { grid-template-columns: 1fr 1fr; }
   .topline-zone { grid-column: 1 / -1; }
-  .number-area { grid-template-columns: 48px minmax(0, 1fr); }
+  .number-area { grid-template-columns: 92px minmax(0, 1fr); }
   .roulette-grid { grid-auto-rows: 36px; }
+  .row-handle-set { gap: 4px; }
+  .row-handles .bet-zone { font-size: 10px; letter-spacing: 0.03em; }
+  .outside-grid .bet-zone, .dozen-grid .bet-zone, .column-grid .bet-zone { font-size: 10px; letter-spacing: 0.08em; }
   .outside-grid { grid-template-columns: repeat(3, 1fr); }
   .chip-rail { grid-template-columns: 1fr; top: 46px; }
   .total-display { text-align: left; }
@@ -1079,6 +1326,8 @@ body[data-phase="result"] .hot-cold-bar {
     justify-items: start;
   }
   .roulette-grid { grid-auto-rows: 34px; }
+  .number-area { grid-template-columns: 78px minmax(0, 1fr); }
+  .row-handles .bet-zone { font-size: 9px; letter-spacing: 0; }
   .outside-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1143,6 +1392,13 @@ body[data-phase="result"] .hot-cold-bar {
         <div class="status-pill"><span class="status-dot" id="status-dot"></span><span id="status-text">STANDBY</span></div>
         <div class="status-pill" id="roulette-player-count">0 PLAYING</div>
       </div>
+      <div class="wheel-timer" id="wheel-timer" aria-live="polite">
+        <span id="wheel-timer-label">BETS CLOSE</span>
+        <strong id="wheel-timer-value">--</strong>
+      </div>
+      <div class="spin-bet-map" id="spin-bet-map" aria-label="Your locked Roulette bets">
+        <div class="mini-empty">NO BETS</div>
+      </div>
       <div class="wheel-live-wins" aria-label="Live Roulette wins">
         <div class="recent-list live-popups" id="recent-list"></div>
       </div>
@@ -1172,6 +1428,7 @@ body[data-phase="result"] .hot-cold-bar {
     </div>
     <div class="control-row">
       <button class="control-btn secondary" id="btn-undo" type="button">UNDO</button>
+      <button class="control-btn edit-action" id="btn-remove" type="button" disabled>REMOVE</button>
       <button class="control-btn secondary" id="btn-clear" type="button">CLEAR</button>
       <button class="control-btn secondary" id="btn-rebet" type="button">REBET</button>
       <button class="control-btn" id="btn-double" type="button">DOUBLE</button>
@@ -1509,6 +1766,46 @@ body[data-phase="result"] .hot-cold-bar {
     };
   }
 
+  function cloneBet(bet, amount) {
+    return {
+      ...bet,
+      amount: asAmount(amount === undefined ? bet.amount : amount),
+      numbers: Array.isArray(bet.numbers) ? bet.numbers.slice() : [],
+    };
+  }
+
+  function mergeBetStack(bets, bet) {
+    const out = (bets || []).map(b => cloneBet(b));
+    const clean = cloneBet(bet);
+    if (!clean.id || clean.amount <= 0) return out;
+    const existing = out.find(b => b.id === clean.id);
+    if (existing) existing.amount = Math.round((existing.amount + clean.amount) * 100) / 100;
+    else out.push(clean);
+    return out;
+  }
+
+  function removeBetFromStack(bets, betId, amount) {
+    const out = (bets || []).map(b => cloneBet(b));
+    const existing = out.find(b => b.id === betId);
+    if (!existing) return { bets: out, amount: 0 };
+    const requested = amount === undefined ? existing.amount : asAmount(amount);
+    const removed = Math.min(existing.amount, requested);
+    existing.amount = Math.round((existing.amount - removed) * 100) / 100;
+    return {
+      bets: out.filter(b => b.amount > 0),
+      amount: Math.round(removed * 100) / 100,
+    };
+  }
+
+  function moveBetInStack(bets, fromId, toBet, amount) {
+    const removed = removeBetFromStack(bets, fromId, amount);
+    if (removed.amount <= 0) return { bets: removed.bets, amount: 0 };
+    return {
+      bets: mergeBetStack(removed.bets, cloneBet(toBet, removed.amount)),
+      amount: removed.amount,
+    };
+  }
+
   global.RouletteCore = {
     AMERICAN_WHEEL,
     RED_NUMBERS,
@@ -1528,6 +1825,9 @@ body[data-phase="result"] .hot-cold-bar {
     createNeighborsBets,
     createFinalsBets,
     resolveBets,
+    mergeBetStack,
+    removeBetFromStack,
+    moveBetInStack,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 /* CORE TESTABLE API END */
@@ -1590,6 +1890,11 @@ const State = {
   chatStarted: false,
   presenceStarted: false,
   focusedPhase: null,
+  editingBetId: null,
+  renderBetsSignature: '',
+  renderSpinMapSignature: '',
+  lockedSpinBets: [],
+  spinSoundRoundId: null,
 };
 
 const balEl = document.getElementById('balance');
@@ -1600,14 +1905,19 @@ const resultCaptionEl = document.getElementById('result-caption');
 const statusTextEl = document.getElementById('status-text');
 const statusDotEl = document.getElementById('status-dot');
 const phaseTimerEl = document.getElementById('phase-timer');
+const wheelTimerEl = document.getElementById('wheel-timer');
+const wheelTimerLabelEl = document.getElementById('wheel-timer-label');
+const wheelTimerValueEl = document.getElementById('wheel-timer-value');
 const statBetEl = document.getElementById('stat-bet');
 const statLastEl = document.getElementById('stat-last');
 const totalBetEl = document.getElementById('total-bet');
+const removeBetBtn = document.getElementById('btn-remove');
 const boardLockEl = document.getElementById('board-lock');
 const rollHistoryListEl = document.getElementById('roll-history-list');
 const hotListEl = document.getElementById('hot-list');
 const coldListEl = document.getElementById('cold-list');
 const recentListEl = document.getElementById('recent-list');
+const spinBetMapEl = document.getElementById('spin-bet-map');
 const betListEl = document.getElementById('bet-list');
 const builderCopyEl = document.getElementById('builder-copy');
 const numberGridEl = document.getElementById('number-grid');
@@ -1629,6 +1939,7 @@ const SFX = {
   win: 'sfx/win_chime.mp3',
   lose: 'sfx/lose_low.mp3',
   neutral: 'sfx/push_neutral.mp3',
+  wheelSpin: 'sfx/roulette/wheel_spin.mp3',
 };
 const audioPool = new Map();
 function playSfx(name, vol = 1) {
@@ -1704,6 +2015,14 @@ function cloneBets(bets) {
   return bets.map(b => ({ ...b, numbers: b.numbers.slice() }));
 }
 
+function cloneBet(bet, amount) {
+  return {
+    ...bet,
+    amount: Math.round(Number(amount === undefined ? bet.amount : amount) * 100) / 100,
+    numbers: bet.numbers.slice(),
+  };
+}
+
 function canBet() {
   const round = State.activeRound || getGlobalRound(casinoNow());
   return round.phase === 'betting';
@@ -1725,16 +2044,26 @@ function activePlayerUid() {
 }
 
 function mergeBet(bet) {
-  const existing = State.currentBets.find(b => b.id === bet.id);
-  if (existing) existing.amount = Math.round((existing.amount + bet.amount) * 100) / 100;
-  else State.currentBets.push({ ...bet, numbers: bet.numbers.slice() });
+  State.currentBets = Core.mergeBetStack(State.currentBets, bet);
 }
 
 function removeBetAmount(bet) {
-  const existing = State.currentBets.find(b => b.id === bet.id);
-  if (!existing) return;
-  existing.amount = Math.round((existing.amount - bet.amount) * 100) / 100;
-  if (existing.amount <= 0) State.currentBets = State.currentBets.filter(b => b.id !== bet.id);
+  const result = Core.removeBetFromStack(State.currentBets, bet.id, bet.amount);
+  State.currentBets = result.bets;
+}
+
+function selectedEditBet() {
+  return State.currentBets.find(b => b.id === State.editingBetId) || null;
+}
+
+function clearEditSelection() {
+  State.editingBetId = null;
+}
+
+function selectEditBet(id) {
+  State.editingBetId = State.editingBetId === id ? null : id;
+  playSfx('chipSelect', 0.45);
+  renderBets();
 }
 
 function placeBetGroup(bets, label) {
@@ -1755,7 +2084,8 @@ function placeBetGroup(bets, label) {
   persistBalance(balance);
   refreshBalance();
   clean.forEach(mergeBet);
-  State.undoStack.push(clean.map(b => ({ ...b, numbers: b.numbers.slice() })));
+  State.undoStack.push({ type: 'place', bets: cloneBets(clean) });
+  clearEditSelection();
   playSfx('chipPlace', 0.72);
   if (window.Music) Music.start();
   showToast(label || ('BET ' + money(cost)), 'win');
@@ -1776,6 +2106,7 @@ function clearBets() {
   State.currentBets = [];
   State.undoStack = [];
   State.builderSelection = [];
+  clearEditSelection();
   playSfx('chipClear', 0.7);
   showToast('BETS CLEARED', '');
   renderBets();
@@ -1783,12 +2114,29 @@ function clearBets() {
 
 function undoLast() {
   if (!canBet() || !State.undoStack.length) return;
-  const group = State.undoStack.pop();
-  const refund = Math.round(group.reduce((sum, b) => sum + b.amount, 0) * 100) / 100;
-  group.forEach(removeBetAmount);
-  balance = Math.round((balance + refund) * 100) / 100;
+  const action = State.undoStack.pop();
+  const group = Array.isArray(action) ? action : action.bets;
+  if (action.type === 'remove') {
+    const cost = Math.round(group.reduce((sum, b) => sum + b.amount, 0) * 100) / 100;
+    if (cost > balance) {
+      State.undoStack.push(action);
+      showToast('CHECK BALANCE', 'crash');
+      playSfx('lose', 0.45);
+      return;
+    }
+    balance = Math.round((balance - cost) * 100) / 100;
+    group.forEach(mergeBet);
+  } else if (action.type === 'move') {
+    action.to.forEach(removeBetAmount);
+    action.from.forEach(mergeBet);
+  } else {
+    const refund = Math.round(group.reduce((sum, b) => sum + b.amount, 0) * 100) / 100;
+    group.forEach(removeBetAmount);
+    balance = Math.round((balance + refund) * 100) / 100;
+  }
   persistBalance(balance);
   refreshBalance();
+  clearEditSelection();
   playSfx('chipClear', 0.55);
   renderBets();
 }
@@ -1801,6 +2149,49 @@ function rebet() {
 function doubleBets() {
   if (!canBet() || !State.currentBets.length) return;
   placeBetGroup(cloneBets(State.currentBets), 'DOUBLE ' + money(totalBet() * 2));
+}
+
+function removeSelectedBet() {
+  if (!canBet()) return;
+  const source = selectedEditBet();
+  if (!source) return;
+  const removedBet = cloneBet(source);
+  const result = Core.removeBetFromStack(State.currentBets, source.id, source.amount);
+  if (result.amount <= 0) return;
+  State.currentBets = result.bets;
+  balance = Math.round((balance + result.amount) * 100) / 100;
+  persistBalance(balance);
+  refreshBalance();
+  State.undoStack.push({ type: 'remove', bets: [cloneBet(removedBet, result.amount)] });
+  clearEditSelection();
+  playSfx('chipClear', 0.6);
+  showToast('REMOVED ' + money(result.amount), '');
+  renderBets();
+}
+
+function moveSelectedBet(targetBet) {
+  if (!canBet()) return false;
+  const source = selectedEditBet();
+  if (!source) return false;
+  if (source.id === targetBet.id) {
+    clearEditSelection();
+    renderBets();
+    return true;
+  }
+  const amount = source.amount;
+  const moved = Core.moveBetInStack(State.currentBets, source.id, targetBet, amount);
+  if (moved.amount <= 0) return false;
+  State.currentBets = moved.bets;
+  State.undoStack.push({
+    type: 'move',
+    from: [cloneBet(source, moved.amount)],
+    to: [cloneBet(targetBet, moved.amount)],
+  });
+  clearEditSelection();
+  playSfx('chipPlace', 0.68);
+  showToast('MOVED ' + money(moved.amount), 'win');
+  renderBets();
+  return true;
 }
 
 function getBetAmount() { return State.chipDenom; }
@@ -1816,7 +2207,7 @@ function flashWinners(wins) {
         cell.classList.add('winning');
       }
     });
-    const zone = document.querySelector(`[data-bet-id="${CSS.escape(bet.id)}"]`);
+    const zone = findBetChipTarget(bet);
     if (zone) zone.classList.add('winning');
   });
 }
@@ -1829,6 +2220,7 @@ function resolveCurrentBets(round) {
   State.previousBets = bets;
   State.currentBets = [];
   State.undoStack = [];
+  clearEditSelection();
   if (result.grossPaid > 0) {
     balance = Math.round((balance + result.grossPaid) * 100) / 100;
     persistBalance(balance);
@@ -1910,6 +2302,67 @@ function renderRecentWins() {
   }).join('');
 }
 
+function spinMapBets() {
+  return State.activeRound && State.activeRound.phase !== 'betting'
+    ? State.lockedSpinBets
+    : State.currentBets;
+}
+
+function chipShort(v) {
+  const n = Number(v) || 0;
+  if (n >= 1000) return Math.round(n / 100) / 10 + 'k';
+  return fmt(n);
+}
+
+function renderSpinBetMap(force) {
+  const bets = spinMapBets();
+  const signature = JSON.stringify({
+    phase: State.activeRound ? State.activeRound.phase : '',
+    bets: bets.map(b => [b.id, b.amount]),
+  });
+  if (!force && signature === State.renderSpinMapSignature) return;
+  State.renderSpinMapSignature = signature;
+  if (!bets.length) {
+    spinBetMapEl.innerHTML = '<div class="mini-empty">NO BETS</div>';
+    return;
+  }
+  const numberTotals = new Map();
+  const straightTotals = new Map();
+  bets.forEach(bet => {
+    (bet.numbers || []).forEach(n => {
+      numberTotals.set(String(n), Math.round(((numberTotals.get(String(n)) || 0) + bet.amount) * 100) / 100);
+    });
+    if (bet.type === 'straight' && bet.numbers && bet.numbers.length === 1) {
+      const key = String(bet.numbers[0]);
+      straightTotals.set(key, Math.round(((straightTotals.get(key) || 0) + bet.amount) * 100) / 100);
+    }
+  });
+  const cell = n => {
+    const key = String(n);
+    const amount = numberTotals.get(key) || 0;
+    const straightAmount = straightTotals.get(key) || 0;
+    const classes = ['mini-cell', Core.numberColor(key), amount > 0 ? 'bet' : ''].filter(Boolean).join(' ');
+    return `<span class="${classes}">${key}${straightAmount > 0 ? `<span class="mini-chip-dot">${chipShort(straightAmount)}</span>` : ''}</span>`;
+  };
+  const rows = [];
+  for (let start = 1; start <= 34; start += 3) {
+    rows.push([start, start + 1, start + 2].map(cell).join(''));
+  }
+  const shown = bets.slice(0, 5).map(b =>
+    `<div class="mini-bet-line"><span>${escapeHTML(b.label)}</span><strong>${money(b.amount)}</strong></div>`
+  ).join('');
+  const more = bets.length > 5
+    ? `<div class="mini-bet-line"><span>+${bets.length - 5} MORE</span><strong>${money(bets.slice(5).reduce((s, b) => s + b.amount, 0))}</strong></div>`
+    : '';
+  spinBetMapEl.innerHTML = `
+    <div class="spin-bet-map-title"><span>YOUR BETS</span><strong>${money(bets.reduce((s, b) => s + b.amount, 0))}</strong></div>
+    <div class="mini-felt">
+      <div class="mini-zero-row">${cell('0')}${cell('00')}</div>
+      <div class="mini-number-grid">${rows.join('')}</div>
+    </div>
+    <div class="mini-bet-list">${shown}${more}</div>`;
+}
+
 function betSuffix(bet) {
   const parts = String(bet && bet.id ? bet.id : '').split(':');
   return parts[parts.length - 1] || '';
@@ -1930,10 +2383,25 @@ function findBetChipTarget(bet) {
   if (bet.type === 'outside') {
     return document.querySelector(`[data-action="outside"][data-outside="${CSS.escape(betSuffix(bet))}"]`);
   }
+  if (bet.type === 'street') {
+    return document.querySelector(`[data-action="street"][data-row-start="${CSS.escape(betSuffix(bet))}"]`);
+  }
+  if (bet.type === 'sixline') {
+    return document.querySelector(`[data-action="sixline"][data-row-start="${CSS.escape(betSuffix(bet))}"]`);
+  }
   return document.querySelector(`[data-bet-id="${CSS.escape(bet.id)}"]`);
 }
 
 function renderBets() {
+  if (State.editingBetId && !selectedEditBet()) clearEditSelection();
+  const betting = canBet();
+  const signature = JSON.stringify({
+    bets: State.currentBets.map(b => [b.id, b.amount]),
+    editing: State.editingBetId || '',
+    betting,
+  });
+  if (signature === State.renderBetsSignature) return;
+  State.renderBetsSignature = signature;
   refreshBalance();
   const total = totalBet();
   statBetEl.textContent = money(total);
@@ -1941,26 +2409,33 @@ function renderBets() {
   document.querySelectorAll('.chip-badge').forEach(el => el.remove());
   for (const bet of State.currentBets) {
     const el = findBetChipTarget(bet);
-    if (el) addChipBadge(el, bet.amount);
+    if (el) addChipBadge(el, bet);
   }
   if (!State.currentBets.length) {
+    clearEditSelection();
     betListEl.innerHTML = '<div class="bet-line"><span class="name">NO BETS PLACED</span><span class="amt">$0</span></div>';
   } else {
     betListEl.innerHTML = State.currentBets.map(b =>
-      `<div class="bet-line"><span class="name">${escapeHTML(b.label)}</span><span class="amt">${money(b.amount)}</span></div>`
+      `<div class="bet-line${b.id === State.editingBetId ? ' editing' : ''}"><span class="name">${escapeHTML(b.label)}</span><span class="amt">${money(b.amount)}</span></div>`
     ).join('');
   }
-  const betting = canBet();
   document.querySelectorAll('.bet-zone, .mode-btn, .tiny-btn, .control-btn.secondary, #btn-double').forEach(btn => {
     if (btn.dataset.invalid === '1') return;
     if (!btn.closest('.modal-card')) btn.disabled = !betting && btn.id !== 'btn-rebet';
   });
+  removeBetBtn.disabled = !betting || !selectedEditBet();
+  renderSpinBetMap();
 }
 
-function addChipBadge(el, amount) {
+function addChipBadge(el, bet) {
   const badge = document.createElement('span');
-  badge.className = 'chip-badge';
-  badge.textContent = '$' + fmt(amount);
+  badge.className = 'chip-badge' + (bet.id === State.editingBetId ? ' selected' : '');
+  badge.textContent = '$' + fmt(bet.amount);
+  badge.dataset.betId = bet.id;
+  badge.setAttribute('role', 'button');
+  badge.setAttribute('tabindex', '0');
+  badge.setAttribute('aria-label', 'Edit ' + bet.label + ' ' + money(bet.amount));
+  badge.title = bet.label + ' ' + money(bet.amount);
   el.appendChild(badge);
 }
 
@@ -2041,9 +2516,12 @@ function updateWheel(round) {
   const pocketRadius = Math.max(104, stageWidth * 0.368);
   const pocketLabelRadius = Math.max(98, stageWidth * 0.335);
   const landingAngle = 0;
-  const restPoint = { x: stageWidth * 0.315, y: -stageWidth * 0.382 };
+  const tubeCenter = {
+    x: stageWidth * 0.35 - 41,
+    y: -stageWidth * 0.41 + 9,
+  };
+  const restPoint = tubeCenter;
   const entryAngle = 46;
-  const entryPoint = ballPoint(entryAngle, outerRadius);
   let wheelRot = target;
   let ballAngle = landingAngle;
   let radius = pocketRadius;
@@ -2093,6 +2571,7 @@ function updateWheel(round) {
 
 function syncRound(round) {
   const previous = State.activeRound;
+  const previousPhase = previous ? previous.phase : '';
   if (document.body.dataset.phase !== round.phase) {
     document.body.dataset.phase = round.phase;
     focusPhasePanel(round.phase);
@@ -2101,11 +2580,31 @@ function syncRound(round) {
     State.activeRound = round;
     State.resolvedRoundId = null;
     State.lastRenderSecond = -1;
+    State.lockedSpinBets = [];
+    State.spinSoundRoundId = null;
+    State.renderSpinMapSignature = '';
     bindWinsFeed(round.roundId);
     renderHistory(round);
     if (round.phase === 'betting') showToast('BETS OPEN', '');
   } else {
     State.activeRound = round;
+  }
+
+  if (round.phase === 'betting') {
+    if (State.lockedSpinBets.length || previousPhase !== 'betting') {
+      State.lockedSpinBets = [];
+      State.renderSpinMapSignature = '';
+      renderSpinBetMap(true);
+    }
+  } else if (round.phase === 'spinning' && previousPhase !== 'spinning') {
+    State.lockedSpinBets = cloneBets(State.currentBets);
+    State.renderSpinMapSignature = '';
+    renderSpinBetMap(true);
+  }
+
+  if (round.phase === 'spinning' && State.spinSoundRoundId !== round.roundId && round.phaseElapsed < 1400) {
+    State.spinSoundRoundId = round.roundId;
+    playSfx('wheelSpin', 0.92);
   }
 
   if (round.phase === 'betting') {
@@ -2133,8 +2632,18 @@ function syncRound(round) {
     resolveCurrentBets(round);
   }
 
-  phaseTimerEl.textContent = Math.ceil(round.phaseRemaining / 1000) + 's';
+  const seconds = Math.ceil(round.phaseRemaining / 1000);
+  phaseTimerEl.textContent = seconds + 's';
+  wheelTimerLabelEl.textContent = round.phase === 'betting'
+    ? 'BETS CLOSE'
+    : round.phase === 'spinning'
+      ? 'BALL DROPS'
+      : 'NEXT SPIN';
+  wheelTimerValueEl.textContent = seconds + 's';
+  wheelTimerEl.classList.toggle('urgent', round.phase === 'betting' && seconds <= 5);
+  phaseTimerEl.closest('.meter-row').classList.toggle('urgent', round.phase === 'betting' && seconds <= 5);
   updateWheel(round);
+  renderSpinBetMap();
   renderBets();
 }
 
@@ -2201,6 +2710,17 @@ function handleNumberClick(num, el) {
   }
 }
 
+function betFromZone(zone, amount) {
+  if (zone.dataset.num) return Core.createStraightBet(zone.dataset.num, amount);
+  if (zone.dataset.action === 'topline') return Core.createTopLineBet(amount);
+  if (zone.dataset.action === 'dozen') return Core.createDozenBet(zone.dataset.dozen, amount);
+  if (zone.dataset.action === 'column') return Core.createColumnBet(zone.dataset.column, amount);
+  if (zone.dataset.action === 'outside') return Core.createOutsideBet(zone.dataset.outside, amount);
+  if (zone.dataset.action === 'street') return Core.createStreetBet(zone.dataset.rowStart, amount);
+  if (zone.dataset.action === 'sixline') return Core.createSixLineBet(zone.dataset.rowStart, amount);
+  throw new Error('Unsupported bet zone');
+}
+
 function syncRouletteClock() {
   try {
     if (!window.RouletteLive || !RouletteLive.syncClock) return;
@@ -2260,21 +2780,36 @@ function sendChatMessage() {
 }
 
 document.addEventListener('click', e => {
+  const badge = e.target.closest('.chip-badge');
+  if (badge) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (canBet()) selectEditBet(badge.dataset.betId);
+    return;
+  }
   const zone = e.target.closest('.bet-zone');
   if (zone) {
     try {
-      if (zone.dataset.num) handleNumberClick(zone.dataset.num, zone);
-      else if (zone.dataset.action === 'topline') placeBet(Core.createTopLineBet(getBetAmount()));
-      else if (zone.dataset.action === 'dozen') placeBet(Core.createDozenBet(zone.dataset.dozen, getBetAmount()));
-      else if (zone.dataset.action === 'column') placeBet(Core.createColumnBet(zone.dataset.column, getBetAmount()));
-      else if (zone.dataset.action === 'outside') placeBet(Core.createOutsideBet(zone.dataset.outside, getBetAmount()));
-      else if (zone.dataset.action === 'street') placeBet(Core.createStreetBet(zone.dataset.rowStart, getBetAmount()));
-      else if (zone.dataset.action === 'sixline') placeBet(Core.createSixLineBet(zone.dataset.rowStart, getBetAmount()));
+      const editBet = selectedEditBet();
+      if (editBet) {
+        moveSelectedBet(betFromZone(zone, editBet.amount));
+      } else if (zone.dataset.num) {
+        handleNumberClick(zone.dataset.num, zone);
+      } else {
+        placeBet(betFromZone(zone, getBetAmount()));
+      }
     } catch (err) {
       showToast('INVALID BET', 'crash');
       playSfx('lose', 0.4);
     }
   }
+});
+
+document.addEventListener('keydown', e => {
+  const badge = e.target.closest && e.target.closest('.chip-badge');
+  if (!badge || (e.key !== 'Enter' && e.key !== ' ')) return;
+  e.preventDefault();
+  if (canBet()) selectEditBet(badge.dataset.betId);
 });
 
 document.querySelectorAll('.chip').forEach(btn => {
@@ -2297,6 +2832,7 @@ document.getElementById('btn-finals').addEventListener('click', () => {
 });
 document.getElementById('btn-clear').addEventListener('click', clearBets);
 document.getElementById('btn-undo').addEventListener('click', undoLast);
+removeBetBtn.addEventListener('click', removeSelectedBet);
 document.getElementById('btn-rebet').addEventListener('click', rebet);
 document.getElementById('btn-double').addEventListener('click', doubleBets);
 document.getElementById('btn-rules').addEventListener('click', () => rulesVeil.classList.add('show'));

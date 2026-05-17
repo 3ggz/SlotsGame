@@ -103,4 +103,23 @@ run('builds finals as straight bets', () => {
   assert.strictEqual(bets.reduce((sum, b) => sum + b.amount, 0), 15);
 });
 
+run('edits bet stacks by removing and moving wager amounts', () => {
+  const straight17 = core.createStraightBet('17', 5);
+  const red = core.createOutsideBet('red', 5);
+  const black = core.createOutsideBet('black', 1);
+  const stack = core.mergeBetStack([straight17], core.createStraightBet('17', 2));
+  assert.strictEqual(stack.length, 1);
+  assert.strictEqual(stack[0].amount, 7);
+
+  const removed = core.removeBetFromStack(stack, straight17.id, 3);
+  assert.strictEqual(removed.amount, 3);
+  assert.strictEqual(removed.bets[0].amount, 4);
+
+  const moved = core.moveBetInStack([straight17, black], straight17.id, red, 4);
+  assert.strictEqual(moved.amount, 4);
+  assert.strictEqual(moved.bets.find(b => b.id === straight17.id).amount, 1);
+  assert.strictEqual(moved.bets.find(b => b.id === red.id).amount, 4);
+  assert.strictEqual(moved.bets.find(b => b.id === black.id).amount, 1);
+});
+
 console.log('Roulette core tests complete');

@@ -2537,7 +2537,7 @@ body.is-spinning .symbol::before { animation-play-state: paused !important; }
     </div>
     <div class="hud-card">
       <div class="hud-label">TOTAL</div>
-      <div class="hud-value">$<span id="bonus-total">0</span></div>
+      <div class="hud-value"><span id="bonus-total">$0</span></div>
     </div>
   </div>
   <div class="bonus-actions">
@@ -2573,30 +2573,47 @@ body.is-spinning .symbol::before { animation-play-state: paused !important; }
      swap any individual sound to a higher-quality format any time
    ============================================================ */
 const Audio = (() => {
-  const SFX = [
+  /* Per-sound pool sizing. Most one-shot fanfares only need a single
+     element; reel-stops and diamond-hit can collide rapidly so they
+     get bigger pools. Smaller total pool = fewer <audio> elements
+     for mobile to allocate and keep alive — this was a measurable
+     contributor to the after-one-round mobile lag. */
+  const SFX = {
     // reels
-    'reel_start', 'reel_loop',
-    'reel_stop_1', 'reel_stop_2', 'reel_stop_3', 'reel_stop_final',
+    'reel_start': 1, 'reel_loop': 1,
+    'reel_stop_1': 2, 'reel_stop_2': 2, 'reel_stop_3': 2, 'reel_stop_final': 1,
+    /* One slot per reel so reel 4/5 never reuse the slot a still-ringing
+       earlier reel is using (the diamond_reel_stop sample is ~1.8 s and
+       reels stop 200 ms apart — pool 3 was guaranteed to interrupt). */
+    'diamond_reel_stop': 5,
     // anticipation
-    'anticipation_build', 'anticipation_high',
-    // wins
-    'win_small', 'win_medium', 'win_big', 'jackpot_grand',
+    'anticipation_build': 1, 'anticipation_high': 1,
+    // line / big / huge wins (new)
+    'diamond_line_win_1': 2, 'diamond_line_win_2': 2, 'diamond_line_win_3': 2,
+    'big_win': 1, 'huge_win': 1,
+    'jackpot_win': 1, 'diamond_bonus_massive_win': 1,
+    // legacy wins (kept as fallback / for misc moments)
+    'win_small': 1, 'win_medium': 1, 'win_big': 1, 'jackpot_grand': 1,
     // bonus / diamond
-    'bonus_trigger', 'diamond_land', 'gem_upgrade', 'respin_reset', 'scatter_thud',
+    'bonus_trigger': 1, 'diamond_land': 2, 'diamond_hit': 3,
+    'gem_upgrade': 1, 'respin_reset': 1, 'scatter_thud': 1,
     // mini-game
-    'cell_spin_start', 'cell_tick',
+    'cell_spin_start': 1, 'cell_tick': 3,
     // reveal / misc
-    'reveal_shine', 'coin_drop', 'bonus_tally',
+    'reveal_shine': 1, 'coin_drop': 3, 'bonus_tally': 1,
     // ui
-    'button_press', 'bet_up', 'bet_down', 'add_cash',
-  ];
+    'button_press': 2, 'bet_up': 1, 'bet_down': 1, 'add_cash': 1,
+  };
+  /* mp3 first since every shipped slot SFX is mp3; wav stays as
+     fallback for cases where someone drops a higher-quality master
+     in-place. Putting mp3 first short-circuits the wav 404 round-trip
+     that used to delay every sound's first play on mobile. */
   const EXTS = [
-    { ext: 'wav', mime: 'audio/wav' },
     { ext: 'mp3', mime: 'audio/mpeg' },
+    { ext: 'wav', mime: 'audio/wav' },
     { ext: 'ogg', mime: 'audio/ogg' },
     { ext: 'm4a', mime: 'audio/mp4' },
   ];
-  const POOL_SIZE = 4;
   const pools = {};
   const loops = {};
   let loaded = false;
@@ -2605,9 +2622,9 @@ const Audio = (() => {
     return window.Settings ? Settings.sfxVolume() : 1;
   }
 
-  function makeAudioEl(name) {
+  function makeAudioEl(name, preload = 'auto') {
     const a = document.createElement('audio');
-    a.preload = 'auto';
+    a.preload = preload;
     EXTS.forEach(({ ext, mime }) => {
       const s = document.createElement('source');
       s.src = `sfx/slots/${name}.${ext}`;
@@ -2621,10 +2638,19 @@ const Audio = (() => {
     if (loaded) return;
     loaded = true;
     let ready = 0, failed = 0;
-    SFX.forEach(name => {
+    const names = Object.keys(SFX);
+    /* On mobile, kicking 30+ simultaneous preload=auto requests stalls
+       the audio decoder pipeline (Safari/Chrome both throttle parallel
+       decodes). Pool entry #0 preloads eagerly so the first play is
+       instant; the rest use preload=metadata and only decode when
+       fire() actually needs them. */
+    const isMobile = window.matchMedia && window.matchMedia('(max-width: 720px)').matches;
+    names.forEach(name => {
       pools[name] = [];
-      for (let i = 0; i < POOL_SIZE; i++) {
-        const a = makeAudioEl(name);
+      const size = SFX[name];
+      for (let i = 0; i < size; i++) {
+        const preload = i === 0 ? 'auto' : (isMobile ? 'metadata' : 'auto');
+        const a = makeAudioEl(name, preload);
         if (i === 0) {
           a.addEventListener('canplaythrough', () => { ready++; }, { once: true });
           a.addEventListener('error', () => { failed++; console.warn('SFX load failed:', name); }, { once: true });
@@ -2634,7 +2660,7 @@ const Audio = (() => {
       }
     });
     setTimeout(() => {
-      console.log(`[Audio] Slots SFX pool: ${SFX.length} sounds, ${ready} ready, ${failed} failed, sfxVol=${sfxGain().toFixed(2)}`);
+      console.log(`[Audio] Slots SFX pool: ${names.length} sounds, ${ready} ready, ${failed} failed, sfxVol=${sfxGain().toFixed(2)}`);
     }, 1500);
   }
 
@@ -2646,7 +2672,16 @@ const Audio = (() => {
     const pool = pools[name];
     if (!pool) return null;
     let el = pool.find(a => a.paused || a.ended);
-    if (!el) { el = pool[0].cloneNode(); pool.push(el); }
+    if (!el) {
+      /* Pool exhausted — reuse the oldest slot (interrupting its
+         playback). Previously this called `pool[0].cloneNode()` and
+         pushed the clone, which (a) leaked: the pool grew unboundedly
+         across spins, eating mobile memory, and (b) cloneNode defaults
+         to a shallow clone so the new element had no <source> children
+         and was silent anyway. Hard cap = the original POOL_SIZE. */
+      el = pool[0];
+      try { el.pause(); } catch (e) {}
+    }
     const { gain = 1, pitch = 1, pitchVariance = 0.05, loop = false, maxMs = 0 } = opts || {};
     const v = (Math.random() * 2 - 1) * pitchVariance;
     el.playbackRate = Math.max(0.5, Math.min(4, pitch + v));
@@ -2689,6 +2724,21 @@ const Audio = (() => {
     setTimeout(tick, stepMs);
   }
 
+  /* Play `first`, then play `second` the moment `first` ends. Used
+     for the jackpot→huge-win fanfare and big-line→big-win stings.
+     The 'ended' listener is auto-removed; if firing fails (sound
+     missing or denied), we still attempt the second sound so the
+     game's win moment never goes silent. */
+  function fireChained(firstName, secondName, opts1 = {}, opts2 = {}) {
+    const el = fire(firstName, opts1);
+    if (!el) { fire(secondName, opts2); return; }
+    const next = () => {
+      el.removeEventListener('ended', next);
+      fire(secondName, opts2);
+    };
+    el.addEventListener('ended', next, { once: true });
+  }
+
   /* ---------- LEVEL CALIBRATION ----------
      Spin chain is audible (not whispered) but wins/bonus still
      clearly dominate. Spin "woosh" removed — just the ambient
@@ -2704,6 +2754,7 @@ const Audio = (() => {
       stopLoop('reel_loop', 0); // safety in case it was started elsewhere
     },
 
+    // Generic "buzz" (still used by flashLowFunds) — kept for back-compat.
     reelStop() {
       const counter = (this._reelIdx = ((this._reelIdx || 0) + 1) % 5);
       if (counter === 4) {
@@ -2712,6 +2763,16 @@ const Audio = (() => {
         const variants = ['reel_stop_1', 'reel_stop_2', 'reel_stop_3'];
         play(variants[counter % variants.length], { gain: 0.60, pitchVariance: 0.06, maxMs: 500 });
       }
+    },
+
+    // New per-reel-landing sound — plays 5× per spin, one per reel.
+    // Tiny pitch wobble per reel so consecutive stops don't feel like
+    // a single re-trigger of the same sample. No maxMs cap: the sample
+    // has a natural decay tail and the prior 700 ms cap was clipping
+    // the 4th reel mid-tail; pool size 5 keeps the stops independent.
+    diamondReelStop(reelIdx = 0) {
+      const pitch = 0.96 + reelIdx * 0.018;
+      play('diamond_reel_stop', { gain: 0.78, pitch, pitchVariance: 0.025 });
     },
 
     reelLand(strength = 0.85) {
@@ -2741,12 +2802,49 @@ const Audio = (() => {
     grandJackpot()    { play('jackpot_grand', { gain: 0.85 }); },    // toned down — was 1.0
     tallyRace()       { play('bonus_tally',  { gain: 0.95 }); },     // accompanies the count-up animation
 
-    /* Diamond/scatter landing thud, escalating in pitch + gain with each
-       additional diamond visible so far. count: 1..5+ */
+    /* Line-win sting, played the instant the winning paylines animate
+       across the screen. tier picks which of the 3 diamond_line_win
+       samples to fire; fanfare (optional) chains big_win or huge_win
+       on top once the line sting finishes — the user-requested
+       "play the big/huge win AFTER the line win sound of said tier". */
+    lineWin(tier = 1, fanfare = null) {
+      const first = tier >= 3 ? 'diamond_line_win_3'
+                   : tier === 2 ? 'diamond_line_win_2'
+                   : 'diamond_line_win_1';
+      if (!fanfare) { play(first, { gain: 0.95 }); return; }
+      const second = fanfare === 'huge' ? 'huge_win' : 'big_win';
+      fireChained(first, second, { gain: 0.95 }, { gain: 1.0 });
+    },
+
+    /* Major / Grand jackpot fanfare: dedicated jackpot sting, then
+       the huge-win fanfare chained on top once the jackpot finishes. */
+    jackpotFanfare()  { fireChained('jackpot_win', 'huge_win', { gain: 0.95 }, { gain: 1.0 }); },
+
+    /* Reserved for insane bonus-round outcomes (GRAND tier or large
+       stacked totals). Single sample, played at the reveal. */
+    bonusMassiveWin() { play('diamond_bonus_massive_win', { gain: 1.0 }); },
+
+    /* Generic chain helper for callers that want sound B to play
+       exactly when sound A ends (e.g. the bonus tally → massive-win
+       fanfare). Falls back to firing both if the first won't play. */
+    chain(first, second, opts1, opts2) { fireChained(first, second, opts1, opts2); },
+
+    /* Diamond hit on the reels, escalating in pitch + gain with each
+       additional diamond visible so far. Plays per-diamond as each
+       reel lands; the rise telegraphs that a bonus is approaching.
+       count: 1..5+ */
+    diamondHit(count = 1) {
+      const c = Math.max(1, Math.min(5, count));
+      const gain  = 0.62 + 0.09 * c;   // 0.71 .. 1.07 (clamped)
+      const pitch = 0.92 + 0.06 * c;   // 0.98 .. 1.22
+      play('diamond_hit', { gain: Math.min(1, gain), pitch, pitchVariance: 0.02, maxMs: 700 });
+    },
+
+    /* Legacy scatter thud — kept callable in case anything still uses it. */
     scatterLand(count = 1) {
       const c = Math.max(1, Math.min(5, count));
-      const gain  = 0.65 + 0.08 * c;   // 0.73 .. 1.05 (clamped to 1)
-      const pitch = 0.85 + 0.08 * c;   // 0.93 .. 1.25
+      const gain  = 0.65 + 0.08 * c;
+      const pitch = 0.85 + 0.08 * c;
       play('scatter_thud', { gain: Math.min(1, gain), pitch, pitchVariance: 0.02, maxMs: 700 });
     },
   };
@@ -3012,7 +3110,11 @@ function spinReel(reelIndex, finalTriple, duration, onStop) {
       reel.classList.add('thud');
       setTimeout(() => reel.classList.remove('thud'), 560);
 
-      Audio.reelStop();
+      // Diamond reels skip the reel-stop click — the diamond-hit sting
+      // fired by onStop covers that landing on its own; doubling them
+      // muddies the moment.
+      const hasDiamond = finalTriple.some(s => s.bonus);
+      if (!hasDiamond) Audio.diamondReelStop(reelIndex);
       if (onStop) onStop(reelIndex, finalTriple);
       later(finish, 520);
     }, duration);
@@ -3221,7 +3323,9 @@ function showBigWin(amount, tier) {
   // Block spin spamming while the overlay is up
   const spinBtn = document.getElementById('spin-btn');
   if (spinBtn) spinBtn.disabled = true;
-  Audio.bigWin();
+  // Audio: the new lineWin(3, 'big'|'huge') chain already plays the
+  // appropriate fanfare immediately after the line-win sting, so we
+  // don't fire the legacy win_big sample here — it would double-stack.
 
   // Cascade of confetti from the top — escalates with tier
   const tierCounts = { big: 6, huge: 10, mega: 16, epic: 24 };
@@ -3313,15 +3417,24 @@ async function doSpin(opts = {}) {
   }
 
   // Kick all reels off in parallel; each stops at its scheduled time.
-  // As each reel lands, count visible diamonds and fire a satisfying
-  // escalating scatter thud while the bonus is still attainable.
+  // As each reel lands, count visible diamonds and fire an escalating
+  // diamond-hit sting per diamond — but only while the bonus is still
+  // attainable from this spin (5 diamonds total). Once the bonus is
+  // mathematically locked in or out, the per-diamond sting goes silent
+  // so it doesn't keep ratcheting after the moment matters.
   let diamondsLanded = 0;
   const onReelStopped = (idx, triple) => {
     const here = triple.filter(s => s.bonus).length;
     if (here === 0) return;
+    const reelsLeft = REEL_COUNT - 1 - idx;
+    const maxFinalCount = diamondsLanded + here + reelsLeft * ROW_COUNT;
+    const bonusStillPossible = maxFinalCount >= 5;
     const newTotal = diamondsLanded + here;
-    // Slightly delayed after the reel-stop click so the thud feels layered
-    setTimeout(() => Audio.scatterLand(newTotal), 60);
+    if (bonusStillPossible) {
+      // Fires immediately — no setTimeout layering needed since the
+      // reel-stop click is suppressed on this reel (see spinReel).
+      Audio.diamondHit(newTotal);
+    }
     diamondsLanded = newTotal;
   };
   const reelPromises = [];
@@ -3367,7 +3480,6 @@ async function doSpin(opts = {}) {
       highlightWinSymbols(w.line, w.count);
     });
     dimNonWinning();
-    Audio.smallWin();
     fireWinSweep();
     // confetti burst at each winning symbol
     document.querySelectorAll('.symbol.win').forEach((sym, i) => {
@@ -3379,8 +3491,17 @@ async function doSpin(opts = {}) {
     setBalance(State.balance + totalWin);
     setWin(totalWin, { glow: true });
 
-    // Big win tier
+    // Win-magnitude tiers. The line-win sting (1/2/3) plays the
+    // moment the paylines animate; for "big" and "huge" wins the
+    // big_win or huge_win fanfare chains in once the sting ends.
     const ratio = totalWin / getEffectiveBet();
+    let lineTier = 1;
+    let fanfare = null;
+    if (ratio >= 30)      { lineTier = 3; fanfare = 'huge'; }
+    else if (ratio >= 15) { lineTier = 3; fanfare = 'big';  }
+    else if (ratio >= 5)  { lineTier = 2; }
+    Audio.lineWin(lineTier, fanfare);
+
     if (ratio >= 200) { fireCabinetImpact(); showBigWin(totalWin, 'epic'); }
     else if (ratio >= 80) { fireCabinetImpact(); showBigWin(totalWin, 'mega'); }
     else if (ratio >= 30) { fireCabinetImpact(); showBigWin(totalWin, 'huge'); }
@@ -3741,6 +3862,8 @@ async function startBonus() {
   document.getElementById('respins-value').textContent = BonusState.respins;
   document.getElementById('diamonds-count').textContent = `0 / ${BONUS_TOTAL}`;
   // Hide the live total during the feature — revealed during finishBonus
+  // Suspense placeholder while values are hidden — the `$` lives
+  // inside this span now so we don't render the cluttered "$???".
   document.getElementById('bonus-total').textContent = '???';
   document.getElementById('bonus-final').classList.remove('show');
   document.getElementById('bonus-stage').classList.add('show');
@@ -4025,7 +4148,7 @@ function renderCell(idx) {
 function recalcBonusTotal() {
   BonusState.total = BonusState.cells.reduce((s, c) => s + (c.gem ? c.gem.value : 0), 0);
   if (!BonusState.hideValues) {
-    document.getElementById('bonus-total').textContent = fmt(BonusState.total);
+    document.getElementById('bonus-total').textContent = '$' + fmt(BonusState.total);
   }
 }
 
@@ -4034,7 +4157,8 @@ function awardGrand() {
   // bought-bonus GRANDs pay at base bet × GRAND).
   const grandAmount = (BonusState.bet || State.bet) * JACKPOT_MULTS.GRAND;
   BonusState.total += grandAmount;
-  Audio.grandJackpot();
+  // Dedicated jackpot fanfare: jackpot sting then huge-win chain.
+  Audio.jackpotFanfare();
   // jackpot flash on topper
   document.querySelectorAll('.jackpot[data-tier="GRAND"], .bonus-jp[data-tier="GRAND"]').forEach(el => {
     el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
@@ -4056,12 +4180,22 @@ async function finishBonus(isGrand) {
   fin.classList.add('show');
   const finalEl = document.getElementById('final-amount');
   finalEl.textContent = '0';
-  Audio.tallyRace();
   countUp(0, BonusState.total, 1800, v => {
     finalEl.textContent = fmt(v);
   });
   if (isGrand) {
     setTimeout(() => spawnCoinShower(fin, 60), 300);
+  }
+  // Bonus tally is the "coins counting" sound. For an insane bonus
+  // (100×+ the original bet, which includes GRAND and stacked MAJOR
+  // fills), chain the massive-win fanfare to fire the instant tally
+  // ends; for ordinary bonuses, tally plays alone.
+  const bet = BonusState.bet || State.spinBet || State.bet;
+  const isInsane = bet > 0 && BonusState.total / bet >= 100;
+  if (isInsane) {
+    Audio.chain('bonus_tally', 'diamond_bonus_massive_win', { gain: 0.95 }, { gain: 1.0 });
+  } else {
+    Audio.tallyRace();
   }
 }
 
@@ -4070,7 +4204,7 @@ async function finishBonus(isGrand) {
 async function revealAllGemValues() {
   BonusState.hideValues = false;
   const totalEl = document.getElementById('bonus-total');
-  totalEl.textContent = '0';
+  totalEl.textContent = '$0';
 
   // Walk cells in DOM order (top-left → bottom-right) so the wave is visible
   let running = 0;
@@ -4085,9 +4219,14 @@ async function revealAllGemValues() {
     valEl.classList.remove('value-hidden', 'revealing');
     void valEl.offsetWidth;
     valEl.classList.add('revealing');
-    Audio.coin();
+    // MAJOR jp gems get the jackpot fanfare (jackpot sting → huge win
+    // chain) instead of the regular coin chime; the fanfare plays over
+    // subsequent gem reveals which is exactly the desired "stop the
+    // room when a major hits" feel.
+    if (data.gem.jp === 'MAJOR') Audio.jackpotFanfare();
+    else                          Audio.coin();
     running += data.gem.value;
-    totalEl.textContent = fmt(running);
+    totalEl.textContent = '$' + fmt(running);
     // Small cell pop in addition
     const gemEl = cellEl.querySelector('.gem');
     if (gemEl) {
