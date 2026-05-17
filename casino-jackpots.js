@@ -7,14 +7,17 @@
         every round automatically siphons a % of the bet into four
         global jackpot pools stored at /globals/jackpots.
 
-     2. Trigger model = MYSTERY JACKPOT:
-        - Each tier has a seed and a `mustHitBy` ceiling. When a
-          contributing bet pushes the pool >= mustHitBy, that tier
-          fires and the player who pushed it over wins the whole
-          pool. Pool resets to seed and rolls a new mustHitBy.
-        - Multiple tiers could cross on the same bet (very unlikely
-          at normal contribution rates). We walk highest-to-lowest
-          and only fire the biggest, in the player's favor.
+     2. Trigger model = RANDOM PER-SPIN:
+        - Each tier has a fixed per-spin probability, independent
+          of bet size. So whales spinning $1M don't trigger more
+          often than $5 bettors — they just feed the pools faster
+          and win bigger when it does land. Frequency stays sane
+          even at extreme bet levels.
+        - Multiple tiers could roll true on the same spin (very
+          unlikely). We walk highest-to-lowest and only fire the
+          biggest, in the player's favor.
+        - Pool size is purely cosmetic prize growth. It never
+          gates the trigger, so the win feels truly random.
 
      3. On a win:
         - Renders a shared celebration overlay.
@@ -39,27 +42,40 @@
   'use strict';
 
   // -----------------------------------------------------------
-  // Tier configuration. Tuned for hobby-scale traffic: a single
-  // active player playing $5 bets should see Mini fire roughly
-  // every 15-25 minutes, Minor every few hours, Major weekly,
-  // Grand mythical. Total contribution = 3% of every bet, which
-  // shows up as a small RTP shave the player gets back as
-  // jackpot wins.
+  // Tier configuration. Random-trigger model: each spin has a
+  // FIXED probability per tier (independent of bet size), so
+  // frequency doesn't run away when whales bet millions. Bet
+  // size only affects the PRIZE — pool contributions still
+  // scale linearly with bet, so high-roller play grows pools
+  // fast and produces enormous wins.
+  //
+  //   contrib       — % of every bet that feeds the pool.
+  //                   Flipped from realistic mystery-jackpot
+  //                   distribution: bigger tier gets bigger
+  //                   share so Grand ticker grows fastest.
+  //   triggerPerSpin — fixed per-spin probability of firing,
+  //                    regardless of bet size. Roughly:
+  //                      Mini:  ~1 in 300 spins  (~25 min)
+  //                      Minor: ~1 in 2.5k spins (~3.5 hr)
+  //                      Major: ~1 in 20k spins  (~28 hr)
+  //                      Grand: ~1 in 200k spins (~11 days)
+  //   seed          — base pool size after a reset / fresh start.
   // -----------------------------------------------------------
   const TIERS = [
-    { id: 'grand', label: 'GRAND', seed: 5000, ceilMin: 10000, ceilMax: 50000, contrib: 0.001 }, // 0.1%
-    { id: 'major', label: 'MAJOR', seed: 500,  ceilMin: 1000,  ceilMax: 5000,  contrib: 0.003 }, // 0.3%
-    { id: 'minor', label: 'MINOR', seed: 50,   ceilMin: 100,   ceilMax: 500,   contrib: 0.008 }, // 0.8%
-    { id: 'mini',  label: 'MINI',  seed: 5,    ceilMin: 10,    ceilMax: 50,    contrib: 0.018 }, // 1.8%
+    { id: 'grand', label: 'GRAND', seed: 50000, contrib: 0.0050, triggerPerSpin: 5e-6  },
+    { id: 'major', label: 'MAJOR', seed: 5000,  contrib: 0.0030, triggerPerSpin: 5e-5  },
+    { id: 'minor', label: 'MINOR', seed: 500,   contrib: 0.0015, triggerPerSpin: 4e-4  },
+    { id: 'mini',  label: 'MINI',  seed: 50,    contrib: 0.0005, triggerPerSpin: 3.3e-3 },
   ];
-  // Highest-to-lowest is the natural walk order for "biggest fires first".
+  // Highest-to-lowest is the natural walk order — in the rare
+  // event multiple tiers fire on one spin, the biggest wins.
 
   const TIER_BY_ID = Object.fromEntries(TIERS.map(t => [t.id, t]));
 
   // Seed snapshot used until the live Firestore value arrives.
   function seedSnapshot() {
     const out = {};
-    for (const t of TIERS) out[t.id] = { pool: t.seed, mustHitBy: t.seed + t.ceilMax * 0.4, seed: t.seed };
+    for (const t of TIERS) out[t.id] = { pool: t.seed, seed: t.seed };
     return out;
   }
 
@@ -288,20 +304,26 @@
   };
 
   // -----------------------------------------------------------
-  // Wait until casino-account.js has resolved (or stubbed out)
-  // before wiring up — we need either the real CasinoStats or
-  // the noop one to be in place so we can hook History.record.
+  // Bootstrap. The hook can be installed immediately (just needs
+  // window.History from casino-audio.js). Firestore wiring waits
+  // until casino-account.js has finished bringing up CasinoStats.
+  // We poll because event-only delivery has a race: if Firebase
+  // init throws inside casino-account.js, the event still fires
+  // but CasinoStats.configured stays false, then later (e.g.
+  // after sign-in retry) it might flip true.
   // -----------------------------------------------------------
-  function init() {
-    // Hook History.record on every page regardless of Firebase status;
-    // if not configured, contributions are no-ops but the overlay still
-    // works for testing.
-    hookHistoryRecord();
-    if (!window.CasinoStats || !window.CasinoStats.configured) {
-      // No Firebase — leave stub in place. Lobby ticker will show seeds.
-      return;
-    }
+  let firestoreInitStarted = false;
+  function tryStartFirestore() {
+    if (firestoreInitStarted) return;
+    if (!window.CasinoStats || !window.CasinoStats.configured) return;
+    firestoreInitStarted = true;
+    console.log('[casino-jackpots] starting Firestore wiring');
     initFirestore().catch(e => console.warn('[casino-jackpots] init failed:', e));
+  }
+
+  function init() {
+    hookHistoryRecord();
+    tryStartFirestore();
   }
 
   // History.record is provided by casino-audio.js as `global.History`.
@@ -316,6 +338,7 @@
       return;
     }
     hooked = true;
+    console.log('[casino-jackpots] hooked History.record');
     const orig = window.History.record.bind(window.History);
     window.History.record = function (game, bet, win, note) {
       const entry = orig(game, bet, win, note);
@@ -386,15 +409,19 @@
       currentPools() { return lastSnapshot; },
       tiers: TIERS.map(t => ({ ...t })),
     };
+    console.log('[casino-jackpots] Firestore wired; /globals/jackpots subscribed');
   }
 
   function normalizeSnapshot(data) {
     const out = {};
     for (const t of TIERS) {
       const cur = (data && data[t.id]) || {};
+      // Floor pool at the configured seed so a config bump that
+      // raises seeds immediately reflects on the ticker — players
+      // never see a pool smaller than its seed.
+      const stored = Number(cur.pool);
       out[t.id] = {
-        pool:      Number(cur.pool)      || t.seed,
-        mustHitBy: Number(cur.mustHitBy) || (t.seed + (t.ceilMin + t.ceilMax) / 2),
+        pool:      (Number.isFinite(stored) && stored > t.seed) ? stored : t.seed,
         seed:      t.seed,
         lastWinner: cur.lastWinner || null,
         lastAmount: Number(cur.lastAmount) || 0,
@@ -402,13 +429,6 @@
       };
     }
     return out;
-  }
-
-  function rollMustHitBy(tier) {
-    // Random ceiling between seed+ceilMin and seed+ceilMax. The seed is
-    // the floor of the pool, and ceilMin/ceilMax are headroom above seed.
-    const span = tier.ceilMax - tier.ceilMin;
-    return tier.seed + tier.ceilMin + Math.random() * span;
   }
 
   async function seedDoc() {
@@ -420,7 +440,6 @@
       for (const t of TIERS) {
         patch[t.id] = {
           pool:      t.seed,
-          mustHitBy: rollMustHitBy(t),
           seed:      t.seed,
           lastWinner: null,
           lastAmount: 0,
@@ -437,8 +456,20 @@
   // bet triggers a jackpot, or null otherwise.
   // -----------------------------------------------------------
   async function processBet(game, bet) {
-    if (!docRef || !fs) return null;
+    if (!docRef || !fs) {
+      console.debug('[casino-jackpots] skipped contribute (firestore not ready)', { game, bet });
+      return null;
+    }
     if (!Number.isFinite(bet) || bet <= 0) return null;
+
+    // Roll the dice for each tier BEFORE running the transaction.
+    // Fixed per-spin probabilities — bet size doesn't change odds,
+    // only the prize size (via contributions). Walk highest-to-lowest
+    // so the biggest tier wins in the rare event multiple roll true.
+    let rolledTier = null;
+    for (const t of TIERS) {
+      if (Math.random() < t.triggerPerSpin) { rolledTier = t; break; }
+    }
 
     let trigger = null;
     try {
@@ -450,20 +481,22 @@
         // Seed first if missing.
         if (!data.initialized) patch.initialized = true;
 
-        // Walk highest-to-lowest so the biggest tier wins ties.
         let won = null;
         for (const t of TIERS) {
           const cur = data[t.id] || {};
-          const pool = Number(cur.pool) || t.seed;
-          const mustHitBy = Number(cur.mustHitBy) || rollMustHitBy(t);
+          // Floor pool at seed so a config bump immediately lifts
+          // a previously-small pool to the new baseline.
+          const stored = Number(cur.pool);
+          const pool = (Number.isFinite(stored) && stored > t.seed) ? stored : t.seed;
           const contrib = bet * t.contrib;
           const newPool = pool + contrib;
-          if (!won && newPool >= mustHitBy) {
-            // TRIGGER. Player wins newPool, pool resets to seed + new ceiling.
+
+          if (rolledTier && rolledTier.id === t.id) {
+            // TRIGGER. Winning amount includes this spin's contribution,
+            // so the pool you see on the ticker is exactly what's paid.
             won = { id: t.id, label: t.label, amount: newPool };
             patch[t.id] = {
               pool:      t.seed,
-              mustHitBy: rollMustHitBy(t),
               seed:      t.seed,
               lastWinner: (window.CasinoAccount && window.CasinoAccount.user && window.CasinoAccount.user()?.displayName) ||
                           (auth && auth.currentUser && auth.currentUser.displayName) ||
@@ -474,7 +507,6 @@
           } else {
             patch[t.id] = {
               pool:      newPool,
-              mustHitBy,
               seed:      t.seed,
               lastWinner: cur.lastWinner || null,
               lastAmount: Number(cur.lastAmount) || 0,
@@ -486,12 +518,14 @@
         trigger = won;
       });
     } catch (e) {
-      // Transaction failure (contention or rules). Drop silently —
-      // we'd rather lose one contribution than crash the spin flow.
-      console.warn('[casino-jackpots] contribute tx failed:', e);
+      // Transaction failure (contention or rules). Surface to console
+      // so misconfigurations (e.g. missing /globals/jackpots rule)
+      // don't fail silently.
+      console.warn('[casino-jackpots] contribute tx failed — likely Firestore rule denial. Have you republished firestore.rules with the /globals/jackpots rule?', e);
       return null;
     }
 
+    console.debug('[casino-jackpots] contributed', { game, bet, trigger });
     if (trigger) onJackpotWin(game, trigger);
     return trigger;
   }
@@ -537,12 +571,32 @@
   // Bootstrap. Wait for casino-account-ready before deciding
   // whether we have a real Firestore client.
   // -----------------------------------------------------------
-  if (window.CasinoAccount && window.CasinoStats && typeof window.CasinoStats.configured === 'boolean') {
-    // casino-account.js already ran.
-    init();
-  } else {
-    document.addEventListener('casino-account-ready', init, { once: true });
-    // Fallback in case the event was missed.
-    setTimeout(() => { if (!hooked) init(); }, 2500);
-  }
+  // Always hook History.record ASAP so even pre-Firebase spins are
+  // ready to siphon as soon as Firestore comes up.
+  hookHistoryRecord();
+
+  // Try Firestore immediately (in case casino-account.js already ran).
+  tryStartFirestore();
+
+  // Re-try whenever casino-account fires its ready event.
+  document.addEventListener('casino-account-ready', tryStartFirestore);
+
+  // Safety-net poll for the race where casino-account-ready fires
+  // before CasinoStats has flipped to configured: true.
+  let polls = 0;
+  const pollTimer = setInterval(() => {
+    tryStartFirestore();
+    if (firestoreInitStarted || ++polls > 30) clearInterval(pollTimer);
+  }, 500);
+
+  // Expose for ad-hoc debugging from the devtools console.
+  window.__jackpotsDebug = () => ({
+    hooked,
+    firestoreInitStarted,
+    docRefReady: !!docRef,
+    fsReady: !!fs,
+    casinoStatsConfigured: !!(window.CasinoStats && window.CasinoStats.configured),
+    casinoJackpotsConfigured: !!(window.CasinoJackpots && window.CasinoJackpots.configured),
+    lastSnapshot,
+  });
 })();

@@ -4,6 +4,7 @@
 // Model:
 //   /globals/stats           single doc, world-readable, world-incrementable
 //   /recentJackpots/*        world-readable, append-only (auth required)
+//   /tablePresence/*         world-readable active-table heartbeats
 //   /rocketRoundCashouts/*   world-readable, append-only cashout dots
 //   /rocketClock/{uid}       owner-only clock sync pings for shared rounds
 //   /users/{uid}             only the owner can read/write their record
@@ -46,6 +47,21 @@ service cloud.firestore {
         && request.resource.data.player is string
         && request.resource.data.player.size() < 64;
       allow update, delete: if false;
+    }
+
+    // Active table/lobby presence. Used by the lobby to show ×N badges
+    // when more than one player is at a table.
+    match /tablePresence/{id} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && id == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.game is string
+        && request.resource.data.game.size() < 64
+        && request.resource.data.player is string
+        && request.resource.data.player.size() < 64
+        && request.resource.data.lastSeen is number;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
 
     // Rocket crash-table cashout dots, scoped by deterministic round id.

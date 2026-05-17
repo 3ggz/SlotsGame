@@ -477,24 +477,8 @@ body::after {
   text-shadow: 0 0 22px var(--glow);
   transform: scale(1.06);
 }
-.jp-bar {
-  margin-top: 10px;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(0,0,0,0.55);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
-  overflow: hidden;
-}
-.jp-bar > span {
-  display: block;
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, transparent, var(--accent));
-  box-shadow: 0 0 10px var(--glow);
-  transition: width 0.6s cubic-bezier(.22,1,.36,1);
-}
 .jp-tile-foot {
-  margin-top: 6px;
+  margin-top: 12px;
   font-family: 'Bungee', cursive;
   font-size: 8px; letter-spacing: 0.22em;
   color: rgba(255,255,255,0.42);
@@ -566,6 +550,41 @@ body::after {
   overflow: hidden;
   display: grid;
   place-items: center;
+}
+.player-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 6;
+  min-width: 42px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,210,74,0.6);
+  background:
+    radial-gradient(circle at 25% 15%, rgba(92,255,161,0.34), transparent 45%),
+    linear-gradient(135deg, rgba(8,25,18,0.96), rgba(26,8,56,0.92));
+  box-shadow:
+    0 0 18px rgba(92,255,161,0.28),
+    inset 0 0 0 1px rgba(255,255,255,0.08);
+  color: #f5fff8;
+  font-family: 'Geist Mono', monospace;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  text-shadow: 0 0 10px rgba(92,255,161,0.65);
+}
+.player-badge.show {
+  display: inline-flex;
+  animation: playerBadgePop 0.32s cubic-bezier(.2,.9,.2,1.25);
+}
+@keyframes playerBadgePop {
+  from { transform: translateY(-4px) scale(0.86); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 /* SLOTS PREVIEW: row of glowing symbols */
@@ -1471,25 +1490,21 @@ body::after {
       <div class="jp-tile grand" data-tier="grand">
         <div class="jp-tile-label">GRAND</div>
         <div class="jp-tile-amt" id="jp-amt-grand">$0</div>
-        <div class="jp-bar"><span id="jp-bar-grand"></span></div>
         <div class="jp-tile-foot" id="jp-foot-grand">SEEDING…</div>
       </div>
       <div class="jp-tile major" data-tier="major">
         <div class="jp-tile-label">MAJOR</div>
         <div class="jp-tile-amt" id="jp-amt-major">$0</div>
-        <div class="jp-bar"><span id="jp-bar-major"></span></div>
         <div class="jp-tile-foot" id="jp-foot-major">SEEDING…</div>
       </div>
       <div class="jp-tile minor" data-tier="minor">
         <div class="jp-tile-label">MINOR</div>
         <div class="jp-tile-amt" id="jp-amt-minor">$0</div>
-        <div class="jp-bar"><span id="jp-bar-minor"></span></div>
         <div class="jp-tile-foot" id="jp-foot-minor">SEEDING…</div>
       </div>
       <div class="jp-tile mini" data-tier="mini">
         <div class="jp-tile-label">MINI</div>
         <div class="jp-tile-amt" id="jp-amt-mini">$0</div>
-        <div class="jp-bar"><span id="jp-bar-mini"></span></div>
         <div class="jp-tile-foot" id="jp-foot-mini">SEEDING…</div>
       </div>
     </div>
@@ -1526,7 +1541,7 @@ body::after {
 
   <div class="games">
 
-    <a class="game-card" href="slots.html">
+    <a class="game-card" href="slots.html" data-game="slots">
       <div class="preview slots">
         <div class="reel-strip">
           <div class="reel-sym sl-seven">7</div>
@@ -1547,7 +1562,7 @@ body::after {
       <div class="play-cta">PLAY</div>
     </a>
 
-    <a class="game-card" href="kraken.html">
+    <a class="game-card" href="kraken.html" data-game="kraken">
       <div class="preview kraken">
         <div class="kraken-row">
           <div class="kr-anchor">⚓</div>
@@ -1566,7 +1581,7 @@ body::after {
       <div class="play-cta">PLAY</div>
     </a>
 
-    <a class="game-card" href="lucky7saloon.html">
+    <a class="game-card" href="lucky7saloon.html" data-game="lucky7saloon">
       <div class="preview saloon">
         <div class="saloon-scene">
           <div class="saloon-sign">LUCKY 7</div>
@@ -1596,7 +1611,7 @@ body::after {
       <div class="play-cta">PLAY</div>
     </a>
 
-    <a class="game-card" href="plinko.html">
+    <a class="game-card" href="plinko.html" data-game="plinko">
       <div class="preview plinko">
         <div class="pk-stage">
           <div class="pk-peg-grid">
@@ -1629,7 +1644,7 @@ body::after {
       <div class="play-cta">PLAY</div>
     </a>
 
-    <a class="game-card" href="rocket.html">
+    <a class="game-card" href="rocket.html" data-game="rocket">
       <div class="preview rocket">
         <div class="rk-stage">
           <div class="rk-logo"><span>DIAMOND</span><b>ROCKET</b></div>
@@ -1660,7 +1675,7 @@ body::after {
       <div class="play-cta">PLAY</div>
     </a>
 
-    <a class="game-card" href="blackjack.html">
+    <a class="game-card" href="blackjack.html" data-game="blackjack">
       <div class="preview blackjack">
         <div class="card-fan">
           <div class="pcard black c1">
@@ -1691,7 +1706,7 @@ body::after {
       <div class="play-cta">PLAY</div>
     </a>
 
-    <a class="game-card" href="multihandblackjack.html">
+    <a class="game-card" href="multihandblackjack.html" data-game="multihandblackjack">
       <div class="preview blackjack">
         <div class="card-fan">
           <div class="pcard black c1">
@@ -1722,7 +1737,7 @@ body::after {
       <div class="play-cta">PLAY</div>
     </a>
 
-    <a class="game-card" href="standardcraps.html">
+    <a class="game-card" href="standardcraps.html" data-game="standardcraps">
       <div class="preview craps">
         <div class="cr-dome">
           <div class="cr-die">
@@ -1748,7 +1763,7 @@ body::after {
       <div class="play-cta">PLAY</div>
     </a>
 
-    <a class="game-card" href="easycraps.html">
+    <a class="game-card" href="easycraps.html" data-game="easycraps">
       <div class="preview craps">
         <div class="cr-dome">
           <div class="cr-die">
@@ -1773,7 +1788,7 @@ body::after {
       <div class="play-cta">PLAY</div>
     </a>
 
-    <a class="game-card" href="craplesscraps.html">
+    <a class="game-card" href="craplesscraps.html" data-game="craplesscraps">
       <div class="preview craps">
         <div class="cr-dome">
           <div class="cr-die">
@@ -2069,14 +2084,6 @@ function applyJackpots(snap) {
     const d = snap[tier];
     if (!d) continue;
     tweenJP(tier, Number(d.pool) || 0);
-    const bar = document.getElementById('jp-bar-' + tier);
-    if (bar) {
-      const seed = Number(d.seed) || 0;
-      const mustHitBy = Number(d.mustHitBy) || (seed + 1);
-      const room = Math.max(1, mustHitBy - seed);
-      const filled = Math.max(0, Math.min(1, ((Number(d.pool) || 0) - seed) / room));
-      bar.style.width = (filled * 100).toFixed(1) + '%';
-    }
     const foot = document.getElementById('jp-foot-' + tier);
     if (foot) {
       if (d.lastWinner) {
@@ -2097,6 +2104,44 @@ function startJackpots() {
 }
 document.addEventListener('casino-account-ready', startJackpots, { once: true });
 setTimeout(startJackpots, 1500);
+
+/* ============================================================
+   TABLE PRESENCE — show ×N on lobby cards when a table is busy
+   ============================================================ */
+const presenceBadges = new Map();
+document.querySelectorAll('.game-card[data-game]').forEach(card => {
+  const preview = card.querySelector('.preview');
+  if (!preview) return;
+  const badge = document.createElement('span');
+  badge.className = 'player-badge';
+  badge.setAttribute('aria-hidden', 'true');
+  preview.appendChild(badge);
+  presenceBadges.set(card.dataset.game, badge);
+});
+
+function renderPresenceBadges(counts) {
+  counts = counts || {};
+  presenceBadges.forEach((badge, game) => {
+    const count = Number(counts[game]) || 0;
+    const show = count > 1;
+    badge.textContent = show ? `×${count}` : '';
+    badge.classList.toggle('show', show);
+  });
+}
+
+let presenceStarted = false;
+function startPresenceBadges() {
+  if (presenceStarted) return;
+  if (!window.CasinoStats || typeof window.CasinoStats.subscribePresence !== 'function') {
+    setTimeout(startPresenceBadges, 120);
+    return;
+  }
+  presenceStarted = true;
+  window.CasinoStats.subscribePresence(renderPresenceBadges);
+}
+window.renderPresenceBadges = renderPresenceBadges;
+document.addEventListener('casino-account-ready', startPresenceBadges);
+setTimeout(startPresenceBadges, 1500);
 
 
 /* Account UI (chip + sign-in / profile modal) lives in casino-account.js
