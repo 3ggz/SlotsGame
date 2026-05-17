@@ -1658,10 +1658,14 @@ function frame(now) {
 
 /* ---------- global shared round flow ---------- */
 const GLOBAL_EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
-const ROUND_MS = 31000;
-const BETTING_MS = 6000;
+const BETTING_MS = 15000;
 const MAX_FLIGHT_MS = 22000;
+const ROUND_BLOCK_SIZE = 1024;
 const LOCAL_DOT_ID = 'local-cashout';
+const ROUND_BLOCK_STARTS = [GLOBAL_EPOCH_MS];
+const ROUND_INFO_CACHE = new Map();
+const ROUND_CRASH_CACHE = [];
+const ROUND_FLIGHT_CACHE = [];
 
 Object.assign(State, {
   autoEnabled: false,
@@ -1695,6 +1699,7 @@ function casinoNow() {
 }
 
 function seededCrashPoint(roundIndex) {
+  if (ROUND_CRASH_CACHE[roundIndex] != null) return ROUND_CRASH_CACHE[roundIndex];
   const r = hashUnit('rocket-crash:' + roundIndex);
   const u = hashUnit('rocket-range:' + roundIndex);
   const max = Math.max(12, multiplierAt(MAX_FLIGHT_MS - 350));
@@ -1705,7 +1710,9 @@ function seededCrashPoint(roundIndex) {
   else if (r < 0.93) v = 6.50 + u * 7.50;
   else if (r < 0.988) v = 14 + u * 16;
   else v = 30 + u * (max - 30);
-  return Math.round(Math.min(v, max) * 100) / 100;
+  const crashAt = Math.round(Math.min(v, max) * 100) / 100;
+  ROUND_CRASH_CACHE[roundIndex] = crashAt;
+  return crashAt;
 }
 
 function timeForMultiplier(target) {
@@ -1719,39 +1726,117 @@ function timeForMultiplier(target) {
   return hi;
 }
 
-function getGlobalRound(nowMs) {
-  const absolute = Math.max(0, nowMs - GLOBAL_EPOCH_MS);
-  const index = Math.floor(absolute / ROUND_MS);
-  const startMs = GLOBAL_EPOCH_MS + index * ROUND_MS;
-  const elapsed = nowMs - startMs;
-  const crashAt = seededCrashPoint(index);
-  const flightCrashMs = Math.min(MAX_FLIGHT_MS, timeForMultiplier(crashAt));
-  const crashMs = BETTING_MS + flightCrashMs;
-  let phase;
-  let multiplier = 1;
-  if (elapsed < BETTING_MS) {
-    phase = 'betting';
-  } else if (elapsed < crashMs) {
-    phase = 'running';
-    multiplier = Math.min(crashAt, multiplierAt(elapsed - BETTING_MS));
-  } else {
-    phase = 'crashed';
-    multiplier = crashAt;
+function roundFlightMs(roundIndex) {
+  if (ROUND_FLIGHT_CACHE[roundIndex] != null) return ROUND_FLIGHT_CACHE[roundIndex];
+  const flightMs = Math.min(MAX_FLIGHT_MS, timeForMultiplier(seededCrashPoint(roundIndex)));
+  ROUND_FLIGHT_CACHE[roundIndex] = flightMs;
+  return flightMs;
+}
+
+function roundDuration(roundIndex) {
+  return BETTING_MS + roundFlightMs(roundIndex);
+}
+
+function ensureRoundBlock(block) {
+  while (ROUND_BLOCK_STARTS.length <= block) {
+    const blockIndex = ROUND_BLOCK_STARTS.length - 1;
+    let t = ROUND_BLOCK_STARTS[blockIndex];
+    const first = blockIndex * ROUND_BLOCK_SIZE;
+    for (let i = 0; i < ROUND_BLOCK_SIZE; i++) {
+      t += roundDuration(first + i);
+    }
+    ROUND_BLOCK_STARTS.push(t);
   }
-  return {
+}
+
+function roundStartByIndex(index) {
+  index = Math.max(0, Math.floor(index));
+  const block = Math.floor(index / ROUND_BLOCK_SIZE);
+  ensureRoundBlock(block);
+  let t = ROUND_BLOCK_STARTS[block];
+  const first = block * ROUND_BLOCK_SIZE;
+  for (let i = first; i < index; i++) {
+    t += roundDuration(i);
+  }
+  return t;
+}
+
+function findRoundIndex(nowMs) {
+  if (nowMs <= GLOBAL_EPOCH_MS) return 0;
+  while (ROUND_BLOCK_STARTS[ROUND_BLOCK_STARTS.length - 1] <= nowMs) {
+    ensureRoundBlock(ROUND_BLOCK_STARTS.length);
+  }
+
+  let lo = 0;
+  let hi = ROUND_BLOCK_STARTS.length - 1;
+  while (lo + 1 < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (ROUND_BLOCK_STARTS[mid] <= nowMs) lo = mid;
+    else hi = mid;
+  }
+
+  let index = lo * ROUND_BLOCK_SIZE;
+  let t = ROUND_BLOCK_STARTS[lo];
+  while (true) {
+    const next = t + roundDuration(index);
+    if (nowMs < next) return index;
+    t = next;
+    index++;
+  }
+}
+
+function roundTemplate(index) {
+  if (ROUND_INFO_CACHE.has(index)) return ROUND_INFO_CACHE.get(index);
+  const startMs = roundStartByIndex(index);
+  const crashAt = seededCrashPoint(index);
+  const flightCrashMs = roundFlightMs(index);
+  const template = {
     index,
     roundId: 'rocket-' + index,
     startMs,
     launchMs: startMs + BETTING_MS,
-    crashMs: startMs + crashMs,
-    nextMs: startMs + ROUND_MS,
+    crashMs: startMs + BETTING_MS + flightCrashMs,
+    nextMs: startMs + BETTING_MS + flightCrashMs,
+    crashAt,
+    flightCrashMs,
+  };
+  ROUND_INFO_CACHE.set(index, template);
+  if (ROUND_INFO_CACHE.size > 96) {
+    const stale = [...ROUND_INFO_CACHE.keys()].filter(k => Math.abs(k - index) > 48);
+    stale.slice(0, 32).forEach(k => ROUND_INFO_CACHE.delete(k));
+  }
+  return template;
+}
+
+function getGlobalRound(nowMs) {
+  const index = findRoundIndex(nowMs);
+  const template = roundTemplate(index);
+  const startMs = template.startMs;
+  const elapsed = nowMs - startMs;
+  let phase;
+  let multiplier = 1;
+  if (elapsed < BETTING_MS) {
+    phase = 'betting';
+  } else if (elapsed < BETTING_MS + template.flightCrashMs) {
+    phase = 'running';
+    multiplier = Math.min(template.crashAt, multiplierAt(elapsed - BETTING_MS));
+  } else {
+    phase = 'betting';
+  }
+  return {
+    index,
+    roundId: template.roundId,
+    startMs,
+    launchMs: template.launchMs,
+    crashMs: template.crashMs,
+    nextMs: template.nextMs,
     elapsed,
     phase,
     multiplier,
-    crashAt,
+    crashAt: template.crashAt,
     progress: phase === 'betting' ? 0.035 : pathProgress(multiplier),
     timeToLaunch: Math.max(0, BETTING_MS - elapsed),
-    timeToNext: Math.max(0, ROUND_MS - elapsed),
+    timeToNext: Math.max(0, template.nextMs - nowMs),
   };
 }
 
@@ -1878,10 +1963,24 @@ function resolveLocalLoss(round) {
   statLastEl.textContent = multText(crashMult);
 }
 
+function announceCrash(round) {
+  if (!round) return;
+  const crashMult = Math.max(1, round.crashAt || State.crashAt);
+  statLastEl.textContent = multText(crashMult);
+  playSfx('bust', 0.72);
+  playSfx('loseLow', 0.30);
+  crashSynth();
+  spawnExplosion(State.rocketX || W * 0.72, State.rocketY || H * 0.28);
+  showToast('BURNOUT AT ' + multText(crashMult), 'crash');
+}
+
 function syncGlobalRound(round) {
   const previous = State.activeRound;
   if (!previous || previous.roundId !== round.roundId) {
-    if (previous) resolveLocalLoss(previous);
+    if (previous) {
+      resolveLocalLoss(previous);
+      announceCrash(previous);
+    }
     State.activeRound = round;
     State.mode = 'idle';
     State.multiplier = 1;
@@ -1928,12 +2027,7 @@ function syncGlobalRound(round) {
       rocketEl.classList.remove('running', 'cash');
       rocketEl.classList.add('crashed');
       readoutEl.className = 'multiplier-readout crash';
-      statLastEl.textContent = multText(round.crashAt);
-      playSfx('bust', 0.72);
-      playSfx('loseLow', 0.30);
-      crashSynth();
-      spawnExplosion(State.rocketX || W * 0.72, State.rocketY || H * 0.28);
-      showToast('BURNOUT AT ' + multText(round.crashAt), 'crash');
+      announceCrash(round);
     }
   }
 }
