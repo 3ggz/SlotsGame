@@ -51,6 +51,37 @@ const CONFIGURED = Boolean(FIREBASE_CONFIG.projectId);
 
 /* ---------- Shared CSS + HTML for AccountUI (injected at runtime) ---------- */
 const ACCOUNT_UI_CSS = `
+  /* ---- shell theming: dark root + themed scrollbars ----
+     The page backgrounds are gradients with no solid color, so iOS
+     rubber-band overscroll and the area exposed when the address bar
+     minimizes paint browser-default white. Forcing a solid dark on
+     <html> fixes both. color-scheme:dark also hints the UA so native
+     widgets pick dark variants automatically. */
+  :root { color-scheme: dark; }
+  html { background-color: #0a0418; }
+  body { background-color: #0a0418; }
+
+  /* Themed scrollbars — gold/violet thumb on a deep purple track,
+     matching the casino's palette. Works in Firefox via scrollbar-*
+     and in Chrome/Edge/Safari via ::-webkit-scrollbar pseudo-elements. */
+  * { scrollbar-width: thin; scrollbar-color: rgba(255,210,74,0.45) rgba(10,4,24,0.35); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track {
+    background: rgba(10,4,24,0.35);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(255,210,74,0.55), rgba(168,85,247,0.55));
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(255,210,74,0.85), rgba(168,85,247,0.85));
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-corner { background: transparent; }
+
   /* Hide the legacy standalone history buttons — history is now an
      entry inside the profile modal. */
   .btn-history, .history-btn { display: none !important; }
