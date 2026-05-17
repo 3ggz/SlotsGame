@@ -2820,8 +2820,13 @@ function drawCurve(p, now) {
   drawCashoutDots(now, targetP);
 }
 
+function curveCashouts() {
+  if (crashHoldActive() && State.heldCashouts.length) return State.heldCashouts;
+  return mergedCashouts();
+}
+
 function drawCashoutDots(now, visibleP) {
-  const dots = mergedCashouts().slice(-60);
+  const dots = curveCashouts().slice(-60);
   if (!dots.length) return;
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
