@@ -558,14 +558,33 @@ body::after {
   70%  { transform: translateY(-0.5px) scaleY(1.008); }
   100% { transform: translateY(0) scaleY(1); }
 }
+/* Impact flash on landing. Expands the top-shadow pseudo to span the
+   whole reel so it reads as a brief glow over the just-landed row
+   instead of a thin cyan bar at the very top. `forwards` locks the
+   final opacity at 0 — without it the keyframes finish at opacity 0
+   but the property snaps back to its computed default (1) for the
+   ~10 ms window between animation-end and class removal, which on
+   mobile shows up as a stutter where the flash briefly reappears. */
 .reel.thud::before {
-  background: linear-gradient(180deg, rgba(77,255,226,0.30), transparent 80%) !important;
-  animation: reelFlash 0.55s ease-out;
+  top: 0;
+  bottom: 0;
+  height: auto;
+  background: radial-gradient(ellipse at center, rgba(77,255,226,0.28), rgba(77,255,226,0.06) 60%, transparent 85%) !important;
+  animation: reelFlash 0.45s ease-out forwards;
 }
 @keyframes reelFlash {
   0%   { opacity: 0; }
-  30%  { opacity: 1; }
+  25%  { opacity: 1; }
   100% { opacity: 0; }
+}
+@media (max-width: 720px) {
+  /* Tighter + dimmer on mobile so 5 staggered reel-stops don't pile up
+     into a visible cyan smear, and so the GPU has less radial-gradient
+     area to rasterize per frame. */
+  .reel.thud::before {
+    background: radial-gradient(ellipse at center, rgba(77,255,226,0.20), rgba(77,255,226,0.04) 60%, transparent 80%) !important;
+    animation: reelFlash 0.28s ease-out forwards;
+  }
 }
 
 /* win sweep lens flare */

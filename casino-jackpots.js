@@ -63,9 +63,9 @@
   // -----------------------------------------------------------
   const TIERS = [
     { id: 'grand', label: 'GRAND', seed: 100000, contrib: 0.0250, triggerPerSpin: 5e-6  },
-    { id: 'major', label: 'MAJOR', seed: 10000,  contrib: 0.0150, triggerPerSpin: 5e-5  },
-    { id: 'minor', label: 'MINOR', seed: 1000,   contrib: 0.0075, triggerPerSpin: 4e-4  },
-    { id: 'mini',  label: 'MINI',  seed: 100,    contrib: 0.0025, triggerPerSpin: 3.3e-3 },
+    { id: 'major', label: 'MAJOR', seed: 25000,  contrib: 0.0150, triggerPerSpin: 5e-5  },
+    { id: 'minor', label: 'MINOR', seed: 10000,  contrib: 0.0075, triggerPerSpin: 4e-4  },
+    { id: 'mini',  label: 'MINI',  seed: 2500,   contrib: 0.0025, triggerPerSpin: 3.3e-3 },
   ];
   // Highest-to-lowest is the natural walk order — in the rare
   // event multiple tiers fire on one spin, the biggest wins.

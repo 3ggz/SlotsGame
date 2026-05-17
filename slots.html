@@ -356,148 +356,102 @@ body::after {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  font-size: 0;             /* hide text glyph — we draw the gem via ::before */
+  font-family: 'Bungee', cursive;
+  font-size: clamp(40px, 5vw, 58px);
   line-height: 1;
   height: 116px;
-  /* no cell divider — keeps each reel feeling like one smooth column */
-  transition: filter 0.4s ease;
-  perspective: 700px;        /* gives ::before some depth for tilt animations */
+  color: #fff;
+  transition: filter 0.4s ease, transform 0.3s cubic-bezier(.2,.7,.3,1.2);
 }
 @media (max-width: 720px) {
-  .symbol { height: 93px; }
+  .symbol { height: 93px; font-size: clamp(28px, 6vw, 44px); }
 }
 
-/* 3D gem renderings — generated via nano-banana, post-processed
-   to transparent PNGs in /images. Each gem is positioned by an
-   ::before pseudo so we can rotate/scale/glow it independently. */
-.symbol::before {
+/* Per-symbol color + neon glow — matches the lobby cover treatment.
+   Each gets a tinted text-shadow halo plus a dark underline shadow
+   so the glyph sits on the velvet cell instead of floating on it. */
+.sym-heart  { color: var(--neon-pink);     text-shadow: 0 0 10px rgba(255,46,147,0.55), 0 2px 0 #4a0a26; }
+.sym-clover { color: var(--diamond-green); text-shadow: 0 0 12px rgba(92,255,161,0.5),  0 2px 0 #0a3a1c; }
+.sym-star   { color: #fde047;              text-shadow: 0 0 12px rgba(253,224,71,0.55), 0 2px 0 #4a3a00; }
+.sym-bell   { color: #ffbf00;              text-shadow: 0 0 12px rgba(255,191,0,0.55),  0 2px 0 #4a3000; }
+.sym-crown  { color: var(--gold-1);        text-shadow: 0 0 14px rgba(255,210,74,0.6),  0 2px 0 #4a3000; }
+.sym-bar    {
+  color: var(--neon-amber);
+  text-shadow: 0 0 12px rgba(251,146,60,0.55), 0 2px 0 #3a1500;
+  font-size: clamp(22px, 2.8vw, 30px);
+  letter-spacing: 0.08em;
+}
+.sym-seven  {
+  color: #ff2e58;
+  text-shadow: 0 0 14px rgba(255,46,88,0.7), 0 2px 0 #4a0a14;
+  font-size: clamp(46px, 6.2vw, 70px);
+}
+@media (max-width: 720px) {
+  .sym-bar   { font-size: clamp(15px, 3vw, 22px); }
+  .sym-seven { font-size: clamp(36px, 7vw, 52px); }
+}
+
+/* Diamond — painted, no glyph. Same conic-rainbow + clip-path as the
+   lobby cover so the bonus symbol always reads as the marquee piece. */
+.sym-diamond { font-size: 0; }
+.sym-diamond::before {
   content: '';
-  --icon-y: 0%;
-  --icon-scale: 1;
-  width: 84%;
-  height: 84%;
-  max-width: 96px;
-  max-height: 96px;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6));
-  transform: translateY(var(--icon-y)) scale(var(--icon-scale));
-  transform-style: preserve-3d;
-  transition: transform 0.35s cubic-bezier(.2,.7,.3,1.2), filter 0.3s;
-}
-
-/* Off-screen strip rows (the filler past the 3 visible ones) skip the
-   expensive drop-shadow + animations entirely. During the brief spin
-   they pass through the window so fast it's invisible; once landed,
-   only the first 3 are in view anyway. This is the single biggest
-   mobile-perf fix for the slot — without it, diamond hue-rotates on
-   off-screen rows pin the GPU and freeze the page after one spin. */
-.strip .symbol:nth-child(n+4)::before {
-  animation: none !important;
-  filter: none;
-}
-/* During an active spin, pause expensive idle animations on the visible
-   symbols too — frees the GPU for the transform-translate of the strip
-   itself, which is the only thing the user is meant to see moving. */
-body.is-spinning .symbol::before {
-  animation-play-state: paused !important;
+  display: block;
+  width: 78px;
+  height: 78px;
+  background: conic-gradient(from 0deg, #00e5ff, #b388ff, #ff80ab, #ffd54f, #69f0ae, #40c4ff, #00e5ff);
+  clip-path: polygon(50% 0%, 100% 35%, 50% 100%, 0% 35%);
+  filter:
+    drop-shadow(0 0 14px rgba(34,211,238,0.6))
+    drop-shadow(0 0 22px rgba(255,46,147,0.25));
+  animation: diamondPulse 3.2s ease-in-out infinite, diamondHueShift 8s linear infinite;
+  transform-origin: center;
+  will-change: transform, filter;
 }
 @media (max-width: 720px) {
-  .symbol::before { max-width: 86px; max-height: 86px; }
-  .sym-heart::before,
-  .sym-clover::before,
-  .sym-star::before,
-  .sym-bell::before,
-  .sym-crown::before,
-  .sym-bar::before,
-  .sym-seven::before {
-    width: 78px;
-    height: 78px;
-    max-height: none;
-  }
-  /* Mobile: drop the multi-layer drop-shadow chain — replace with a single
-     cheap shadow. Three stacked drop-shadow filters are one of the most
-     expensive things you can ask a mobile GPU to do per frame. */
-  .symbol::before {
-    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.55));
-    transition: filter 0.25s;
-  }
-  body.is-spinning .symbol::before {
-    filter: none !important;
-    transition: none !important;
-  }
   .sym-diamond::before {
-    /* Drop hue-rotate animation entirely on mobile — single shadow only */
+    width: 62px;
+    height: 62px;
+    filter: drop-shadow(0 0 10px rgba(34,211,238,0.55));
     animation: diamondPulse 3.2s ease-in-out infinite;
-    filter: drop-shadow(0 0 10px rgba(34,211,238,0.55)) drop-shadow(0 2px 5px rgba(0,0,0,0.55));
   }
-  .symbol.win::before {
-    filter: drop-shadow(0 0 12px rgba(255,210,74,0.9)) brightness(1.2) saturate(1.2);
-  }
+}
+
+@keyframes diamondPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+@keyframes diamondHueShift {
+  to { filter: drop-shadow(0 0 14px rgba(34,211,238,0.6)) drop-shadow(0 0 22px rgba(255,46,147,0.25)) hue-rotate(360deg); }
+}
+
+/* Off-screen strip rows (filler past the 3 visible) skip idle animation
+   cost. During the brief spin they pass through the window so fast it's
+   invisible; once landed only the first 3 are in view anyway. Without
+   this the diamond hue-rotate on off-screen rows pins the mobile GPU
+   and freezes the page after one spin. */
+.strip .symbol:nth-child(n+4),
+.strip .symbol:nth-child(n+4)::before { animation: none !important; filter: none; }
+/* During an active spin, pause idle animations on the visible symbols
+   too — frees the GPU for the strip's translate transform. */
+body.is-spinning .symbol,
+body.is-spinning .symbol::before { animation-play-state: paused !important; }
+@media (max-width: 720px) {
   /* Promote each reel to its own compositor layer so the strip transform
      never has to repaint sibling reels. */
   .reel, .strip { transform: translateZ(0); }
 }
 
-/* Every symbol PNG is normalized at build time (images/bottom_align.py):
-   each icon's tight bbox is placed against the canvas bottom with an 8px
-   floor pad. background-size:contain scales the 512×512 canvas into the
-   ::before, so every icon — diamond halo or short bar alike — shares the
-   same baseline ~2 CSS px above the ::before bottom. Without this, the
-   diamond's full-canvas halo made it appear cell-filling while shorter
-   icons (crown, bar) floated centered with empty space below, reading
-   as visually "raised" next to a diamond. */
-.sym-heart::before,
-.sym-clover::before,
-.sym-star::before,
-.sym-bell::before,
-.sym-crown::before,
-.sym-bar::before,
-.sym-seven::before {
-  --icon-y: 4%;
-  --icon-scale: 1;
-  width: 88px;
-  height: 88px;
-  max-height: none;
-}
-
-.sym-heart::before   { background-image: url('images/heart.png'); }
-.sym-clover::before  { background-image: url('images/clover.png'); }
-.sym-star::before    { background-image: url('images/star.png'); }
-.sym-bell::before    { background-image: url('images/bell.png'); }
-.sym-crown::before   { background-image: url('images/crown.png'); }
-.sym-bar::before     { background-image: url('images/bar.png'); }
-.sym-seven::before   { background-image: url('images/seven.png'); }
-.sym-diamond::before {
-  background-image: url('images/diamond.png');
-  animation: diamondPulse 3.2s ease-in-out infinite, diamondHueShift 8s linear infinite;
-  filter: drop-shadow(0 0 16px rgba(34,211,238,0.7)) drop-shadow(0 0 28px rgba(255,46,147,0.35)) drop-shadow(0 4px 10px rgba(0,0,0,0.6));
-}
-
-/* Diamond gently breathes + hue-shifts through casino colors */
-@keyframes diamondPulse {
-  0%, 100% { transform: scale(1) rotateY(0deg); }
-  50%      { transform: scale(1.08) rotateY(8deg); }
-}
-@keyframes diamondHueShift {
-  0%   { filter: drop-shadow(0 0 16px rgba(34,211,238,0.7))  drop-shadow(0 0 28px rgba(255,46,147,0.35)) drop-shadow(0 4px 10px rgba(0,0,0,0.6)) hue-rotate(0deg); }
-  50%  { filter: drop-shadow(0 0 18px rgba(168,85,247,0.7))  drop-shadow(0 0 30px rgba(34,211,238,0.4))  drop-shadow(0 4px 10px rgba(0,0,0,0.6)) hue-rotate(45deg); }
-  100% { filter: drop-shadow(0 0 16px rgba(34,211,238,0.7))  drop-shadow(0 0 28px rgba(255,46,147,0.35)) drop-shadow(0 4px 10px rgba(0,0,0,0.6)) hue-rotate(0deg); }
-}
-
-/* winning symbol pulse — bounces the gem image, animated glow halo behind it */
-.symbol.win::before {
-  animation: symbolWin 0.55s cubic-bezier(.5,0,.3,1.5) infinite alternate;
-  filter:
-    drop-shadow(0 0 18px rgba(255,210,74,0.95))
-    drop-shadow(0 0 30px rgba(255,46,147,0.55))
-    drop-shadow(0 4px 10px rgba(0,0,0,0.6))
-    brightness(1.25) saturate(1.3);
-  z-index: 3;
-}
+/* Winning symbol — scale-bounce plus an animated glow halo behind.
+   Targets the .symbol element directly so it works for both text
+   glyphs and the painted diamond uniformly. */
 .symbol.win {
   z-index: 3;
+  animation: symbolWin 0.55s cubic-bezier(.5,0,.3,1.5) infinite alternate;
+  filter:
+    drop-shadow(0 0 14px rgba(255,210,74,0.9))
+    drop-shadow(0 0 22px rgba(255,46,147,0.45))
+    brightness(1.2) saturate(1.25);
 }
 .symbol.win::after {
   content: '';
@@ -510,9 +464,9 @@ body.is-spinning .symbol::before {
   z-index: -1;
 }
 @keyframes symbolWin {
-  0%   { transform: translateY(var(--icon-y)) scale(var(--icon-scale)) scale(1); }
-  50%  { transform: translateY(var(--icon-y)) scale(var(--icon-scale)) scale(1.18); }
-  100% { transform: translateY(var(--icon-y)) scale(var(--icon-scale)) scale(1.08); }
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.18); }
+  100% { transform: scale(1.08); }
 }
 @keyframes winHalo {
   0%   { transform: scale(0.6); opacity: 0; }
@@ -2188,19 +2142,10 @@ body.is-spinning .symbol::before {
   .reel { border-radius: 14px; }
   .reel::before,
   .reel::after { height: 32px; }
-  .symbol { height: 74px; }
-  .symbol::before { width: 70%; height: 70%; max-width: 58px; max-height: 58px; }
-  .sym-heart::before,
-  .sym-clover::before,
-  .sym-star::before,
-  .sym-bell::before,
-  .sym-crown::before,
-  .sym-bar::before,
-  .sym-seven::before {
-    width: 58px;
-    height: 58px;
-    max-height: none;
-  }
+  .symbol { height: 74px; font-size: clamp(24px, 5.6vw, 38px); }
+  .sym-bar   { font-size: clamp(13px, 2.8vw, 19px); }
+  .sym-seven { font-size: clamp(30px, 6.6vw, 46px); }
+  .sym-diamond::before { width: 52px; height: 52px; }
   .paylines { top: 40px; left: 12px; right: 12px; bottom: 40px; }
 
   /* Screen-corner buttons: compact, no overlap with first symbol */
@@ -2281,19 +2226,10 @@ body.is-spinning .symbol::before {
 @media (max-width: 420px) {
   .screen { padding: 36px 8px; }
   .reels { gap: 4px; height: 192px; }
-  .symbol { height: 64px; }
-  .symbol::before { width: 68%; height: 68%; max-width: 50px; max-height: 50px; }
-  .sym-heart::before,
-  .sym-clover::before,
-  .sym-star::before,
-  .sym-bell::before,
-  .sym-crown::before,
-  .sym-bar::before,
-  .sym-seven::before {
-    width: 50px;
-    height: 50px;
-    max-height: none;
-  }
+  .symbol { height: 64px; font-size: clamp(22px, 5.4vw, 32px); }
+  .sym-bar   { font-size: clamp(12px, 2.6vw, 17px); }
+  .sym-seven { font-size: clamp(26px, 6.4vw, 40px); }
+  .sym-diamond::before { width: 44px; height: 44px; }
 
   .jp-amount { font-size: 11px; }
   .title-main { font-size: clamp(22px, 8.5vw, 34px); }

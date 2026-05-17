@@ -1182,18 +1182,20 @@ if (!CONFIGURED) {
         renderModal();
 
         // Subscribe to per-user firestore doc, refresh UI on changes.
+        // Always render synchronously first so the chip/modal reflect the
+        // new auth state immediately. The Firestore snapshot then fills in
+        // username/avatar from the user doc when it arrives.
         authListeners.push(u => {
           if (uiState.userDocUnsub) { try { uiState.userDocUnsub(); } catch (e) {} uiState.userDocUnsub = null; }
           uiState.userDoc = {};
+          renderChip();
+          renderModal();
           if (u && !u.isAnonymous) {
             uiState.userDocUnsub = subscribeUserDoc(u.uid, data => {
               uiState.userDoc = data || {};
               renderChip();
               renderModal();
             });
-          } else {
-            renderChip();
-            renderModal();
           }
         });
       }
@@ -1372,14 +1374,20 @@ if (!CONFIGURED) {
         // Sign-in view
         $('#cu-google').addEventListener('click', async () => {
           setErr('#cu-err-in', '');
-          try { await window.CasinoAccount.signInGoogle(); } catch (e) { setErr('#cu-err-in', readableErr(e)); }
+          try {
+            await window.CasinoAccount.signInGoogle();
+            closeModal();
+          } catch (e) { setErr('#cu-err-in', readableErr(e)); }
         });
         $('#cu-do-signin').addEventListener('click', async () => {
           setErr('#cu-err-in', '');
           const email = $('#cu-email').value.trim();
           const pw = $('#cu-pw').value;
           if (!email || !pw) return setErr('#cu-err-in', 'Email and password required.');
-          try { await window.CasinoAccount.signInEmail(email, pw); } catch (e) { setErr('#cu-err-in', readableErr(e)); }
+          try {
+            await window.CasinoAccount.signInEmail(email, pw);
+            closeModal();
+          } catch (e) { setErr('#cu-err-in', readableErr(e)); }
         });
         $('#cu-go-signup').addEventListener('click', () => { uiState.view = 'signup'; renderModal(); });
         $('#cu-cancel-in').addEventListener('click', closeModal);
@@ -1391,7 +1399,10 @@ if (!CONFIGURED) {
         // Sign-up view
         $('#cu-google-up').addEventListener('click', async () => {
           setErr('#cu-err-up', '');
-          try { await window.CasinoAccount.signInGoogle(); } catch (e) { setErr('#cu-err-up', readableErr(e)); }
+          try {
+            await window.CasinoAccount.signInGoogle();
+            closeModal();
+          } catch (e) { setErr('#cu-err-up', readableErr(e)); }
         });
         $('#cu-do-signup').addEventListener('click', async () => {
           setErr('#cu-err-up', '');
@@ -1400,7 +1411,10 @@ if (!CONFIGURED) {
           const name = $('#cu-name-up').value.trim();
           if (!name) return setErr('#cu-err-up', 'Pick a username (you can change it later).');
           if (!email || !pw) return setErr('#cu-err-up', 'Email and password required.');
-          try { await window.CasinoAccount.signUpEmail(email, pw, name); } catch (e) { setErr('#cu-err-up', readableErr(e)); }
+          try {
+            await window.CasinoAccount.signUpEmail(email, pw, name);
+            closeModal();
+          } catch (e) { setErr('#cu-err-up', readableErr(e)); }
         });
         $('#cu-go-signin').addEventListener('click', () => { uiState.view = 'signin'; renderModal(); });
         $('#cu-cancel-up').addEventListener('click', closeModal);
