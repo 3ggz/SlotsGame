@@ -2105,6 +2105,7 @@ body::after {
 <body>
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
 
 <div class="bubbles" id="bg-bubbles"></div>
 
@@ -4430,6 +4431,9 @@ function init() {
       doSpin();
     }
   });
+
+  // Global jackpot win — refresh balance from shared localStorage.
+  document.addEventListener('jackpot-win', () => setBalance(loadBalance()));
 }
 init();
 </script>

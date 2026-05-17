@@ -1412,6 +1412,7 @@ button { border: 0; cursor: pointer; }
 <body>
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>
@@ -3076,6 +3077,9 @@ button { border: 0; cursor: pointer; }
     let introSeen = false;
     try { introSeen = localStorage.getItem(INTRO_KEY) === '1'; } catch (e) {}
     if (!introSeen) showIntroRules();
+
+    // Global jackpot win — refresh balance from shared localStorage.
+    document.addEventListener('jackpot-win', () => setBalance(loadBalance()));
   }
 
   init();

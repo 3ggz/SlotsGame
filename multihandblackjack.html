@@ -1001,6 +1001,7 @@ body::before {
 <body>
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>
@@ -2611,6 +2612,9 @@ function init() {
   });
 
   newHand();
+
+  // Global jackpot win — refresh balance from shared localStorage.
+  document.addEventListener('jackpot-win', () => setBalance(loadBalance()));
 }
 
 init();

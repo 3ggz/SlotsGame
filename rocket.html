@@ -530,6 +530,66 @@ button, input { font: inherit; }
 .meter-row.win strong { color: var(--neon-green); text-shadow: 0 0 10px rgba(92,255,161,0.38); }
 .meter-row.hot strong { color: var(--gold-1); text-shadow: 0 0 10px rgba(255,210,74,0.38); }
 
+.session-history {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,210,74,0.16);
+}
+.session-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: rgba(255,240,168,0.74);
+}
+.session-list {
+  display: grid;
+  gap: 5px;
+}
+.session-empty,
+.session-bet {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 25px;
+  padding: 5px 8px;
+  border-radius: 9px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  background: rgba(255,255,255,0.055);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.session-empty {
+  justify-content: center;
+  color: rgba(255,255,255,0.42);
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+.session-bet .kind {
+  font-family: 'Bungee', cursive;
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: rgba(255,255,255,0.68);
+}
+.session-bet.win {
+  color: #d8ffe8;
+  background: linear-gradient(90deg, rgba(92,255,161,0.18), rgba(92,255,161,0.045));
+  box-shadow: inset 0 0 0 1px rgba(92,255,161,0.30), 0 0 14px rgba(92,255,161,0.10);
+}
+.session-bet.loss {
+  color: #ffd7dd;
+  background: linear-gradient(90deg, rgba(255,77,109,0.18), rgba(255,46,147,0.045));
+  box-shadow: inset 0 0 0 1px rgba(255,77,109,0.30), 0 0 14px rgba(255,46,147,0.10);
+}
+
 .recent-list {
   display: flex;
   flex-wrap: wrap;
@@ -875,6 +935,7 @@ button, input { font: inherit; }
 <body>
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>
@@ -956,6 +1017,12 @@ button, input { font: inherit; }
           <div class="meter-row hot"><span>Peak</span><strong id="stat-peak">1.00x</strong></div>
           <div class="meter-row"><span>Last</span><strong id="stat-last">--</strong></div>
         </div>
+        <div class="session-history">
+          <div class="session-title"><span>MY SESSION</span><span>LAST 5</span></div>
+          <div class="session-list" id="session-bets">
+            <div class="session-empty">NO BETS YET</div>
+          </div>
+        </div>
       </div>
       <div class="rail-card">
         <div class="rail-title">LIVE CASHOUTS</div>
@@ -1033,6 +1100,7 @@ function refreshBalance() { balEl.textContent = fmt(balance); }
 refreshBalance();
 window.addEventListener('focus', () => { balance = loadBalance(); refreshBalance(); });
 window.addEventListener('pageshow', () => { balance = loadBalance(); refreshBalance(); });
+document.addEventListener('jackpot-win', () => { balance = loadBalance(); refreshBalance(); });
 
 document.getElementById('btn-add').addEventListener('click', () => {
   window.location.href = 'index.html';
@@ -1066,6 +1134,7 @@ const statTargetEl = document.getElementById('stat-target');
 const statPeakEl = document.getElementById('stat-peak');
 const statLastEl = document.getElementById('stat-last');
 const recentListEl = document.getElementById('recent-list');
+const sessionBetsEl = document.getElementById('session-bets');
 const rollHistoryListEl = document.getElementById('roll-history-list');
 const toastEl = document.getElementById('toast');
 
@@ -1089,6 +1158,7 @@ const State = {
   crashX: 0,
   crashY: 0,
   recent: [],
+  sessionBets: [],
   countdownTimer: 0,
   crashHold: null,
   graphMax: BASE_GRAPH_MAX,
@@ -1586,7 +1656,7 @@ function spawnExplosion(x, y) {
     vx: 0,
     vy: 0,
     life: 0,
-    ttl: 680,
+    ttl: 520,
     size: 24,
     color: 'gold',
     boom: true,
@@ -1598,22 +1668,23 @@ function spawnExplosion(x, y) {
     vx: 0,
     vy: 0,
     life: 0,
-    ttl: 920,
-    size: 36,
+    ttl: 700,
+    size: 32,
     color: 'pink',
     boom: true,
     ring: true,
   });
-  for (let i = 0; i < 90; i++) {
+  const burstCount = window.matchMedia && window.matchMedia('(max-width: 720px)').matches ? 30 : 42;
+  for (let i = 0; i < burstCount; i++) {
     const a = Math.random() * Math.PI * 2;
-    const speed = rand(80, 420);
+    const speed = rand(70, 330);
     addParticle({
       x, y,
       vx: Math.cos(a) * speed,
       vy: Math.sin(a) * speed,
       life: 0,
-      ttl: rand(520, 1100),
-      size: rand(2, 7),
+      ttl: rand(360, 760),
+      size: rand(1.8, 5.4),
       color: Math.random() < 0.42 ? 'gold' : (Math.random() < 0.5 ? 'pink' : 'cyan'),
       boom: true,
     });
@@ -1739,7 +1810,7 @@ function updateParticles(dt) {
       p.vy += (p.boom ? 170 : 35) * dt;
     }
   }
-  if (particles.length > 520) particles.splice(0, particles.length - 520);
+  if (particles.length > 300) particles.splice(0, particles.length - 300);
 }
 
 function drawParticles() {
@@ -1749,11 +1820,11 @@ function drawParticles() {
     const a = Math.max(0, 1 - p.life / p.ttl);
     if (p.ring) {
       const t = p.life / p.ttl;
-      const r = p.size + Math.pow(t, 0.72) * Math.min(W, H) * 0.24;
-      ctx.strokeStyle = particleColor(p, a * 0.74);
+      const r = p.size + Math.pow(t, 0.72) * Math.min(W, H) * 0.18;
+      ctx.strokeStyle = particleColor(p, a * 0.58);
       ctx.shadowColor = particleColor(p, a * 0.85);
-      ctx.shadowBlur = 26;
-      ctx.lineWidth = Math.max(2, (1 - t) * 9);
+      ctx.shadowBlur = 14;
+      ctx.lineWidth = Math.max(1.5, (1 - t) * 6);
       ctx.beginPath();
       ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
       ctx.stroke();
@@ -1761,7 +1832,7 @@ function drawParticles() {
     }
     ctx.fillStyle = particleColor(p, a);
     ctx.shadowColor = particleColor(p, a * 0.85);
-    ctx.shadowBlur = p.boom ? 18 : 10;
+    ctx.shadowBlur = p.boom ? 10 : 8;
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.size * (0.45 + a * 0.75), 0, Math.PI * 2);
     ctx.fill();
@@ -2108,6 +2179,28 @@ function renderRecent() {
   }).join('');
 }
 
+function pushSessionBet(result) {
+  State.sessionBets.unshift({
+    type: result.type,
+    multiplier: Math.max(1, Number(result.multiplier || 1)),
+  });
+  State.sessionBets = State.sessionBets.slice(0, 5);
+  renderSessionBets();
+}
+
+function renderSessionBets() {
+  if (!sessionBetsEl) return;
+  if (!State.sessionBets.length) {
+    sessionBetsEl.innerHTML = '<div class="session-empty">NO BETS YET</div>';
+    return;
+  }
+  sessionBetsEl.innerHTML = State.sessionBets.map(item => {
+    const win = item.type === 'win';
+    const label = win ? 'CASHED' : 'CRASH';
+    return `<div class="session-bet ${win ? 'win' : 'loss'}"><span class="kind">${label}</span><span>${escapeHTML(multText(item.multiplier))}</span></div>`;
+  }).join('');
+}
+
 function rollClass(v) {
   if (v >= 10) return 'moon';
   if (v >= 5) return 'high';
@@ -2153,6 +2246,7 @@ function resolveLocalLoss(round) {
   const crashMult = Math.max(1, round.crashAt || State.crashAt);
   if (window.History) History.record('rocket', State.localBet, -State.localBet, 'CRASH ' + crashMult.toFixed(2) + 'X');
   statLastEl.textContent = multText(crashMult);
+  pushSessionBet({ type: 'loss', multiplier: crashMult });
 }
 
 function crashHoldActive(now = performance.now()) {
@@ -2409,6 +2503,7 @@ function cashOut(auto) {
   const note = paidMult >= 20 ? 'MAJOR CASHOUT' : paidMult >= 10 ? 'BIG CASHOUT' : (auto ? 'AUTO CASHOUT' : 'CASHOUT');
   if (window.History) History.record('rocket', State.localBet, net, note);
   statLastEl.textContent = multText(paidMult);
+  pushSessionBet({ type: 'win', multiplier: paidMult });
   pushLocalCashout(State.localCashout);
   sendCashoutToLive(State.localCashout);
   playSfx(paidMult >= 20 ? 'fanfare' : paidMult >= 5 ? 'winBig' : paidMult >= 2 ? 'winMedium' : 'winSmall', paidMult >= 10 ? 0.82 : 0.68);

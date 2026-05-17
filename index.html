@@ -390,6 +390,125 @@ body::after {
   .live-foot { font-size: 11px; padding-top: 10px; margin-top: 10px; }
 }
 
+/* GLOBAL JACKPOTS — community pools that grow with every bet */
+.jp-pools {
+  position: relative;
+  padding: 22px 22px 18px;
+  margin-bottom: 16px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 50% -20%, rgba(255,210,74,0.30), transparent 65%),
+    linear-gradient(180deg, #1a0640, #07021a);
+  box-shadow: var(--shadow-deep), inset 0 0 0 1.5px rgba(255,210,74,0.42);
+  overflow: hidden;
+}
+.jp-pools::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: conic-gradient(from 0deg at 50% 50%, rgba(255,210,74,0.08), transparent 25%, rgba(255,46,147,0.08) 50%, transparent 75%, rgba(34,211,238,0.08));
+  animation: jppSweep 18s linear infinite;
+  pointer-events: none;
+}
+@keyframes jppSweep { to { transform: rotate(360deg); } }
+.jp-pools-head {
+  position: relative;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 16px;
+}
+.jp-pools-title {
+  font-family: 'Bungee', cursive;
+  font-size: 14px; letter-spacing: 0.32em;
+  background: linear-gradient(180deg, #fff7c4, var(--gold-1));
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 18px rgba(255,210,74,0.4);
+}
+.jp-pools-sub {
+  font-family: 'Bungee', cursive;
+  font-size: 9px; letter-spacing: 0.28em;
+  color: rgba(255,255,255,0.45);
+}
+.jp-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.jp-tile {
+  position: relative;
+  padding: 16px 14px 14px;
+  border-radius: 16px;
+  text-align: center;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.5));
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.18), 0 6px 18px rgba(0,0,0,0.5);
+}
+.jp-tile::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at top, var(--glow), transparent 65%);
+  opacity: 0.55;
+  z-index: -1;
+}
+.jp-tile.grand { --glow: rgba(255,210,74,0.55); --accent: #ffd24a; }
+.jp-tile.major { --glow: rgba(255,46,147,0.55); --accent: #ff6abf; }
+.jp-tile.minor { --glow: rgba(34,211,238,0.50); --accent: #6ee7f5; }
+.jp-tile.mini  { --glow: rgba(92,255,161,0.50); --accent: #8effc1; }
+.jp-tile-label {
+  font-family: 'Bungee', cursive;
+  font-size: 11px; letter-spacing: 0.30em;
+  color: var(--accent);
+  text-shadow: 0 0 14px var(--glow);
+  margin-bottom: 8px;
+}
+.jp-tile-amt {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: clamp(20px, 3vw, 30px);
+  letter-spacing: 0.01em;
+  color: #fff;
+  text-shadow: 0 0 18px rgba(255,255,255,0.25);
+  line-height: 1.05;
+  transition: transform 0.18s, color 0.25s;
+}
+.jp-tile.bump .jp-tile-amt {
+  color: var(--accent);
+  text-shadow: 0 0 22px var(--glow);
+  transform: scale(1.06);
+}
+.jp-bar {
+  margin-top: 10px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.55);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.jp-bar > span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, transparent, var(--accent));
+  box-shadow: 0 0 10px var(--glow);
+  transition: width 0.6s cubic-bezier(.22,1,.36,1);
+}
+.jp-tile-foot {
+  margin-top: 6px;
+  font-family: 'Bungee', cursive;
+  font-size: 8px; letter-spacing: 0.22em;
+  color: rgba(255,255,255,0.42);
+}
+@media (max-width: 720px) {
+  .jp-pools { padding: 14px 12px 12px; border-radius: 18px; }
+  .jp-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .jp-tile { padding: 12px 10px 10px; border-radius: 14px; }
+  .jp-tile-label { font-size: 9px; letter-spacing: 0.22em; margin-bottom: 6px; }
+  .jp-tile-amt { font-size: 18px; }
+  .jp-pools-title { font-size: 11px; letter-spacing: 0.22em; }
+  .jp-pools-sub { font-size: 8px; letter-spacing: 0.18em; }
+}
+
 /* GAME GRID */
 .games {
   display: grid;
@@ -1325,6 +1444,7 @@ body::after {
 <body>
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
 
 <button class="btn-history" id="btn-history" title="View history">HISTORY</button>
 
@@ -1341,6 +1461,39 @@ body::after {
     <span class="value">$<span id="balance">1,000</span></span>
     <button class="btn-add" id="btn-add" title="Add chips">+</button>
   </div>
+
+  <section class="jp-pools" id="jp-pools">
+    <div class="jp-pools-head">
+      <div class="jp-pools-title">GLOBAL JACKPOTS</div>
+      <div class="jp-pools-sub">EVERY BET FEEDS THE POOLS</div>
+    </div>
+    <div class="jp-grid">
+      <div class="jp-tile grand" data-tier="grand">
+        <div class="jp-tile-label">GRAND</div>
+        <div class="jp-tile-amt" id="jp-amt-grand">$0</div>
+        <div class="jp-bar"><span id="jp-bar-grand"></span></div>
+        <div class="jp-tile-foot" id="jp-foot-grand">SEEDING…</div>
+      </div>
+      <div class="jp-tile major" data-tier="major">
+        <div class="jp-tile-label">MAJOR</div>
+        <div class="jp-tile-amt" id="jp-amt-major">$0</div>
+        <div class="jp-bar"><span id="jp-bar-major"></span></div>
+        <div class="jp-tile-foot" id="jp-foot-major">SEEDING…</div>
+      </div>
+      <div class="jp-tile minor" data-tier="minor">
+        <div class="jp-tile-label">MINOR</div>
+        <div class="jp-tile-amt" id="jp-amt-minor">$0</div>
+        <div class="jp-bar"><span id="jp-bar-minor"></span></div>
+        <div class="jp-tile-foot" id="jp-foot-minor">SEEDING…</div>
+      </div>
+      <div class="jp-tile mini" data-tier="mini">
+        <div class="jp-tile-label">MINI</div>
+        <div class="jp-tile-amt" id="jp-amt-mini">$0</div>
+        <div class="jp-bar"><span id="jp-bar-mini"></span></div>
+        <div class="jp-tile-foot" id="jp-foot-mini">SEEDING…</div>
+      </div>
+    </div>
+  </section>
 
   <section class="live-floor" id="live-floor">
     <div class="live-floor-head">
@@ -1866,6 +2019,84 @@ function startLiveStats() {
 }
 document.addEventListener('casino-account-ready', startLiveStats, { once: true });
 setTimeout(startLiveStats, 1500);
+
+/* ============================================================
+   GLOBAL JACKPOTS — live pool ticker
+   ============================================================ */
+const JP_TIERS = ['grand', 'major', 'minor', 'mini'];
+const jpState = { grand: 0, major: 0, minor: 0, mini: 0 };
+const jpRAF   = {};
+
+function fmtJPMoney(v) {
+  if (!Number.isFinite(v)) v = 0;
+  const cents = Math.round(v * 100) / 100;
+  if (Number.isInteger(cents)) return '$' + cents.toLocaleString('en-US');
+  return '$' + cents.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function tweenJP(tier, target) {
+  cancelAnimationFrame(jpRAF[tier]);
+  const start = jpState[tier];
+  const delta = target - start;
+  const el = document.getElementById('jp-amt-' + tier);
+  if (!el) return;
+  if (Math.abs(delta) < 0.005) { el.textContent = fmtJPMoney(target); jpState[tier] = target; return; }
+  // Pool reset (big negative delta) means a jackpot just hit — bump the tile.
+  if (delta < -1) {
+    const tile = el.closest('.jp-tile');
+    if (tile) {
+      tile.classList.add('bump');
+      setTimeout(() => tile.classList.remove('bump'), 1200);
+    }
+  }
+  const t0 = performance.now();
+  const dur = Math.min(900, 280 + Math.log10(Math.max(1, Math.abs(delta) + 1)) * 220);
+  function frame(now) {
+    const k = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - k, 3);
+    const cur = start + delta * eased;
+    el.textContent = fmtJPMoney(cur);
+    jpState[tier] = cur;
+    if (k < 1) jpRAF[tier] = requestAnimationFrame(frame);
+    else jpState[tier] = target;
+  }
+  jpRAF[tier] = requestAnimationFrame(frame);
+}
+
+function applyJackpots(snap) {
+  if (!snap) return;
+  for (const tier of JP_TIERS) {
+    const d = snap[tier];
+    if (!d) continue;
+    tweenJP(tier, Number(d.pool) || 0);
+    const bar = document.getElementById('jp-bar-' + tier);
+    if (bar) {
+      const seed = Number(d.seed) || 0;
+      const mustHitBy = Number(d.mustHitBy) || (seed + 1);
+      const room = Math.max(1, mustHitBy - seed);
+      const filled = Math.max(0, Math.min(1, ((Number(d.pool) || 0) - seed) / room));
+      bar.style.width = (filled * 100).toFixed(1) + '%';
+    }
+    const foot = document.getElementById('jp-foot-' + tier);
+    if (foot) {
+      if (d.lastWinner) {
+        foot.textContent = 'LAST · ' + String(d.lastWinner).toUpperCase().slice(0, 14);
+      } else {
+        foot.textContent = 'AWAITING FIRST HIT';
+      }
+    }
+  }
+}
+
+let jpStarted = false;
+function startJackpots() {
+  if (jpStarted) return;
+  if (!window.CasinoJackpots) { setTimeout(startJackpots, 100); return; }
+  jpStarted = true;
+  window.CasinoJackpots.subscribe(applyJackpots);
+}
+document.addEventListener('casino-account-ready', startJackpots, { once: true });
+setTimeout(startJackpots, 1500);
 
 
 /* Account UI (chip + sign-in / profile modal) lives in casino-account.js

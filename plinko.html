@@ -445,6 +445,7 @@ body::before {
 <body>
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>
@@ -541,6 +542,7 @@ function refreshBalance() { balEl.textContent = fmt(balance); }
 refreshBalance();
 window.addEventListener('focus',   () => { balance = loadBalance(); refreshBalance(); });
 window.addEventListener('pageshow',() => { balance = loadBalance(); refreshBalance(); });
+document.addEventListener('jackpot-win', () => { balance = loadBalance(); refreshBalance(); });
 
 document.getElementById('btn-add').addEventListener('click', () => {
   window.location.href = 'index.html';

@@ -2235,6 +2235,7 @@ body.is-spinning .symbol::before {
 <body>
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>
@@ -4266,6 +4267,10 @@ function init() {
       doSpin();
     }
   });
+
+  // Global jackpot win — module credits shared localStorage, we
+  // just refresh the in-memory copy + on-screen display.
+  document.addEventListener('jackpot-win', () => setBalance(loadBalance()));
 }
 
 init();

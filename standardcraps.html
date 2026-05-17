@@ -1348,6 +1348,7 @@ body.rolling .bt-section { opacity: 0.55; filter: saturate(0.7); transition: opa
 <body>
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>
@@ -1662,6 +1663,7 @@ function refreshBalance() {
   document.getElementById('balance').textContent = fmt(balance);
 }
 refreshBalance();
+document.addEventListener('jackpot-win', () => { balance = loadBalance(); refreshBalance(); });
 
 document.getElementById('btn-add').addEventListener('click', () => {
   // Open inline add-funds modal here in a later task. For now, navigate to lobby.
