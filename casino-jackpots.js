@@ -503,9 +503,9 @@
     ]);
     const { getApp } = appMod;
     const { getAuth } = authMod;
-    const { getFirestore, doc, onSnapshot, runTransaction, serverTimestamp, addDoc, collection } = fsMod;
+    const { getFirestore, doc, setDoc, onSnapshot, runTransaction, serverTimestamp, addDoc, collection, increment } = fsMod;
 
-    fs = { doc, onSnapshot, runTransaction, serverTimestamp, addDoc, collection };
+    fs = { doc, setDoc, onSnapshot, runTransaction, serverTimestamp, addDoc, collection, increment };
 
     try {
       const app = getApp();        // casino-account.js initialized it first
@@ -682,7 +682,7 @@
     }
 
     console.debug('[casino-jackpots] contributed', { game, bet, trigger });
-    if (trigger) onJackpotWin(game, trigger);
+    if (trigger) onJackpotWin(game, trigger, bet);
     return trigger;
   }
 

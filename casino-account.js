@@ -901,6 +901,30 @@ if (!CONFIGURED) {
         }).catch(() => {});
       }
 
+      function subscribeRocketChat(fn, n = 30) {
+        const q = query(collection(db, 'rocketChat'), orderBy('ts', 'desc'), limit(n));
+        return onSnapshot(q, snap => {
+          const list = [];
+          snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+          fn(list.reverse());
+        }, () => {});
+      }
+
+      function sendRocketChat(message) {
+        const text = String(message || '').trim().slice(0, 160);
+        if (!text) return Promise.resolve();
+        if (!currentUser) {
+          return waitForCurrentUser().then(u => u ? sendRocketChat(text) : undefined);
+        }
+        return addDoc(collection(db, 'rocketChat'), {
+          text,
+          player: playerLabel(currentUser),
+          uid: currentUser?.uid || null,
+          anonymous: !!currentUser?.isAnonymous,
+          ts: serverTimestamp(),
+        }).catch(() => {});
+      }
+
       window.CasinoStats = {
         configured: true,
         recordRound,
@@ -915,6 +939,8 @@ if (!CONFIGURED) {
         syncClock: syncRocketClock,
         subscribeCashouts: subscribeRocketCashouts,
         recordCashout: recordRocketCashout,
+        subscribeChat: subscribeRocketChat,
+        sendChat: sendRocketChat,
       };
 
       function subscribeUserDoc(uid, fn) {

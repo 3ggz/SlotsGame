@@ -6,6 +6,7 @@
 //   /recentJackpots/*        world-readable, append-only (auth required)
 //   /tablePresence/*         world-readable active-table heartbeats
 //   /rocketRoundCashouts/*   world-readable, append-only cashout dots
+//   /rocketChat/*            world-readable, append-only short chat
 //   /rocketClock/{uid}       owner-only clock sync pings for shared rounds
 //   /users/{uid}             only the owner can read/write their record
 //
@@ -87,6 +88,19 @@ service cloud.firestore {
     // Per-client server-time pings used to align Rocket rounds.
     match /rocketClock/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Rocket table chat.
+    match /rocketChat/{id} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 160
+        && request.resource.data.player is string
+        && request.resource.data.player.size() < 64;
+      allow update, delete: if false;
     }
 
     // Per-user stats: public read (for future leaderboards), owner-only write.
