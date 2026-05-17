@@ -52,48 +52,42 @@ const CONFIGURED = Boolean(FIREBASE_CONFIG.projectId);
 /* ---------- Shared CSS + HTML for AccountUI (injected at runtime) ---------- */
 const ACCOUNT_UI_CSS = `
   /* Hide the legacy standalone history buttons — history is now an
-     entry inside the profile modal. Saves top-chrome real estate so
-     the account chip can sit top-left without crowding balance. */
+     entry inside the profile modal. */
   .btn-history, .history-btn { display: none !important; }
+  /* Hide the floating settings gear — volume controls moved into the
+     profile modal so we have one canonical top-right entry point. */
+  .casino-settings-btn { display: none !important; }
 
+  /* Chip is now a 40x40 circle showing just the selected avatar,
+     sitting at top:14 right:14 (the slot the settings gear used to
+     occupy). The username label is rendered but hidden — keeps the
+     existing renderChip() code path unchanged. */
   .cu-chip {
-    position: fixed; top: 14px; left: 14px; z-index: 80;
+    position: fixed; top: 14px; right: 14px; z-index: 80;
     border: 0; cursor: pointer;
-    height: 40px; padding: 0 14px 0 6px;
-    border-radius: 999px;
-    font-family: 'Bungee', cursive;
-    font-size: 11px; letter-spacing: 0.2em;
-    color: #fff0a8;
+    width: 40px; height: 40px;
+    border-radius: 50%; padding: 0;
     background: rgba(2,8,18,0.7);
     box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.45), 0 4px 16px rgba(0,0,0,0.5);
     backdrop-filter: blur(8px);
-    display: inline-flex; align-items: center; gap: 8px;
-    max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: grid; place-items: center;
+    overflow: hidden;
     transition: filter 0.15s, transform 0.1s;
   }
-  /* On game pages there's already a .lobby-link top-left; slide the
-     chip right of it. :has() handles this without per-page CSS edits. */
-  body:has(.lobby-link) .cu-chip { left: 122px; }
   .cu-chip:hover { filter: brightness(1.15); }
   .cu-chip:active { transform: translateY(2px); }
   .cu-chip .cu-chip-avatar {
-    width: 28px; height: 28px; border-radius: 50%;
-    display: grid; place-items: center; font-size: 16px; line-height: 1;
+    width: 32px; height: 32px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 18px; line-height: 1;
     background: linear-gradient(135deg,#a855f7,#ff2e93);
-    flex-shrink: 0;
   }
   .cu-chip:not(.signed-in) .cu-chip-avatar {
-    background: transparent; color: #ffd24a; width: auto; height: auto; margin-left: 6px; font-size: 13px;
+    background: transparent; color: #ffd24a;
   }
+  .cu-chip .cu-chip-label { display: none; }
   @media (max-width: 720px) {
-    .cu-chip { top: 8px; left: 8px; height: 34px; padding: 0 10px 0 4px; font-size: 9px; letter-spacing: 0.14em; gap: 6px; max-width: 150px; }
-    body:has(.lobby-link) .cu-chip { left: 100px; }
-    .cu-chip .cu-chip-avatar { width: 24px; height: 24px; font-size: 14px; }
-    /* On game pages on mobile, drop the username text — icon-only
-       chip is plenty to free up room from the balance pill. */
-    body:has(.lobby-link) .cu-chip.signed-in .cu-chip-label { display: none; }
-    body:has(.lobby-link) .cu-chip.signed-in { padding: 0; width: 34px; justify-content: center; }
-    body:has(.lobby-link) .cu-chip.signed-in .cu-chip-avatar { width: 26px; height: 26px; }
+    .cu-chip { top: 8px; right: 8px; width: 34px; height: 34px; }
+    .cu-chip .cu-chip-avatar { width: 28px; height: 28px; font-size: 16px; }
   }
 
   .cu-veil {
@@ -282,6 +276,58 @@ const ACCOUNT_UI_CSS = `
     background: rgba(255,46,88,0.16);
     box-shadow: inset 0 0 0 1.5px rgba(255,46,88,0.45);
   }
+
+  /* Volume section — lives at the bottom of every modal view except
+     signup. Wires straight into window.Settings so changes propagate
+     to every game's audio engine through the existing onChange path. */
+  .cu-vol-section {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px dashed rgba(255,210,74,0.18);
+  }
+  .cu-vol-block { margin-bottom: 12px; }
+  .cu-vol-block:last-child { margin-bottom: 0; }
+  .cu-vol-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  .cu-vol-name, .cu-vol-mute {
+    font-family: 'Bungee', cursive; font-size: 11px; letter-spacing: 0.22em;
+    color: #22d3ee; text-shadow: 0 0 6px rgba(34,211,238,0.4);
+    background: none; border: 0; padding: 0; cursor: pointer;
+    transition: color 0.15s;
+  }
+  .cu-vol-mute.muted {
+    color: #ff5a7d;
+    text-shadow: 0 0 6px rgba(255,90,125,0.5);
+  }
+  .cu-vol-mute::before { content: '🔊'; margin-right: 6px; font-size: 13px; }
+  .cu-vol-mute.muted::before { content: '🔇'; }
+  .cu-vol-val {
+    font-family: 'Geist Mono', monospace; font-weight: 800; font-size: 13px;
+    color: #fff; min-width: 30px; text-align: right;
+  }
+  .cu-vol-slider {
+    width: 100%; height: 6px; border-radius: 999px; margin: 0; padding: 0;
+    appearance: none; -webkit-appearance: none;
+    background: linear-gradient(90deg, #ffd24a 0 var(--v, 50%), rgba(255,255,255,0.1) var(--v, 50%) 100%);
+    cursor: pointer; outline: none;
+  }
+  .cu-vol-slider::-webkit-slider-thumb {
+    appearance: none; -webkit-appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff7d1;
+    border: 2px solid #ffd24a;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.45);
+    cursor: pointer;
+  }
+  .cu-vol-slider::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff7d1;
+    border: 2px solid #ffd24a;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.45);
+    cursor: pointer;
+  }
 `;
 
 const MODAL_HTML = `
@@ -346,6 +392,34 @@ const MODAL_HTML = `
       <div class="cu-foot-actions">
         <button class="cu-foot-btn cu-foot-history" id="cu-open-history" type="button">⌛ VIEW HISTORY</button>
         <button class="cu-foot-btn cu-signout" id="cu-signout" type="button">SIGN OUT</button>
+      </div>
+    </div>
+
+    <!-- Volume controls live at the bottom of the modal regardless of
+         view (except signup, hidden by renderModal). Bound to the
+         shared window.Settings API from casino-audio.js. -->
+    <div class="cu-vol-section">
+      <div class="cu-section-lbl">VOLUME</div>
+      <div class="cu-vol-block">
+        <div class="cu-vol-head">
+          <span class="cu-vol-name">MASTER</span>
+          <span class="cu-vol-val" data-val="master">70</span>
+        </div>
+        <input class="cu-vol-slider" type="range" min="0" max="100" data-key="master" />
+      </div>
+      <div class="cu-vol-block">
+        <div class="cu-vol-head">
+          <button class="cu-vol-mute" data-mute="muteMusic" type="button">MUSIC</button>
+          <span class="cu-vol-val" data-val="music">55</span>
+        </div>
+        <input class="cu-vol-slider" type="range" min="0" max="100" data-key="music" />
+      </div>
+      <div class="cu-vol-block">
+        <div class="cu-vol-head">
+          <button class="cu-vol-mute" data-mute="muteSfx" type="button">SFX</button>
+          <span class="cu-vol-val" data-val="sfx">85</span>
+        </div>
+        <input class="cu-vol-slider" type="range" min="0" max="100" data-key="sfx" />
       </div>
     </div>
   </div>
@@ -830,6 +904,32 @@ if (!CONFIGURED) {
         const active = veil.querySelector(`[data-view="${viewKey}"]`);
         if (active) active.style.display = '';
         if (viewKey === 'profile') renderProfileView(veil);
+        // Volume section shows for signin and profile, hides during signup
+        // to keep the create-account flow focused.
+        const volSection = veil.querySelector('.cu-vol-section');
+        if (volSection) volSection.style.display = viewKey === 'signup' ? 'none' : 'block';
+        syncVolumeUI(veil);
+      }
+
+      function syncVolumeUI(veil) {
+        if (!window.Settings || typeof window.Settings.get !== 'function') return;
+        const s = window.Settings.get();
+        ['master', 'music', 'sfx'].forEach(k => {
+          const pct = Math.round((Number(s[k]) || 0) * 100);
+          const slider = veil.querySelector(`[data-key="${k}"]`);
+          if (slider && document.activeElement !== slider) {
+            slider.value = pct;
+            slider.style.setProperty('--v', pct + '%');
+          } else if (slider) {
+            slider.style.setProperty('--v', slider.value + '%');
+          }
+          const display = veil.querySelector(`[data-val="${k}"]`);
+          if (display) display.textContent = pct;
+        });
+        const mMusic = veil.querySelector('[data-mute="muteMusic"]');
+        if (mMusic) mMusic.classList.toggle('muted', !!s.muteMusic);
+        const mSfx = veil.querySelector('[data-mute="muteSfx"]');
+        if (mSfx) mSfx.classList.toggle('muted', !!s.muteSfx);
       }
 
       function renderProfileView(veil) {
@@ -983,6 +1083,28 @@ if (!CONFIGURED) {
         $('#cu-username').addEventListener('keydown', e => {
           if (e.key === 'Enter') $('#cu-profile-save').click();
           if (e.key === 'Escape' && uiState.view !== 'profile-required') closeModal();
+        });
+
+        // Volume sliders + mute toggles, wired to the shared window.Settings.
+        veil.querySelectorAll('.cu-vol-slider').forEach(slider => {
+          slider.addEventListener('input', () => {
+            if (!window.Settings || typeof window.Settings.set !== 'function') return;
+            const key = slider.dataset.key;
+            const pct = parseInt(slider.value, 10) || 0;
+            slider.style.setProperty('--v', pct + '%');
+            window.Settings.set({ [key]: pct / 100 });
+            const display = veil.querySelector(`[data-val="${key}"]`);
+            if (display) display.textContent = pct;
+          });
+        });
+        veil.querySelectorAll('.cu-vol-mute').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (!window.Settings || typeof window.Settings.set !== 'function') return;
+            const muteKey = btn.dataset.mute;
+            const cur = window.Settings.get()[muteKey];
+            window.Settings.set({ [muteKey]: !cur });
+            btn.classList.toggle('muted', !cur);
+          });
         });
       }
 
