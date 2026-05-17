@@ -20,6 +20,22 @@
 (function (global) {
   'use strict';
 
+  /* ---------- PERSISTENT SHELL THEME ----------
+     Paint the html root dark BEFORE the loader mounts (and keep it
+     painted after the loader hides). Without this, mobile safe areas
+     (status bar, URL bar, home indicator) flash browser-default white
+     during the load-screen window. The Loader's own CSS adds redundant
+     rules but those get removed when the loader unmounts — this
+     persistent style tag never gets removed.
+     -------------------------------------------- */
+  (function injectShellTheme() {
+    if (document.querySelector('style[data-casino-shell]')) return;
+    const s = document.createElement('style');
+    s.setAttribute('data-casino-shell', '');
+    s.textContent = ':root{color-scheme:dark}html,body{background-color:#0a0418}';
+    (document.head || document.documentElement).appendChild(s);
+  })();
+
   /* ---------- SETTINGS ---------- */
   const SETTINGS_KEY = 'casino.settings';
   const defaults = {
