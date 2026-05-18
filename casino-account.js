@@ -748,6 +748,11 @@ if (!CONFIGURED) {
         if (bet <= 0 && win === 0) return;
         const gross   = Math.max(0, bet + win);
         const jackpot = detectJackpot(note, gross);
+        // Bot bets feed the global counters so "LIVE FROM THE FLOOR"
+        // looks alive, but they MUST NOT touch the current player's
+        // personal stats or be tagged under the player's name in the
+        // recent-jackpots feed.
+        const isBotBet = !!(note && /^BOT\b/i.test(String(note)));
 
         const patch = {
           totalSpins:   increment(1),
@@ -755,13 +760,13 @@ if (!CONFIGURED) {
           totalWon:     increment(gross),
           updatedAt:    serverTimestamp(),
         };
-        if (jackpot) {
+        if (jackpot && !isBotBet) {
           patch.jackpotsHit      = increment(1);
           patch.totalJackpotPaid = increment(jackpot.amount);
         }
         setDoc(globalsRef, patch, { merge: true }).catch(() => {});
 
-        if (currentUser) {
+        if (currentUser && !isBotBet) {
           const upatch = {
             totalSpins:   increment(1),
             totalWagered: increment(bet),
@@ -773,7 +778,7 @@ if (!CONFIGURED) {
           setDoc(doc(db, 'users', currentUser.uid), upatch, { merge: true }).catch(() => {});
         }
 
-        if (jackpot) {
+        if (jackpot && !isBotBet) {
           addDoc(collection(db, 'recentJackpots'), {
             game:      String(game || 'unknown'),
             kind:      jackpot.kind,

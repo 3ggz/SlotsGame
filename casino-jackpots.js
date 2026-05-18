@@ -475,10 +475,14 @@
       const entry = orig(game, bet, win, note);
       // Skip recursive entries (jackpot wins we re-record).
       const isJackpotEntry = note && /JACKPOT/i.test(String(note));
+      // Bot bets feed the pool but NEVER roll for a trigger — we
+      // don't want a background bot bet to award a jackpot to the
+      // local player.
+      const isBotBet = note && /^BOT\b/i.test(String(note));
       if (!isJackpotEntry) {
         const betNum = Number(bet) || 0;
         if (betNum > 0) {
-          processBet(String(game || 'unknown'), betNum);
+          processBet(String(game || 'unknown'), betNum, isBotBet);
         }
       }
       return entry;
@@ -603,7 +607,7 @@
     plinko: 0.1, // 1 in 10 balls counts — others are jackpot no-ops
   };
 
-  async function processBet(game, bet) {
+  async function processBet(game, bet, skipTrigger) {
     if (!docRef || !fs) {
       console.debug('[casino-jackpots] skipped contribute (firestore not ready)', { game, bet });
       return null;
@@ -622,9 +626,12 @@
     // Fixed per-spin probabilities — bet size doesn't change odds,
     // only the prize size (via contributions). Walk highest-to-lowest
     // so the biggest tier wins in the rare event multiple roll true.
+    // Bot bets contribute to the pool but never roll for a trigger.
     let rolledTier = null;
-    for (const t of TIERS) {
-      if (Math.random() < t.triggerPerSpin) { rolledTier = t; break; }
+    if (!skipTrigger) {
+      for (const t of TIERS) {
+        if (Math.random() < t.triggerPerSpin) { rolledTier = t; break; }
+      }
     }
 
     let trigger = null;

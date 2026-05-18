@@ -512,6 +512,21 @@
     pushChat(bot.game, { name: bot.name, hue: bot.hue, text: picked.styled, t, bot: true });
   }
 
+  // Feed a bot round through the same History.record pipeline real
+  // player rounds use, so "LIVE FROM THE FLOOR" stats and the global
+  // jackpot pools both grow from bot activity. The 'BOT' note tells
+  // casino-account.js to skip the per-user write and casino-jackpots.js
+  // to skip the trigger roll — the player should never be awarded a
+  // jackpot prize from a bet they didn't make. Skipped during fast-
+  // forward catch-up so reopening the tab doesn't dump a burst of
+  // back-dated writes onto Firestore.
+  function recordBotBet(game, bet, net) {
+    if (fastForwarding) return;
+    if (!(bet > 0)) return;
+    if (!window.History || typeof window.History.record !== 'function') return;
+    try { window.History.record(game, bet, net, 'BOT'); } catch (e) {}
+  }
+
   function botRound(bot, t) {
     const cfg = GAME_CONFIG[bot.game];
     if (!cfg) return;
@@ -525,6 +540,7 @@
     bot.hands += 1;
 
     const hit = Math.random() < cfg.hitRate;
+    let net = -bet;
     if (hit) {
       const u = Math.random();
       const skew = Math.pow(u, 2.4);
@@ -533,6 +549,7 @@
       bot.balance += win;
       bot.lifetimeWin += win - bet;
       bot.streak = Math.max(0, bot.streak) + 1;
+      net = win - bet;
 
       const isBig = win >= bet * cfg.bigMult;
       if (win > bot.biggestWin) bot.biggestWin = win;
@@ -549,6 +566,8 @@
       bot.streak = Math.min(0, bot.streak) - 1;
       if (bot.streak <= -4 && Math.random() < 0.25) maybeChat(bot, t, { kind: 'bust' });
     }
+
+    recordBotBet(bot.game, bet, net);
   }
 
   function stepBot(bot, t) {
@@ -695,6 +714,12 @@
     saveKey(TICK_KEY, tickAt);
   }
 
+  // Tracks whether tickOnce is being driven by a fast-forward catch-up
+  // burst vs a live tick. recordBotBet uses this to suppress Firestore
+  // writes during the burst (we don't want one tab reload to dump
+  // hundreds of back-dated bets onto the global stats).
+  let fastForwarding = false;
+
   function fastForward() {
     const t = now();
     const gap = t - tickAt;
@@ -702,11 +727,15 @@
     const slice = Math.min(gap, 5 * 60 * 1000);
     let cursor = t - slice;
     tickAt = cursor;
-    // ensure population is at a reasonable point before fast-forward bursts
     runPopulationManager(cursor, true);
-    while (cursor < t) {
-      cursor = Math.min(t, cursor + 1000);
-      tickOnce(cursor);
+    fastForwarding = true;
+    try {
+      while (cursor < t) {
+        cursor = Math.min(t, cursor + 1000);
+        tickOnce(cursor);
+      }
+    } finally {
+      fastForwarding = false;
     }
   }
 
@@ -921,13 +950,20 @@
       s.id = 'cb-lobby-css'; s.textContent = LOBBY_CSS;
       document.head.appendChild(s);
     }
-    function applyPresence(map) {
+    // Real-player counts come from Firestore via CasinoStats; bot
+    // counts come from our population manager. Both feed the same
+    // pill: the displayed number is real + bot.
+    let lastBotPresence  = {};
+    let lastRealPresence = {};
+    function repaintPresence() {
       document.querySelectorAll('.game-card[data-game]').forEach(card => {
         const g = card.getAttribute('data-game');
         if (!GAME_CONFIG[g]) return;
         let pill = card.querySelector('.cb-presence');
         if (!pill) { pill = document.createElement('div'); pill.className = 'cb-presence'; card.appendChild(pill); }
-        const count = map[g] || 0;
+        const real  = Number(lastRealPresence[g]) || 0;
+        const bots  = Number(lastBotPresence[g])  || 0;
+        const count = real + bots;
         pill.classList.toggle('empty', count === 0);
         pill.classList.add('live');
         pill.textContent = count === 0 ? 'QUIET' : (count + ' PLAYING');
@@ -935,8 +971,28 @@
     }
     function boot() {
       injectLobbyStyle();
-      applyPresence(computePresence());
-      window.CasinoBots.subscribePresence(applyPresence);
+      lastBotPresence = computePresence();
+      repaintPresence();
+      window.CasinoBots.subscribePresence(map => {
+        lastBotPresence = map || {};
+        repaintPresence();
+      });
+
+      // Hook CasinoStats (real-player presence from Firestore). It
+      // loads as a separate module so we poll briefly until it's up.
+      let realTries = 0;
+      const realIv = setInterval(() => {
+        realTries++;
+        if (window.CasinoStats && typeof window.CasinoStats.subscribePresence === 'function') {
+          clearInterval(realIv);
+          window.CasinoStats.subscribePresence(map => {
+            lastRealPresence = map || {};
+            repaintPresence();
+          });
+        } else if (realTries > 60) {
+          clearInterval(realIv);  // CasinoStats never showed up; bot-only is fine
+        }
+      }, 200);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();
@@ -1324,15 +1380,20 @@
         let target = rollTarget(bot);
         // BUSTED: target above crash. They held too long. Show nothing.
         if (target > crash) {
+          // The bet still happened — feed it into global stats + pool.
+          recordBotBet('rocket', bet, -bet);
           plans.push({ player: bot.name, target: Infinity, bet, botId: bot.id, active: true, status: 'bust' });
           continue;
         }
         // Late-joiner whose chosen target is already behind the live
         // multiplier — they didn't get to cash there. Same as bust.
         if (target < liveMult + 0.05) {
+          recordBotBet('rocket', bet, -bet);
           plans.push({ player: bot.name, target: Infinity, bet, botId: bot.id, active: true, status: 'bust' });
           continue;
         }
+        // Will cash out. Record the bet + eventual gross-net up front.
+        recordBotBet('rocket', bet, Math.round(bet * (target - 1)));
         plans.push({ player: bot.name, target, bet, botId: bot.id, active: true, status: 'cashout' });
       }
     }

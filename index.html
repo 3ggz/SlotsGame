@@ -582,44 +582,6 @@ body::after {
   place-items: center;
   isolation: isolate;
 }
-.player-badge {
-  position: absolute;
-  top: -10px;
-  right: -9px;
-  z-index: 9;
-  min-width: 54px;
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1px solid rgba(255,210,74,0.74);
-  background:
-    radial-gradient(circle at 22% 18%, rgba(255,255,255,0.20), transparent 34%),
-    linear-gradient(135deg, rgba(45,14,88,0.98), rgba(10,3,25,0.96));
-  box-shadow:
-    0 10px 22px rgba(0,0,0,0.40),
-    0 0 18px rgba(255,210,74,0.22),
-    inset 0 0 0 1px rgba(255,255,255,0.09);
-  color: #f5fff8;
-  font-family: 'Geist Mono', monospace;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  pointer-events: none;
-  text-shadow: 0 0 10px rgba(255,210,74,0.42);
-}
-.player-badge.show {
-  display: inline-flex;
-  animation: playerBadgePop 0.32s cubic-bezier(.2,.9,.2,1.25);
-}
-@keyframes playerBadgePop {
-  from { transform: translateY(-4px) scale(0.86); opacity: 0; }
-  to { transform: translateY(0) scale(1); opacity: 1; }
-}
-
 /* SLOTS PREVIEW: row of glowing symbols */
 .preview.slots {
   background:
@@ -3093,41 +3055,10 @@ function startJackpots() {
 document.addEventListener('casino-account-ready', startJackpots, { once: true });
 setTimeout(startJackpots, 1500);
 
-/* ============================================================
-   TABLE PRESENCE — show ×N on lobby cards when a table is busy
-   ============================================================ */
-const presenceBadges = new Map();
-document.querySelectorAll('.game-card[data-game]').forEach(card => {
-  const badge = document.createElement('span');
-  badge.className = 'player-badge';
-  badge.setAttribute('aria-hidden', 'true');
-  card.appendChild(badge);
-  presenceBadges.set(card.dataset.game, badge);
-});
-
-function renderPresenceBadges(counts) {
-  counts = counts || {};
-  presenceBadges.forEach((badge, game) => {
-    const count = Number(counts[game]) || 0;
-    const show = count > 0;
-    badge.textContent = show ? `👤 ${count}` : '';
-    badge.classList.toggle('show', show);
-  });
-}
-
-let presenceStarted = false;
-function startPresenceBadges() {
-  if (presenceStarted) return;
-  if (!window.CasinoStats || typeof window.CasinoStats.subscribePresence !== 'function') {
-    setTimeout(startPresenceBadges, 120);
-    return;
-  }
-  presenceStarted = true;
-  window.CasinoStats.subscribePresence(renderPresenceBadges);
-}
-window.renderPresenceBadges = renderPresenceBadges;
-document.addEventListener('casino-account-ready', startPresenceBadges);
-setTimeout(startPresenceBadges, 1500);
+/* Table presence is handled by casino-bots.js — it owns the single
+   .cb-presence pill on every game card and merges the real-player
+   count from CasinoStats.subscribePresence with the bot count from
+   its own population manager. */
 
 
 /* Account UI (chip + sign-in / profile modal) lives in casino-account.js
