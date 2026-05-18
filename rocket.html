@@ -2729,6 +2729,17 @@ function rocketBotRoundState(round) {
   }
 }
 
+function rocketBotPresence() {
+  try {
+    if (!window.CasinoBots || typeof CasinoBots.presence !== 'function') return 0;
+    const p = CasinoBots.presence() || {};
+    const n = Number(p.rocket);
+    return Math.max(0, Number.isFinite(n) ? n : 0);
+  } catch (e) {
+    return 0;
+  }
+}
+
 function activeRoundCounts(round = State.activeRound || getGlobalRound(casinoNow())) {
   if (!round || !round.roundId) return { total: 0, left: 0, phase: 'betting', bots: 0, real: 0 };
   const entries = new Map();
@@ -2756,8 +2767,13 @@ function activeRoundCounts(round = State.activeRound || getGlobalRound(casinoNow
   });
 
   const botState = rocketBotRoundState(round) || {};
-  const botTotal = Math.max(0, Number(botState.total) || 0);
-  const botLeft = Math.max(0, Number(botState.left) || 0);
+  const botFired = Math.max(0, Number(botState.fired) || 0);
+  const botTotal = Math.max(rocketBotPresence(), Math.max(0, Number(botState.total) || 0));
+  const botLeft = round.phase === 'running'
+    ? Math.max(Math.max(0, Number(botState.left) || 0), Math.max(0, botTotal - botFired))
+    : round.phase === 'betting'
+      ? botTotal
+      : 0;
   const total = realTotal + botTotal;
   const left = round.phase === 'running'
     ? realLeft + botLeft

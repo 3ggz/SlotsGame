@@ -2313,6 +2313,14 @@ body::after {
   .preview.craps .cr-dome { width: 104px; height: 80px; gap: 6px; }
   .preview.craps .cr-die { width: 23px; height: 23px; padding: 2px; }
   .preview.craps .cr-die .pip { width: 3px; height: 3px; }
+  .preview.mines::before { inset: 10px 10px 12px; border-radius: 14px; }
+  .preview.mines::after { left: 18px; right: 18px; bottom: 9px; height: 28px; }
+  .preview.mines .mn-grid { width: 124px; height: 124px; gap: 4px; padding: 7px; border-radius: 14px; }
+  .preview.mines .mn-grid::before { display: none; }
+  .preview.mines .mn-grid::after { inset: 7px; border-radius: 9px; }
+  .preview.mines .mn-tile { border-radius: 6px; }
+  .preview.mines .mn-mult { top: 9px; left: 14px; padding: 4px 8px 3px; font-size: 10px; }
+  .preview.mines .mn-bal { top: 9px; right: 14px; padding: 4px 8px 3px; font-size: 9px; }
   .balance-bar { padding: 12px 16px; gap: 10px; width: 100%; }
   .game-desc { min-height: auto; font-size: 12px; }
   .play-cta { padding: 13px; font-size: 13px; }

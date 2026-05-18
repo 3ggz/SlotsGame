@@ -1320,12 +1320,6 @@
         b.online && b.game === 'rocket' && (b.brokeUntil || 0) < now() && !decided.has(b.id));
 
       for (const bot of inRoom) {
-        // ~15% sit the round out entirely. Mark decided so we don't
-        // reconsider them this round.
-        if (Math.random() < 0.15) {
-          plans.push({ player: bot.name, target: Infinity, bet: 0, botId: bot.id, active: false, status: 'sitout' });
-          continue;
-        }
         const bet = botBet(bot);
         let target = rollTarget(bot);
         // BUSTED: target above crash. They held too long. Show nothing.
