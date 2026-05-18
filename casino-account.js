@@ -519,6 +519,8 @@ window.RocketLive = {
   playerLabel: () => 'Player',
   syncClock() { return Promise.resolve(0); },
   subscribeCashouts(roundId, fn) { try { fn([]); } catch (e) {} return () => {}; },
+  subscribeEntries(roundId, fn) { try { fn([]); } catch (e) {} return () => {}; },
+  recordEntry() { return Promise.resolve(); },
   recordCashout() { return Promise.resolve(); },
 };
 
@@ -817,6 +819,17 @@ if (!CONFIGURED) {
         }, () => {});
       }
 
+      function subscribeRocketEntries(roundId, fn, n = 120) {
+        const rid = String(roundId || '');
+        if (!rid) { try { fn([]); } catch (e) {} return () => {}; }
+        const q = query(collection(db, 'rocketRoundEntries', rid, 'entries'), orderBy('enteredAt', 'desc'), limit(n));
+        return onSnapshot(q, snap => {
+          const list = [];
+          snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+          fn(list);
+        }, () => {});
+      }
+
       function subscribeRouletteWins(roundId, fn, n = 80) {
         const rid = String(roundId || '');
         if (!rid) { try { fn([]); } catch (e) {} return () => {}; }
@@ -950,6 +963,27 @@ if (!CONFIGURED) {
         }).catch(() => {});
       }
 
+      function recordRocketEntry(data) {
+        data = data || {};
+        const roundId = String(data.roundId || '');
+        if (!roundId) return Promise.resolve();
+        const bet = Number(data.bet) || 0;
+        if (bet <= 0) return Promise.resolve();
+        if (!currentUser) {
+          return waitForCurrentUser().then(u => u ? recordRocketEntry(data) : undefined);
+        }
+        return setDoc(doc(db, 'rocketRoundEntries', roundId, 'entries', currentUser.uid), {
+          roundId,
+          bet,
+          player: playerLabel(currentUser),
+          uid: currentUser?.uid || null,
+          anonymous: !!currentUser?.isAnonymous,
+          enteredAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          lastSeen: Date.now(),
+        }, { merge: true }).catch(() => {});
+      }
+
       function recordRouletteWin(data) {
         data = data || {};
         const roundId = String(data.roundId || '');
@@ -1040,6 +1074,8 @@ if (!CONFIGURED) {
         playerLabel: () => playerLabel(currentUser),
         syncClock: syncRocketClock,
         subscribeCashouts: subscribeRocketCashouts,
+        subscribeEntries: subscribeRocketEntries,
+        recordEntry: recordRocketEntry,
         recordCashout: recordRocketCashout,
         subscribeChat: subscribeRocketChat,
         sendChat: sendRocketChat,

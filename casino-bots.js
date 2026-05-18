@@ -61,7 +61,7 @@
     lucky7saloon:       { name: 'Lucky 7 Saloon',       betPct: [0.004, 0.03], rounds: [3, 6],    hitRate: 0.33, payout: [1.1, 35],  bigMult: 9,  fav: 1.0, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 8,  sessionMax: 35 },
     blackjack:          { name: 'Blackjack',            betPct: [0.01,  0.06], rounds: [5, 12],   hitRate: 0.46, payout: [1, 2.5],   bigMult: 2,  fav: 1.2, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 6, sessionMin: 10, sessionMax: 40 },
     multihandblackjack: { name: 'Multi-hand Blackjack', betPct: [0.01,  0.06], rounds: [5, 12],   hitRate: 0.46, payout: [1, 3],     bigMult: 2,  fav: 0.8, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 10, sessionMax: 40 },
-    roulette:           { name: 'Roulette',             betPct: [0.005, 0.08], rounds: [4, 9],    hitRate: 0.36, payout: [1, 35],    bigMult: 8,  fav: 1.4, tempo: 0.025, replyRate: 0.22, idle: 2, perPlayer: 3, max: 8, sessionMin: 12, sessionMax: 45 },
+    roulette:           { name: 'Roulette',             betPct: [0.005, 0.08], rounds: [4, 9],    hitRate: 0.36, payout: [1, 35],    bigMult: 8,  fav: 1.4, tempo: 0.025, replyRate: 0.22, idle: 5, perPlayer: 4, max: 10, sessionMin: 12, sessionMax: 45 },
     rocket:             { name: 'Rocket',               betPct: [0.005, 0.05], rounds: [3, 7],    hitRate: 0.40, payout: [1.2, 18],  bigMult: 6,  fav: 1.4, tempo: 0.020, replyRate: 0.20, idle: 2, perPlayer: 3, max: 8, sessionMin: 10, sessionMax: 40 },
     plinko:             { name: 'Plinko',               betPct: [0.005, 0.04], rounds: [2, 5],    hitRate: 0.55, payout: [0.4, 24],  bigMult: 10, fav: 0.9, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 1, max: 4, sessionMin: 6,  sessionMax: 25 },
     mines:              { name: 'Mines',                betPct: [0.005, 0.04], rounds: [3, 7],    hitRate: 0.52, payout: [1.1, 18],  bigMult: 8,  fav: 1.0, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 1, max: 4, sessionMin: 7,  sessionMax: 28 },
@@ -871,6 +871,7 @@
       try { fn(computePresence()); } catch (e) {}
       return () => presenceSubs.delete(fn);
     },
+    rocketRoundState: () => null,
     sendChat: (g, text) => {
       const t = String(text || '').trim().slice(0, 160);
       if (!t || !GAME_CONFIG[g]) return;
@@ -1002,25 +1003,25 @@
       if (!Core) return [];
       const roll = Math.random();
       try {
-        if (roll < 0.34) {
+        if (roll < 0.46) {
           const kind = choose(['red', 'black', 'even', 'odd', 'low', 'high']);
           return [Core.createOutsideBet(kind, rouletteChipFor(bot, 1))];
         }
-        if (roll < 0.54) {
+        if (roll < 0.76) {
           if (Math.random() < 0.5) return [Core.createDozenBet(randInt(1, 3), rouletteChipFor(bot, 1))];
           return [Core.createColumnBet(randInt(1, 3), rouletteChipFor(bot, 1))];
         }
-        if (roll < 0.72) {
-          const pocket = choose(Core.AMERICAN_WHEEL);
-          return [Core.createStraightBet(pocket, rouletteChipFor(bot, 1))];
-        }
-        if (roll < 0.84) {
+        if (roll < 0.86) {
           const start = 1 + randInt(0, 11) * 3;
           return [Core.createStreetBet(start, rouletteChipFor(bot, 1))];
         }
         if (roll < 0.94) {
           const start = 1 + randInt(0, 10) * 3;
           return [Core.createSixLineBet(start, rouletteChipFor(bot, 1))];
+        }
+        if (roll < 0.985) {
+          const pocket = choose(Core.AMERICAN_WHEEL);
+          return [Core.createStraightBet(pocket, rouletteChipFor(bot, 1))];
         }
         const center = choose(Core.AMERICAN_WHEEL);
         return Core.createNeighborsBets(center, rouletteChipFor(bot, 5), 2);
@@ -1044,7 +1045,7 @@
       for (const bot of activeRouletteBots()) {
         if (decided.has(bot.id)) continue;
         decided.add(bot.id);
-        if (Math.random() < 0.15) continue;
+        if (Math.random() < 0.04) continue;
         const bets = makeRouletteBotBets(bot);
         const totalBet = Math.round(bets.reduce((sum, b) => sum + (Number(b.amount) || 0), 0) * 100) / 100;
         const stack = Math.max(0, Number(bot.balance) || 0);
@@ -1104,6 +1105,7 @@
       if (!round || !round.roundId) return;
       if (round.phase === 'betting') planRouletteBots(round);
       if (round.phase === 'result') settleRouletteBots(round);
+      return round;
     }
 
     function tryHookRouletteWins() {
@@ -1178,7 +1180,14 @@
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();
-    setInterval(() => { try { pumpRouletteBots(); } catch (e) {} }, 500);
+    setInterval(() => {
+      try {
+        const round = pumpRouletteBots();
+        if (round && round.phase === 'result' && typeof window.renderRecentWins === 'function') {
+          window.renderRecentWins();
+        }
+      } catch (e) {}
+    }, 500);
     return;
   }
 
@@ -1252,6 +1261,10 @@
       return 1.05 + Math.pow(r, 2.2) * 9;                              // 1.05–10
     }
 
+    function botBet(bot) {
+      return Math.max(1, Math.round((bot && bot.seedBalance || 1000) * (0.005 + Math.random() * 0.03)));
+    }
+
     // Plan a round's bot cashouts. Idempotent on round id and on bot
     // id within a round — each bot is decided EXACTLY ONCE per round.
     // Busted decisions stick. Late-arriving bots get a fresh decision
@@ -1310,25 +1323,40 @@
         // ~15% sit the round out entirely. Mark decided so we don't
         // reconsider them this round.
         if (Math.random() < 0.15) {
-          plans.push({ player: bot.name, target: Infinity, bet: 0, botId: bot.id });
+          plans.push({ player: bot.name, target: Infinity, bet: 0, botId: bot.id, active: false, status: 'sitout' });
           continue;
         }
+        const bet = botBet(bot);
         let target = rollTarget(bot);
         // BUSTED: target above crash. They held too long. Show nothing.
         if (target > crash) {
-          plans.push({ player: bot.name, target: Infinity, bet: 0, botId: bot.id });
+          plans.push({ player: bot.name, target: Infinity, bet, botId: bot.id, active: true, status: 'bust' });
           continue;
         }
         // Late-joiner whose chosen target is already behind the live
         // multiplier — they didn't get to cash there. Same as bust.
         if (target < liveMult + 0.05) {
-          plans.push({ player: bot.name, target: Infinity, bet: 0, botId: bot.id });
+          plans.push({ player: bot.name, target: Infinity, bet, botId: bot.id, active: true, status: 'bust' });
           continue;
         }
-        const bet = Math.max(1, Math.round(bot.seedBalance * (0.005 + Math.random() * 0.03)));
-        plans.push({ player: bot.name, target, bet, botId: bot.id });
+        plans.push({ player: bot.name, target, bet, botId: bot.id, active: true, status: 'cashout' });
       }
     }
+
+    function rocketRoundState(roundId) {
+      const round = currentRound();
+      const rid = String(roundId || (round && round.roundId) || '');
+      if (!rid) return { roundId: '', total: 0, left: 0, fired: 0, pending: 0 };
+      if (round && round.roundId === rid) planRound(round);
+      const plans = botPlans.get(rid) || [];
+      const fired = botFired.get(rid) || [];
+      const pending = plans.filter(p => p && p.active).length;
+      const total = pending + fired.length;
+      const phase = round && round.roundId === rid ? round.phase : '';
+      const left = phase === 'running' ? pending : phase === 'betting' ? total : 0;
+      return { roundId: rid, total, left, fired: fired.length, pending };
+    }
+    window.CasinoBots.rocketRoundState = rocketRoundState;
 
     // Fire any plan whose target has been reached by the current
     // multiplier. Pushes the cashout into the fired bucket so the
@@ -1343,7 +1371,10 @@
       const wasNew = rid !== lastSeenRound;
       if (wasNew) lastSeenRound = rid;
       planRound(round);
-      if (wasNew) { try { window.renderRecent(); } catch (e) {} }
+      if (wasNew) {
+        try { window.renderRecent(); } catch (e) {}
+        try { window.renderActiveCount(round); } catch (e) {}
+      }
 
       if (round.phase !== 'running') return;
       const Sp = pageState();
@@ -1370,6 +1401,7 @@
       }
       if (didFire) {
         try { window.renderRecent(); } catch (e) {}
+        try { window.renderActiveCount(round); } catch (e) {}
       }
     }
 

@@ -334,6 +334,16 @@ button, input { font: inherit; }
   box-shadow: inset 0 0 0 1px rgba(92,255,161,0.28), 0 12px 24px rgba(0,0,0,0.26);
   text-shadow: 0 0 12px rgba(92,255,161,0.36);
 }
+.active-count-pill {
+  color: #dffbff;
+  box-shadow: inset 0 0 0 1px rgba(34,211,238,0.30), 0 12px 24px rgba(0,0,0,0.26);
+  text-shadow: 0 0 12px rgba(34,211,238,0.38);
+}
+.active-count-pill.hot {
+  color: #fff0a8;
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.34), 0 12px 24px rgba(0,0,0,0.26), 0 0 18px rgba(255,210,74,0.12);
+  text-shadow: 0 0 12px rgba(255,210,74,0.42);
+}
 .status-dot {
   width: 8px;
   height: 8px;
@@ -1113,7 +1123,8 @@ button, input { font: inherit; }
   #flight { inset: 10px; width: calc(100% - 20px); height: calc(100% - 20px); }
   .flight-hud { gap: 8px; }
   .status-pill { min-height: 30px; padding: 0 9px; font-size: 8px; letter-spacing: 0.14em; }
-  .player-count-pill { letter-spacing: 0.08em; }
+  .player-count-pill,
+  .active-count-pill { letter-spacing: 0.08em; }
   .multiplier-readout .value { font-size: clamp(46px, 18vw, 76px); }
   .multiplier-readout .caption { font-size: 9px; letter-spacing: 0.22em; }
   .side-rail { grid-template-columns: 1fr 1fr; gap: 9px; }
@@ -1196,6 +1207,7 @@ button, input { font: inherit; }
       <div class="flight-hud">
         <div class="status-pill"><span class="status-dot" id="status-dot"></span><span id="status-text">STANDBY</span></div>
         <div class="status-pill player-count-pill" id="rocket-player-count">👤 0 PLAYING</div>
+        <div class="status-pill active-count-pill" id="rocket-active-count">0 IN</div>
       </div>
       <div class="multiplier-readout" id="readout">
         <div class="value" id="multiplier">1.00x</div>
@@ -1405,6 +1417,7 @@ const captionEl = document.getElementById('caption');
 const statusEl = document.getElementById('status-text');
 const statusDot = document.getElementById('status-dot');
 const rocketPlayerCountEl = document.getElementById('rocket-player-count');
+const rocketActiveCountEl = document.getElementById('rocket-active-count');
 const countdownEl = document.getElementById('countdown');
 const betInput = document.getElementById('bet-input');
 const targetInput = document.getElementById('target-input');
@@ -2361,10 +2374,13 @@ Object.assign(State, {
   localCashout: null,
   activeRound: null,
   liveCashouts: [],
+  liveEntries: [],
   cashoutRoundId: null,
+  entryRoundId: null,
   heldCashouts: [],
   recentRenderKey: '',
   unsubscribeCashouts: null,
+  unsubscribeEntries: null,
   lastCrashRoundId: null,
   hasPlayedLaunchSfx: false,
   lastPhase: '',
@@ -2566,6 +2582,25 @@ function bindCashoutFeed(roundId, force) {
     });
   }
   renderRecent();
+  renderActiveCount();
+}
+
+function bindEntryFeed(roundId, force) {
+  if (!roundId) return;
+  if (!force && State.entryRoundId === roundId) return;
+  if (State.unsubscribeEntries) {
+    try { State.unsubscribeEntries(); } catch (e) {}
+  }
+  State.entryRoundId = roundId;
+  State.liveEntries = [];
+  State.unsubscribeEntries = null;
+  if (window.RocketLive && RocketLive.subscribeEntries) {
+    State.unsubscribeEntries = RocketLive.subscribeEntries(roundId, list => {
+      State.liveEntries = Array.isArray(list) ? list : [];
+      renderActiveCount();
+    });
+  }
+  renderActiveCount();
 }
 
 function syncRocketClock() {
@@ -2631,7 +2666,10 @@ function sendRocketChatMessage() {
 
 document.addEventListener('casino-account-ready', () => {
   syncRocketClock();
-  if (State.activeRound) bindCashoutFeed(State.activeRound.roundId, true);
+  if (State.activeRound) {
+    bindCashoutFeed(State.activeRound.roundId, true);
+    bindEntryFeed(State.activeRound.roundId, true);
+  }
   startRocketPresenceCount();
   startRocketChat();
 });
@@ -2661,6 +2699,80 @@ function mergedCashouts() {
 
 function snapshotCashouts() {
   return mergedCashouts().map(c => ({ ...c }));
+}
+
+function participantKey(item, fallback) {
+  if (!item) return fallback || '';
+  const uid = item.uid || item.userId || item.id;
+  if (uid) return 'u:' + String(uid);
+  const player = item.player || item.name || fallback || '';
+  return 'p:' + String(player).trim().toLowerCase();
+}
+
+function localEntry(roundId) {
+  if (!hasLocalBet(roundId)) return null;
+  return {
+    roundId,
+    bet: State.localBet,
+    player: activePlayerLabel(),
+    uid: activePlayerUid() || 'local-player',
+    local: true,
+  };
+}
+
+function rocketBotRoundState(round) {
+  try {
+    if (!window.CasinoBots || typeof CasinoBots.rocketRoundState !== 'function') return null;
+    return CasinoBots.rocketRoundState(round && round.roundId);
+  } catch (e) {
+    return null;
+  }
+}
+
+function activeRoundCounts(round = State.activeRound || getGlobalRound(casinoNow())) {
+  if (!round || !round.roundId) return { total: 0, left: 0, phase: 'betting', bots: 0, real: 0 };
+  const entries = new Map();
+  const roundId = round.roundId;
+  State.liveEntries.forEach(entry => {
+    if (!entry || entry.roundId !== roundId) return;
+    const key = participantKey(entry);
+    if (key) entries.set(key, entry);
+  });
+  const local = localEntry(roundId);
+  if (local) entries.set(participantKey(local, 'local-player'), local);
+
+  const cashed = new Set();
+  mergedCashouts().forEach(c => {
+    const key = participantKey(c);
+    if (key) cashed.add(key);
+  });
+
+  let realTotal = entries.size;
+  let realLeft = 0;
+  entries.forEach((entry, key) => {
+    if (cashed.has(key)) return;
+    if (entry.local && (State.localCashed || State.localResolved)) return;
+    realLeft++;
+  });
+
+  const botState = rocketBotRoundState(round) || {};
+  const botTotal = Math.max(0, Number(botState.total) || 0);
+  const botLeft = Math.max(0, Number(botState.left) || 0);
+  const total = realTotal + botTotal;
+  const left = round.phase === 'running'
+    ? realLeft + botLeft
+    : round.phase === 'betting'
+      ? total
+      : 0;
+  return { total, left, phase: round.phase, bots: botLeft, real: realLeft };
+}
+
+function renderActiveCount(round = State.activeRound || getGlobalRound(casinoNow())) {
+  if (!rocketActiveCountEl) return;
+  const counts = activeRoundCounts(round);
+  const running = counts.phase === 'running';
+  rocketActiveCountEl.textContent = running ? `${counts.left} LEFT` : `${counts.total} IN`;
+  rocketActiveCountEl.classList.toggle('hot', running && counts.left > 0);
 }
 
 function escapeHTML(s) {
@@ -2754,6 +2866,20 @@ function sendCashoutToLive(cashout) {
   else document.addEventListener('casino-account-ready', send, { once: true });
 }
 
+function sendEntryToLive(entry) {
+  const payload = {
+    roundId: entry.roundId,
+    bet: entry.bet,
+  };
+  const send = () => {
+    try {
+      if (window.RocketLive && RocketLive.recordEntry) RocketLive.recordEntry(payload);
+    } catch (e) {}
+  };
+  if (window.RocketLive && RocketLive.configured) send();
+  else document.addEventListener('casino-account-ready', send, { once: true });
+}
+
 function resolveLocalLoss(round) {
   if (!round || !hasLocalBet(round.roundId) || State.localResolved) return;
   State.localResolved = true;
@@ -2761,6 +2887,7 @@ function resolveLocalLoss(round) {
   if (window.History) History.record('rocket', State.localBet, -State.localBet, 'CRASH ' + crashMult.toFixed(2) + 'X');
   statLastEl.textContent = multText(crashMult);
   pushSessionBet({ type: 'loss', multiplier: crashMult });
+  renderActiveCount(round);
 }
 
 function crashHoldActive(now = performance.now()) {
@@ -2842,6 +2969,7 @@ function syncGlobalRound(round) {
     else rocketEl.classList.remove('crashed');
     readoutEl.className = keepImpact ? 'multiplier-readout crash' : 'multiplier-readout';
     bindCashoutFeed(round.roundId);
+    bindEntryFeed(round.roundId);
   } else {
     State.activeRound = round;
     State.crashAt = round.crashAt;
@@ -2997,6 +3125,8 @@ function startRound() {
   refreshBalance();
   playSfx('chipPlace', 0.72);
   showToast('BET LOCKED FOR GLOBAL LAUNCH', 'win');
+  sendEntryToLive({ roundId: round.roundId, bet });
+  renderActiveCount(round);
   if (window.Music) Music.start();
   syncControls();
 }
@@ -3059,6 +3189,7 @@ function cashOut(auto) {
   playSfx(paidMult >= 20 ? 'fanfare' : paidMult >= 5 ? 'winBig' : paidMult >= 2 ? 'winMedium' : 'winSmall', paidMult >= 10 ? 0.82 : 0.68);
   playSfx('chipPayout', 0.65);
   showToast((auto ? 'AUTO BANKED ' : 'BANKED ') + money(payout) + ' @ ' + multText(paidMult), 'win');
+  renderActiveCount(round);
   syncControls();
 }
 
@@ -3267,6 +3398,7 @@ function frame(now) {
   }
 
   syncControls();
+  renderActiveCount(round);
   if (round.phase === 'betting') renderRecent(round);
   drawBackground(now);
   const drawP = impactActive ? State.crashHold.p : (round.phase === 'betting' ? 0.035 : pathProgress(round.multiplier, State.graphMax || BASE_GRAPH_MAX));
