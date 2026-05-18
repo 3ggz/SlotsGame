@@ -2817,7 +2817,7 @@ const Audio = (() => {
     // the 4th reel mid-tail; pool size 5 keeps the stops independent.
     diamondReelStop(reelIdx = 0) {
       const pitch = 0.96 + reelIdx * 0.018;
-      play('diamond_reel_stop', { gain: 0.78, pitch, pitchVariance: 0.025 });
+      play('diamond_reel_stop', { gain: 0.35, pitch, pitchVariance: 0.025 });
     },
 
     reelLand(strength = 0.85) {
