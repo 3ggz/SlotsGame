@@ -55,16 +55,16 @@
   //                             logging off naturally
   // -----------------------------------------------------------
   const GAME_CONFIG = {
-    slots:              { name: 'Diamond Deluxe',       betPct: [0.005, 0.04], rounds: [3.5, 7],  hitRate: 0.28, payout: [1.2, 25],  bigMult: 8,  fav: 1.4, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 8,  sessionMax: 35 },
-    kraken:             { name: "Kraken's Depths",      betPct: [0.005, 0.04], rounds: [3.8, 8],  hitRate: 0.26, payout: [1.5, 40],  bigMult: 10, fav: 1.1, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 8,  sessionMax: 35 },
-    dragontree:         { name: 'Dragon Tree',          betPct: [0.005, 0.04], rounds: [3.5, 7],  hitRate: 0.30, payout: [1.2, 22],  bigMult: 8,  fav: 1.0, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 8,  sessionMax: 35 },
-    lucky7saloon:       { name: 'Lucky 7 Saloon',       betPct: [0.004, 0.03], rounds: [3, 6],    hitRate: 0.33, payout: [1.1, 35],  bigMult: 9,  fav: 1.0, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 8,  sessionMax: 35 },
+    slots:              { name: 'Diamond Deluxe',       betPct: [0.005, 0.04], rounds: [3.5, 7],  hitRate: 0.28, payout: [1.2, 25],  bigMult: 5,  fav: 1.4, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 8,  sessionMax: 35 },
+    kraken:             { name: "Kraken's Depths",      betPct: [0.005, 0.04], rounds: [3.8, 8],  hitRate: 0.26, payout: [1.5, 40],  bigMult: 5,  fav: 1.1, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 8,  sessionMax: 35 },
+    dragontree:         { name: 'Dragon Tree',          betPct: [0.005, 0.04], rounds: [3.5, 7],  hitRate: 0.30, payout: [1.2, 22],  bigMult: 5,  fav: 1.0, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 8,  sessionMax: 35 },
+    lucky7saloon:       { name: 'Lucky 7 Saloon',       betPct: [0.004, 0.03], rounds: [3, 6],    hitRate: 0.33, payout: [1.1, 35],  bigMult: 5,  fav: 1.0, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 8,  sessionMax: 35 },
     blackjack:          { name: 'Blackjack',            betPct: [0.01,  0.06], rounds: [5, 12],   hitRate: 0.46, payout: [1, 2.5],   bigMult: 2,  fav: 1.2, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 6, sessionMin: 10, sessionMax: 40 },
     multihandblackjack: { name: 'Multi-hand Blackjack', betPct: [0.01,  0.06], rounds: [5, 12],   hitRate: 0.46, payout: [1, 3],     bigMult: 2,  fav: 0.8, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 10, sessionMax: 40 },
-    roulette:           { name: 'Roulette',             betPct: [0.005, 0.08], rounds: [4, 9],    hitRate: 0.36, payout: [1, 35],    bigMult: 8,  fav: 1.4, tempo: 0.025, replyRate: 0.22, idle: 5, perPlayer: 4, max: 10, sessionMin: 12, sessionMax: 45 },
-    rocket:             { name: 'Rocket',               betPct: [0.005, 0.05], rounds: [3, 7],    hitRate: 0.40, payout: [1.2, 18],  bigMult: 6,  fav: 1.4, tempo: 0.020, replyRate: 0.20, idle: 2, perPlayer: 3, max: 8, sessionMin: 10, sessionMax: 40 },
-    plinko:             { name: 'Plinko',               betPct: [0.005, 0.04], rounds: [2, 5],    hitRate: 0.55, payout: [0.4, 24],  bigMult: 10, fav: 0.9, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 1, max: 4, sessionMin: 6,  sessionMax: 25 },
-    mines:              { name: 'Mines',                betPct: [0.005, 0.04], rounds: [3, 7],    hitRate: 0.52, payout: [1.1, 18],  bigMult: 8,  fav: 1.0, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 1, max: 4, sessionMin: 7,  sessionMax: 28 },
+    roulette:           { name: 'Roulette',             betPct: [0.005, 0.08], rounds: [4, 9],    hitRate: 0.36, payout: [1, 35],    bigMult: 5,  fav: 1.4, tempo: 0.025, replyRate: 0.22, idle: 5, perPlayer: 4, max: 10, sessionMin: 12, sessionMax: 45 },
+    rocket:             { name: 'Rocket',               betPct: [0.005, 0.05], rounds: [3, 7],    hitRate: 0.40, payout: [1.2, 18],  bigMult: 4,  fav: 1.4, tempo: 0.020, replyRate: 0.20, idle: 2, perPlayer: 3, max: 8, sessionMin: 10, sessionMax: 40 },
+    plinko:             { name: 'Plinko',               betPct: [0.005, 0.04], rounds: [2, 5],    hitRate: 0.55, payout: [0.4, 24],  bigMult: 5,  fav: 0.9, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 1, max: 4, sessionMin: 6,  sessionMax: 25 },
+    mines:              { name: 'Mines',                betPct: [0.005, 0.04], rounds: [3, 7],    hitRate: 0.52, payout: [1.1, 18],  bigMult: 5,  fav: 1.0, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 1, max: 4, sessionMin: 7,  sessionMax: 28 },
     easycraps:          { name: 'Easy Craps',           betPct: [0.01,  0.05], rounds: [5, 10],   hitRate: 0.48, payout: [1, 6],     bigMult: 3,  fav: 0.9, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 6, sessionMin: 10, sessionMax: 40 },
     craplesscraps:      { name: 'Crapless Craps',       betPct: [0.01,  0.05], rounds: [5, 10],   hitRate: 0.46, payout: [1, 9],     bigMult: 3,  fav: 0.7, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 10, sessionMax: 40 },
     standardcraps:      { name: 'Standard Craps',       betPct: [0.01,  0.05], rounds: [5, 10],   hitRate: 0.46, payout: [1, 9],     bigMult: 3,  fav: 0.7, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 10, sessionMax: 40 },
@@ -824,39 +824,54 @@
   }
 
   // -----------------------------------------------------------
-  // Player-win hook. casino-audio.js installs window.History on
-  // every page; each game calls History.record(game, bet, net,
-  // note) at the end of a round. We wrap it (after it exists) so
-  // a player's BIG wins land in the same feed bots push into.
+  // Player-win hook. casino-audio.js exposes History.onChange(fn)
+  // which fires after every record(); we use that instead of
+  // wrapping History.record directly, so we're independent of
+  // wrap-order with casino-jackpots.js. We dedup by timestamp so
+  // a single record() doesn't double-push.
+  //
+  // Bot bets go through this hook too (their History.record('BOT')
+  // call also fires onChange), so we skip BOT-noted entries —
+  // botRound already pushes to the feed directly with the bot's
+  // own name.
   // -----------------------------------------------------------
   let historyHooked = false;
+  let lastSeenHistoryTs = 0;
   function tryHookHistory() {
     if (historyHooked) return;
-    if (!window.History || typeof window.History.record !== 'function') return;
+    if (!window.History || typeof window.History.onChange !== 'function' ||
+        typeof window.History.getSession !== 'function') return;
     historyHooked = true;
-    const orig = window.History.record.bind(window.History);
-    window.History.record = function (game, bet, net, note) {
-      const entry = orig(game, bet, net, note);
+    // Seed the cursor from existing session entries so we don't
+    // re-process anything that happened before the page loaded.
+    try {
+      const seed = window.History.getSession();
+      for (const e of seed) if (e && e.ts > lastSeenHistoryTs) lastSeenHistoryTs = e.ts;
+    } catch (e) {}
+    window.History.onChange(() => {
       try {
-        const g = String(game || '');
-        const cfg = GAME_CONFIG[g];
-        const betN = Number(bet) || 0;
-        const netN = Number(net) || 0;
-        if (cfg && netN > 0 && betN > 0) {
+        const session = window.History.getSession();
+        for (const e of session) {
+          if (!e || !e.ts || e.ts <= lastSeenHistoryTs) continue;
+          lastSeenHistoryTs = e.ts;
+          if (e.note && /^BOT\b/i.test(String(e.note))) continue;
+          const g = String(e.game || '');
+          const cfg = GAME_CONFIG[g];
+          const betN = Number(e.bet) || 0;
+          const netN = Number(e.win) || 0;
+          if (!cfg || netN <= 0 || betN <= 0) continue;
           const grossWin = betN + netN;
           const ratio = grossWin / betN;
-          if (ratio >= cfg.bigMult) {
-            const name = getPlayerName();
-            pushWin(g, {
-              name, hue: 200, bet: betN, win: grossWin, big: true, t: now(), isPlayer: true,
-            });
-            // a real player hit big — bots in the room may react
-            scheduleReactionsToBigWin(g, name, true);
-          }
+          if (ratio < cfg.bigMult) continue;
+          const name = getPlayerName();
+          pushWin(g, {
+            name, hue: 200, bet: betN, win: grossWin, big: true,
+            t: e.ts || now(), isPlayer: true,
+          });
+          scheduleReactionsToBigWin(g, name, true);
         }
-      } catch (e) {}
-      return entry;
-    };
+      } catch (err) {}
+    });
   }
   tryHookHistory();
   if (!historyHooked) {
