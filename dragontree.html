@@ -18,9 +18,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Outfit:wght@400;600;800&family=Geist+Mono:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
-<script src="casino-jackpots.js"></script>
+<script src="casino-jackpots.js?v=77"></script>
 <script>window.CB_BANNER_PLACEMENT = { anchor: '#scene-wrap', position: 'before', gapTop: '10px', gapBottom: '8px' };</script>
-<script src="casino-bots.js"></script>
+<script src="casino-bots.js?v=77"></script>
 <script src="casino-chat.js"></script>
 <style>
 :root {
@@ -1676,6 +1676,7 @@ const fmt = n => {
 };
 
 const AudioFX = (() => {
+  const MAX_ACTIVE_AUDIO = 12;
   const files = {
     soft: 'sfx/button_soft.mp3',
     chip: 'sfx/chip_select.mp3',
@@ -1700,6 +1701,7 @@ const AudioFX = (() => {
     treeFell: ['fell1', 'fell2']
   };
   const cache = new Map();
+  const activeAudio = new Set();
   function base(name) {
     if (!files[name]) return null;
     if (!cache.has(name)) {
@@ -1712,9 +1714,25 @@ const AudioFX = (() => {
   function play(name, volume = 1) {
     const src = base(name);
     if (!src) return;
+    while (activeAudio.size >= MAX_ACTIVE_AUDIO) {
+      const oldest = activeAudio.values().next().value;
+      if (!oldest) break;
+      oldest.pause();
+      oldest.removeAttribute('src');
+      oldest.load();
+      activeAudio.delete(oldest);
+    }
     const a = src.cloneNode();
     const settingVolume = window.Settings && typeof Settings.sfxVolume === 'function' ? Settings.sfxVolume() : 1;
     a.volume = Math.max(0, Math.min(1, settingVolume * volume));
+    activeAudio.add(a);
+    const release = () => {
+      activeAudio.delete(a);
+      a.removeEventListener('ended', release);
+      a.removeEventListener('error', release);
+    };
+    a.addEventListener('ended', release, { once: true });
+    a.addEventListener('error', release, { once: true });
     a.play().catch(() => {});
   }
   return {
@@ -1745,6 +1763,42 @@ const State = {
 };
 const HIT_PACE = 0.7;
 const paced = ms => Math.round(ms * HIT_PACE);
+const MOBILE_EFFECT_SCALE = matchMedia('(max-width: 760px), (pointer: coarse)').matches ? 0.58 : 1;
+const transientTimers = new Set();
+const activeLeafAnimations = new Set();
+
+function scaledEffectCount(count, min = 1) {
+  return Math.max(min, Math.round(count * MOBILE_EFFECT_SCALE));
+}
+
+function trackTimer(fn, ms) {
+  const id = setTimeout(() => {
+    transientTimers.delete(id);
+    fn();
+  }, ms);
+  transientTimers.add(id);
+  return id;
+}
+
+function cleanupTransientEffects(reason) {
+  transientTimers.forEach(id => clearTimeout(id));
+  transientTimers.clear();
+  activeLeafAnimations.forEach(anim => {
+    try { anim.cancel(); } catch (e) {}
+  });
+  activeLeafAnimations.clear();
+  els.falling.innerHTML = '';
+  els.bonusOv.querySelectorAll('.bonus-spark').forEach(node => node.remove());
+  els.treeField.querySelectorAll('.strike-pulse').forEach(node => node.remove());
+  els.reveal.querySelectorAll('.coin-shine').forEach(node => node.remove());
+  els.strike.classList.remove('shake');
+  els.treeField.classList.remove('shake');
+  els.megaFlash.classList.remove('show');
+  if (reason === 'bonus-start') {
+    els.payout.classList.remove('show', 'fade-out');
+    els.tally.classList.remove('show');
+  }
+}
 
 const BONUS_TRIGGER_CHANCE = 0.15;
 const REVEAL_COUNT_WEIGHTS = [
@@ -1884,7 +1938,7 @@ document.addEventListener('jackpot-win', () => {
    AMBIENT EMBERS
    ============================================================ */
 function spawnEmbers() {
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < scaledEffectCount(26, 14); i++) {
     const e = document.createElement('div');
     e.className = 'ember';
     e.style.left = (Math.random() * 100) + '%';
@@ -1900,16 +1954,16 @@ function spawnEmbers() {
 spawnEmbers();
 
 function emberBurst() {
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < scaledEffectCount(14, 7); i++) {
     const e = document.createElement('div');
-    e.className = 'ember';
+    e.className = 'ember burst';
     e.style.left = (40 + Math.random() * 20) + '%';
     e.style.bottom = '30%';
     e.style.width = '5px'; e.style.height = '5px';
     e.style.animationDuration = '1.6s';
     e.style.setProperty('--drift', (Math.random() * 140 - 70) + 'px');
     els.emberLayer.appendChild(e);
-    setTimeout(() => e.remove(), 1700);
+    trackTimer(() => e.remove(), 1700);
   }
 }
 
@@ -2085,7 +2139,7 @@ function spawnStrikePulses() {
     pulse.className = 'strike-pulse';
     pulse.style.animationDelay = (i * 0.1) + 's';
     els.treeField.appendChild(pulse);
-    setTimeout(() => pulse.remove(), 1150 + i * 100);
+    trackTimer(() => pulse.remove(), 1150 + i * 100);
   }
 }
 
@@ -2100,12 +2154,12 @@ els.strike.addEventListener('click', () => {
   els.treeField.classList.add('shake');
   spawnStrikePulses();
   emberBurst();
-  setTimeout(() => {
+  trackTimer(() => {
     els.strike.classList.remove('shake');
     els.treeField.classList.remove('shake');
   }, paced(620));
 
-  setTimeout(() => {
+  trackTimer(() => {
     const trig = Math.random() < BONUS_TRIGGER_CHANCE;
     if (trig) runBonus();
     else runConsolation();
@@ -2118,7 +2172,7 @@ function runConsolation() {
   if (window.History && typeof window.History.record === 'function') {
     try { window.History.record('dragontree', State.bet, -State.bet, null); } catch (e) {}
   }
-  setTimeout(() => {
+  trackTimer(() => {
     State.spinning = false;
     updateStrikeEnabled();
   }, paced(1400));
@@ -2152,6 +2206,7 @@ function animateCount(from, to, duration, cb) {
 }
 
 async function runBonus() {
+  cleanupTransientEffects('bonus-start');
   State.bonusHits++;
   els.bonusHits.textContent = State.bonusHits;
   AudioFX.play('bonus', 0.82);
@@ -2182,7 +2237,7 @@ async function runBonus() {
     if (!match) return;
     usedEls.add(match.el);
     selectedLanterns.push(match.el);
-    setTimeout(() => {
+    trackTimer(() => {
       match.el.classList.add('selected');
       AudioFX.play('lantern', 0.48 + i * 0.04);
     }, 280 + i * 200);
@@ -2194,7 +2249,7 @@ async function runBonus() {
   els.sceneBg.classList.remove('bright');
 
   // 4. Falling leaves
-  const totalLeaves = 22 + Math.floor(Math.random() * 9);
+  const totalLeaves = scaledEffectCount(22 + Math.floor(Math.random() * 9), 12);
   spawnFallingLeaves(totalLeaves);
 
   await wait(550);
@@ -2235,7 +2290,7 @@ async function runBonus() {
     const shine = document.createElement('div');
     shine.className = 'coin-shine';
     cards[i].querySelector('.reveal-front').appendChild(shine);
-    setTimeout(() => shine.remove(), 1000);
+    trackTimer(() => shine.remove(), 1000);
     await wait(360);
   }
   await wait(140);
@@ -2259,14 +2314,14 @@ async function runBonus() {
     els.megaFlash.classList.remove('show');
     void els.megaFlash.offsetWidth;
     els.megaFlash.classList.add('show');
-    setTimeout(() => { els.megaFlash.classList.remove('show'); }, 1700);
+    trackTimer(() => { els.megaFlash.classList.remove('show'); }, 1700);
     await wait(540);
   }
 
   // 8. Grand payout banner + count-up
   els.payout.classList.remove('fade-out');
   AudioFX.playAll('treeFell', topTier.tier === 'legendary' || topTier.tier === 'mythic' ? 0.42 : 0.32);
-  setTimeout(() => {
+  trackTimer(() => {
     AudioFX.play('win', topTier.tier === 'legendary' || topTier.tier === 'mythic' ? 0.84 : 0.56);
   }, 110);
   els.payout.innerHTML = `LANTERNFALL PAYS<span class="grand" id="grand-num">$0</span>`;
@@ -2279,7 +2334,7 @@ async function runBonus() {
   void grand.offsetWidth;
   grand.classList.add('shimmy');
   AudioFX.play('finalWin', topTier.tier === 'legendary' || topTier.tier === 'mythic' ? 0.86 : 0.72);
-  setTimeout(() => { if (grand) grand.classList.remove('shimmy'); }, 720);
+  trackTimer(() => { if (grand) grand.classList.remove('shimmy'); }, 720);
 
   // 9. Credit balance with count-up
   const startBal = State.balance;
@@ -2309,12 +2364,12 @@ async function runBonus() {
   els.payout.classList.remove('show');
   els.payout.classList.remove('fade-out');
   els.reveal.innerHTML = '';
-  els.falling.innerHTML = '';
 
   // Un-light the selected lanterns
   selectedLanterns.forEach(l => l.classList.remove('selected'));
   els.treeField.classList.remove('awake');
 
+  cleanupTransientEffects('bonus-end');
   AudioFX.play('bonusTransition', 0.7);
   State.spinning = false;
   updateStrikeEnabled();
@@ -2329,8 +2384,8 @@ function playBonusOverlay() {
     void c.offsetWidth;
     c.style.animation = '';
   });
-  // Spawn ~14 gold sparks rising from the bottom edge
-  for (let i = 0; i < 14; i++) {
+  // Spawn gold sparks rising from the bottom edge. Mobile gets fewer particles.
+  for (let i = 0; i < scaledEffectCount(14, 8); i++) {
     const sp = document.createElement('div');
     sp.className = 'bonus-spark';
     const startX = 20 + Math.random() * 60;          // %
@@ -2342,7 +2397,7 @@ function playBonusOverlay() {
     sp.style.animationDelay = (i * 0.06) + 's';
     sp.style.animationDuration = (1.1 + Math.random() * 0.8) + 's';
     els.bonusOv.appendChild(sp);
-    setTimeout(() => sp.remove(), 2100);
+    trackTimer(() => sp.remove(), 2100);
   }
 }
 
@@ -2369,7 +2424,7 @@ function spawnFallingLeaves(n) {
     const dur = 1800 + Math.random() * 1600;
     const delay = Math.random() * 700;
 
-    leaf.animate(
+    const animation = leaf.animate(
       [
         { transform: `scale(${scale}) translate(0, 0) rotate(0deg)`, opacity: 1 },
         { transform: `scale(${scale}) translate(${drift * 0.5}px, ${fall * 0.5}px) rotate(${rot * 0.5}deg)`, opacity: 1, offset: 0.55 },
@@ -2377,7 +2432,14 @@ function spawnFallingLeaves(n) {
       ],
       { duration: dur, delay, easing: 'cubic-bezier(.45,.05,.55,.95)', fill: 'forwards' }
     );
-    setTimeout(() => leaf.remove(), dur + delay + 100);
+    activeLeafAnimations.add(animation);
+    const removeLeaf = () => {
+      activeLeafAnimations.delete(animation);
+      leaf.remove();
+    };
+    animation.addEventListener('finish', removeLeaf, { once: true });
+    animation.addEventListener('cancel', removeLeaf, { once: true });
+    trackTimer(removeLeaf, dur + delay + 100);
   }
 }
 

@@ -90,4 +90,14 @@ run('Dragon Tree uses a generated dark Japanese park background', () => {
   assert(!html.includes('clip-path: polygon(50% 0, 94% 24%'), 'old CSS temple backdrop should be removed');
 });
 
+run('bonus transient effects are centrally cleaned up for mobile performance', () => {
+  assert(html.includes('const transientTimers = new Set();'), 'transient timers should be tracked centrally');
+  assert(html.includes('const activeLeafAnimations = new Set();'), 'falling leaf animations should be tracked and cancelable');
+  assert(html.includes('function cleanupTransientEffects('), 'bonus cleanup helper should exist');
+  assert(html.includes("cleanupTransientEffects('bonus-start')"), 'new bonus should clear leftover transient effects before spawning more');
+  assert(html.includes("cleanupTransientEffects('bonus-end')"), 'bonus end should clear animations and nodes before control returns');
+  assert(html.includes('const MOBILE_EFFECT_SCALE'), 'mobile should use reduced effect counts');
+  assert(html.includes('const MAX_ACTIVE_AUDIO'), 'audio clones should be capped so repeated bonuses do not pile up');
+});
+
 console.log('Dragon Tree audio tests complete');
