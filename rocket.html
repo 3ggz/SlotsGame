@@ -1823,7 +1823,7 @@ function startThrust() {
 function updateThrust(mult) {
   if (!actx || !thrust) return;
   const t = actx.currentTime;
-  const vol = sfxVolume();
+  const vol = sfxVolume() * THRUST_VOLUME_BOOST;
   const m = Math.max(1, Number(mult || 1));
   const warmup = clamp((m - 1) / 4, 0, 1);
   const drama = m < 5 ? 0 : clamp(Math.log(m / 5) / Math.log(70 / 5), 0, 1);
@@ -2050,6 +2050,7 @@ function cashOut(auto) {
 function crashRound() {
   if (State.mode !== 'running') return;
   State.mode = 'crashed';
+  armPostCrashBetLock();
   stopThrust();
   rocketEl.classList.remove('running');
   rocketEl.classList.add('crashed');
@@ -2360,6 +2361,8 @@ const BETTING_MS = 15000;
 const MAX_FLIGHT_MS = 22000;
 const ROUND_BLOCK_SIZE = 1024;
 const LOCAL_DOT_ID = 'local-cashout';
+const POST_CRASH_BET_LOCK_MS = 1000;
+const THRUST_VOLUME_BOOST = 1.35;
 const ROUND_BLOCK_STARTS = [GLOBAL_EPOCH_MS];
 const ROUND_INFO_CACHE = new Map();
 const ROUND_CRASH_CACHE = [];
@@ -2388,10 +2391,19 @@ Object.assign(State, {
   autoBetEnabled: false,
   lastAutoBetRoundId: null,
   graphMax: BASE_GRAPH_MAX,
+  betLockUntil: 0,
 });
 
 function casinoNow() {
   return Date.now() + (State.roundOffsetMs || 0);
+}
+
+function betSafetyLocked(now = performance.now()) {
+  return !!(State.betLockUntil && now < State.betLockUntil);
+}
+
+function armPostCrashBetLock(now = performance.now()) {
+  State.betLockUntil = Math.max(State.betLockUntil || 0, now + POST_CRASH_BET_LOCK_MS);
 }
 
 function seededUnit(roundIndex, salt) {
@@ -2926,6 +2938,7 @@ function clearCrashHold(now = performance.now()) {
 
 function announceCrash(round) {
   if (!round) return;
+  armPostCrashBetLock();
   const crashMult = Math.max(1, round.crashAt || State.crashAt);
   const graphMax = Math.max(State.graphMax || BASE_GRAPH_MAX, graphTarget(round));
   const p = pathProgress(crashMult, graphMax);
@@ -3066,7 +3079,7 @@ function syncControls() {
   State.bet = getBet();
   State.target = getTarget();
 
-  const canPlace = phase === 'betting' && !localBetInRound;
+  const canPlace = phase === 'betting' && !localBetInRound && !betSafetyLocked();
   betInput.disabled = !canPlace;
   document.querySelectorAll('.mini-btn, .bet-add-btn').forEach(btn => { btn.disabled = !canPlace; });
   targetInput.disabled = !State.autoEnabled;
@@ -3093,8 +3106,8 @@ function syncControls() {
 
   if (phase === 'betting') {
     launchBtn.className = 'launch-btn';
-    launchBtn.disabled = localBetInRound;
-    launchBtn.textContent = localBetInRound ? 'BET PLACED' : 'PLACE BET';
+    launchBtn.disabled = localBetInRound || betSafetyLocked();
+    launchBtn.textContent = localBetInRound ? 'BET PLACED' : betSafetyLocked() ? 'SETTLING' : 'PLACE BET';
   } else if (phase === 'running') {
     if (localBetInRound && !State.localCashed && !State.localResolved) {
       launchBtn.className = 'launch-btn cash';
@@ -3120,6 +3133,10 @@ function startRound() {
   const round = State.activeRound || getGlobalRound(casinoNow());
   if (round.phase !== 'betting') {
     showToast('NEXT ROUND OPENS SOON', '');
+    return;
+  }
+  if (betSafetyLocked()) {
+    showToast('BUST SETTLING - ONE SEC', '');
     return;
   }
   if (hasLocalBet(round.roundId)) return;
@@ -3157,6 +3174,7 @@ function setAutoBet(enabled) {
 function maybeAutoBet(round) {
   if (!State.autoBetEnabled || !round || round.phase !== 'betting') return;
   if (hasLocalBet(round.roundId) || State.lastAutoBetRoundId === round.roundId) return;
+  if (betSafetyLocked()) return;
   const bet = getBet();
   if (bet <= 0 || bet > balance) {
     State.lastAutoBetRoundId = round.roundId;
