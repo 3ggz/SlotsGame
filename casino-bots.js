@@ -979,18 +979,27 @@
       });
 
       // Hook CasinoStats (real-player presence from Firestore). It
-      // loads as a separate module so we poll briefly until it's up.
+      // loads as a separate module — and crucially, casino-account.js
+      // installs a NO-OP STUB CasinoStats synchronously at script
+      // execute time (configured: false), then replaces it once the
+      // Firebase dynamic import resolves (configured: true). We MUST
+      // wait for the real one, otherwise we lock onto the stub which
+      // fires fn({}) once and is silent forever — that's why a real
+      // player joining wasn't sticking in the count.
       let realTries = 0;
       const realIv = setInterval(() => {
         realTries++;
-        if (window.CasinoStats && typeof window.CasinoStats.subscribePresence === 'function') {
+        const cs = window.CasinoStats;
+        if (cs && cs.configured === true && typeof cs.subscribePresence === 'function') {
           clearInterval(realIv);
-          window.CasinoStats.subscribePresence(map => {
+          cs.subscribePresence(map => {
             lastRealPresence = map || {};
             repaintPresence();
           });
-        } else if (realTries > 60) {
-          clearInterval(realIv);  // CasinoStats never showed up; bot-only is fine
+        } else if (realTries > 150) {
+          // ~30 s — Firebase may genuinely be offline / unconfigured.
+          // Falling back to bot-only counts is fine.
+          clearInterval(realIv);
         }
       }, 200);
     }
