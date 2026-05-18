@@ -589,6 +589,36 @@ if (!CONFIGURED) {
       let currentUser = null;
       let didAnonFallback = false;
       const authListeners = [];
+
+      /* ---------- per-UID balance isolation ----------
+         The live `casino.balance` localStorage key is what every game
+         reads/writes during play. It holds whatever the CURRENT user
+         (anon or real) has. To prevent an anonymous session's winnings
+         from leaking into a real account on sign-in (or vice versa)
+         each UID gets its own `casino.balance:<uid>` slot. On auth UID
+         transitions we snapshot the outgoing user's live balance to
+         their slot, then load the incoming user's slot (or default
+         to 1000 if they've never played here). A page reload after
+         the swap guarantees every balance widget on the page repaints
+         from the new value. */
+      const BAL_KEY = 'casino.balance';
+      const BAL_DEFAULT = 1000;
+      function snapshotBalanceTo(uid) {
+        if (!uid) return;
+        try {
+          const v = localStorage.getItem(BAL_KEY);
+          if (v != null) localStorage.setItem(`${BAL_KEY}:${uid}`, v);
+        } catch (e) {}
+      }
+      function loadBalanceFrom(uid) {
+        if (!uid) return;
+        try {
+          const raw = localStorage.getItem(`${BAL_KEY}:${uid}`);
+          const n = parseFloat(raw);
+          const next = isFinite(n) && n >= 0 ? n : BAL_DEFAULT;
+          localStorage.setItem(BAL_KEY, String(next));
+        } catch (e) {}
+      }
       const PRESENCE_COLLECTION = 'tablePresence';
       const PRESENCE_STALE_MS = 60000;
       const PRESENCE_HEARTBEAT_MS = 15000;
@@ -665,6 +695,28 @@ if (!CONFIGURED) {
           signInAnonymously(auth).catch(() => {});
           return; // wait for the next emission carrying the new anon user
         }
+
+        // Per-UID balance handoff. Only act when the UID actually changes.
+        // First emission with a user (prevUid null) is the persisted state
+        // restoring on page load — we just mirror the live balance into
+        // that UID's slot so the per-UID record reflects current state.
+        // A real transition (prevUid !== newUid, both non-null) means the
+        // user signed in/out/switched — snapshot the outgoing balance,
+        // load the incoming balance, and reload the page so every game
+        // widget repaints cleanly from the new value.
+        const prevUid = currentUser?.uid || null;
+        const newUid = u?.uid || null;
+        let needsReload = false;
+        if (newUid && newUid !== prevUid) {
+          if (prevUid) {
+            snapshotBalanceTo(prevUid);
+            loadBalanceFrom(newUid);
+            needsReload = true;
+          } else {
+            snapshotBalanceTo(newUid);
+          }
+        }
+
         currentUser = u;
         if (u) startPresenceHeartbeat();
         if (u && !u.isAnonymous) {
@@ -720,6 +772,15 @@ if (!CONFIGURED) {
           }).catch(() => {});
         }
         authListeners.forEach(fn => { try { fn(u); } catch (e) {} });
+
+        // Auth transition between two different UIDs flipped the live
+        // balance. Reload so every game widget, balance pill, and history
+        // surface paints fresh from the new value. Defer one tick so the
+        // chip/modal close animations and listener side-effects above run
+        // first.
+        if (needsReload) {
+          setTimeout(() => { try { location.reload(); } catch (e) {} }, 80);
+        }
       });
 
       const globalsRef = doc(db, 'globals', 'stats');
@@ -1142,11 +1203,14 @@ if (!CONFIGURED) {
           return cred;
         },
         signOut: async () => {
-          // Blank slate on sign-out: reset chip balance + clear the
-          // local history log, then sign Firebase out and full-reload.
+          // Snapshot the signed-in user's balance to their per-UID slot
+          // FIRST so signing back in (now or later) restores their
+          // balance instead of starting fresh. Then blank-slate the
+          // live balance + history, sign Firebase out, and full-reload.
           // The reload guarantees every game widget, balance pill,
           // history modal, and account chip paints from $1000 with a
           // fresh guest tag.
+          if (currentUser?.uid) snapshotBalanceTo(currentUser.uid);
           try { localStorage.setItem('casino.balance', '1000'); } catch (e) {}
           try { localStorage.removeItem('casino.history'); } catch (e) {}
           try { await signOut(auth); } catch (e) {}
