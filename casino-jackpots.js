@@ -71,6 +71,10 @@
   // event multiple tiers fire on one spin, the biggest wins.
 
   const TIER_BY_ID = Object.fromEntries(TIERS.map(t => [t.id, t]));
+  const JACKPOTS_LIVE_ALLOWED = !(
+    /dragontree\.html/i.test(location.pathname) &&
+    matchMedia('(max-width: 760px), (pointer: coarse)').matches
+  );
 
   // Seed snapshot used until the live Firestore value arrives.
   function seedSnapshot() {
@@ -444,7 +448,42 @@
   // after sign-in retry) it might flip true.
   // -----------------------------------------------------------
   let firestoreInitStarted = false;
+  let jackpotLiveDisabled = false;
+  let unsubPools = null;
+
+  function isResourceExhausted(error) {
+    const code = String(error && error.code || '').toLowerCase();
+    const msg = String(error && error.message || error || '').toLowerCase();
+    return code.includes('resource-exhausted') || msg.includes('resource-exhausted');
+  }
+
+  function disableJackpotLiveSync(error) {
+    if (jackpotLiveDisabled) return;
+    jackpotLiveDisabled = true;
+    try { if (typeof unsubPools === 'function') unsubPools(); } catch (e) {}
+    unsubPools = null;
+    window.CasinoJackpots = {
+      configured: false,
+      disabledReason: isResourceExhausted(error) ? 'resource-exhausted' : 'snapshot-error',
+      subscribe(fn) {
+        subscribers.add(fn);
+        try { fn(lastSnapshot); } catch (e) {}
+        return () => subscribers.delete(fn);
+      },
+      currentPools() { return lastSnapshot; },
+      tiers: TIERS.map(t => ({ ...t })),
+    };
+    fanout();
+    if (isResourceExhausted(error)) {
+      console.warn('[casino-jackpots] live jackpot sync paused for this session: Firestore resource exhausted');
+    } else {
+      console.warn('[casino-jackpots] live jackpot sync paused for this session:', error);
+    }
+  }
+
   function tryStartFirestore() {
+    if (!JACKPOTS_LIVE_ALLOWED) return;
+    if (jackpotLiveDisabled) return;
     if (firestoreInitStarted) return;
     if (!window.CasinoStats || !window.CasinoStats.configured) return;
     firestoreInitStarted = true;
@@ -522,7 +561,7 @@
     docRef = doc(db, 'globals', 'jackpots');
 
     // Live subscription for the lobby ticker.
-    onSnapshot(docRef, snap => {
+    unsubPools = onSnapshot(docRef, snap => {
       const data = snap.data();
       if (!data) {
         // Seed on first ever read. Anyone authed can do this safely
@@ -532,7 +571,9 @@
       }
       lastSnapshot = normalizeSnapshot(data);
       fanout();
-    }, () => {});
+    }, error => {
+      disableJackpotLiveSync(error);
+    });
 
     window.CasinoJackpots = {
       configured: true,
@@ -608,6 +649,8 @@
   };
 
   async function processBet(game, bet, skipTrigger) {
+    if (!JACKPOTS_LIVE_ALLOWED) return null;
+    if (jackpotLiveDisabled) return null;
     if (!docRef || !fs) {
       console.debug('[casino-jackpots] skipped contribute (firestore not ready)', { game, bet });
       return null;
