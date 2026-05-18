@@ -807,6 +807,7 @@
       craplesscraps: 'CRAPLESS CRAPS',
       plinko:        'PLINKO',
       rocket:        'ROCKET',
+      mines:         'MINES',
     };
     const GAME_ICON = {
       blackjack:     '♠',
@@ -816,6 +817,7 @@
       craplesscraps: '🎲',
       plinko:        '▼',
       rocket:        '^',
+      mines:         '✦',
     };
 
     function fmtMoney(n) {

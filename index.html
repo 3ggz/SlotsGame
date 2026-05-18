@@ -1844,6 +1844,111 @@ body::after {
   88%, 100% { transform: translateX(135%); opacity: 0; }
 }
 
+/* MINES PREVIEW — 5×5 mini-grid with diamonds, one pulsing mine, gold corners */
+.preview.mines {
+  background:
+    radial-gradient(ellipse at 22% 12%, rgba(34,211,238,0.18), transparent 55%),
+    radial-gradient(ellipse at 78% 88%, rgba(168,85,247,0.22), transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(92,255,161,0.10), transparent 60%),
+    linear-gradient(180deg, #0a0418 0%, #170832 60%, #04010c 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.30);
+  overflow: hidden;
+}
+.preview.mines::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 12px;
+  padding: 1.2px;
+  background: linear-gradient(135deg, var(--gold-0), var(--gold-1) 30%, var(--gold-deep) 50%, var(--gold-1) 70%, var(--gold-0));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0.35;
+  pointer-events: none;
+}
+.preview.mines .mn-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  width: 168px;
+  height: 168px;
+  z-index: 1;
+}
+.preview.mines .mn-tile {
+  position: relative;
+  border-radius: 6px;
+  background: linear-gradient(160deg, #1c0d3c, #0a0420);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.22);
+  overflow: hidden;
+}
+.preview.mines .mn-tile.diamond {
+  background: linear-gradient(160deg, #1a0838, #0a0420 70%);
+  box-shadow: inset 0 0 0 1px rgba(92,255,161,0.45), inset 0 0 12px rgba(34,211,238,0.18);
+}
+.preview.mines .mn-tile.diamond::before {
+  content: '';
+  position: absolute;
+  inset: 18%;
+  background:
+    radial-gradient(circle at 30% 28%, rgba(255,255,255,0.85), transparent 35%),
+    linear-gradient(135deg, #5cffa1, #22d3ee 55%, #a855f7);
+  clip-path: polygon(50% 4%, 96% 38%, 50% 96%, 4% 38%);
+  filter: drop-shadow(0 0 4px rgba(92,255,161,0.55));
+  animation: mnGlint 3.6s ease-in-out infinite;
+}
+@keyframes mnGlint {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(92,255,161,0.55)); }
+  50%      { filter: drop-shadow(0 0 9px rgba(34,211,238,0.80)); }
+}
+.preview.mines .mn-tile.mine {
+  background: linear-gradient(160deg, #2a0716, #0a0418 70%);
+  box-shadow: inset 0 0 0 1px rgba(255,77,109,0.5), inset 0 0 14px rgba(255,77,109,0.20);
+  animation: mnMinePulse 1.8s ease-in-out infinite;
+}
+.preview.mines .mn-tile.mine::before {
+  content: '';
+  position: absolute;
+  inset: 18%;
+  background: radial-gradient(circle at 50% 50%, #ffd7df, #ff4d6d 30%, #6a0418 70%);
+  clip-path: polygon(50% 8%, 64% 38%, 88% 42%, 70% 60%, 76% 90%, 50% 72%, 24% 90%, 30% 60%, 12% 42%, 36% 38%);
+}
+@keyframes mnMinePulse {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(255,77,109,0.45), inset 0 0 10px rgba(255,77,109,0.16); }
+  50%      { box-shadow: inset 0 0 0 1px rgba(255,77,109,0.85), inset 0 0 20px rgba(255,77,109,0.40); }
+}
+.preview.mines .mn-mult {
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  z-index: 2;
+  padding: 5px 10px 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,210,74,0.20), rgba(0,0,0,0.5));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.5);
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: 12px;
+  color: var(--gold-1);
+  text-shadow: 0 0 8px rgba(255,210,74,0.55);
+  letter-spacing: 0.02em;
+}
+.preview.mines .mn-bal {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  z-index: 2;
+  padding: 5px 10px 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(34,211,238,0.16), rgba(0,0,0,0.5));
+  box-shadow: inset 0 0 0 1px rgba(34,211,238,0.45);
+  font-family: 'Geist Mono', monospace;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--neon-cyan);
+  letter-spacing: 0.02em;
+}
+
 /* card meta */
 .game-title {
   font-family: 'Bungee Shade', 'Bungee', cursive;
@@ -2133,6 +2238,7 @@ body::after {
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
 <script src="casino-jackpots.js"></script>
+<script src="casino-bots.js"></script>
 
 <button class="btn-history" id="btn-history" title="View history">HISTORY</button>
 
@@ -2210,6 +2316,137 @@ body::after {
 
   <div class="games">
 
+    <a class="game-card" href="rocket.html" data-game="rocket">
+      <div class="preview rocket">
+        <div class="rk-stage">
+          <div class="rk-logo"><span>DIAMOND</span><b>ROCKET</b></div>
+          <div class="rk-balance">BAL $1,000</div>
+          <div class="rk-curve"></div>
+          <div class="rk-mult m1">1.62x</div>
+          <div class="rk-mult m2">3.18x</div>
+          <div class="rk-mult m3">8.40x</div>
+          <span class="rk-dot d1"></span>
+          <span class="rk-dot d2"></span>
+          <span class="rk-dot d3"></span>
+          <div class="rk-ship">
+            <span class="rk-fin left"></span>
+            <span class="rk-fin right"></span>
+            <span class="rk-body"><span class="rk-window"></span></span>
+            <span class="rk-flame"></span>
+          </div>
+        </div>
+      </div>
+      <div class="game-title">ROCKET</div>
+      <div class="game-tagline">GLOBAL CRASH TABLE &middot; LIVE DOTS</div>
+      <div class="game-desc">Join the shared launch, cash out before burnout, and watch every player land as a glowing dot on the trail.</div>
+      <div class="game-meta">
+        <span class="meta-pill">GLOBAL</span>
+        <span class="meta-pill">MANUAL FIRST</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="mines.html" data-game="mines">
+      <div class="preview mines">
+        <div class="mn-mult">2.42×</div>
+        <div class="mn-bal">BAL $1,000</div>
+        <div class="mn-grid">
+          <div class="mn-tile diamond"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile diamond"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile diamond"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile diamond"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile mine"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile diamond"></div>
+          <div class="mn-tile diamond"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile diamond"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile"></div>
+          <div class="mn-tile"></div>
+        </div>
+      </div>
+      <div class="game-title">MINES</div>
+      <div class="game-tagline">DIAMOND VAULT &middot; CASH OUT ANYTIME</div>
+      <div class="game-desc">Pick tiles to grow your multiplier. Every safe one is a diamond — every mine ends the round. Set your own risk from 1 to 24 mines.</div>
+      <div class="game-meta">
+        <span class="meta-pill">5×5 BOARD</span>
+        <span class="meta-pill">1–24 MINES</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="roulette.html" data-game="roulette">
+      <div class="preview roulette">
+        <div class="rt-felt">
+          <span class="rt-cell green">0</span>
+          <span class="rt-cell green">00</span>
+          <span class="rt-cell red">1</span>
+          <span class="rt-cell black">2</span>
+          <span class="rt-cell red">3</span>
+          <span class="rt-cell black">4</span>
+          <span class="rt-cell red">5</span>
+          <span class="rt-cell black">6</span>
+        </div>
+      </div>
+      <div class="game-title">ROULETTE</div>
+      <div class="game-tagline">GLOBAL AMERICAN WHEEL</div>
+      <div class="game-desc">Join shared American roulette spins with 0 and 00, full inside and outside betting, quick covers, chat, and live table wins.</div>
+      <div class="game-meta">
+        <span class="meta-pill">GLOBAL</span>
+        <span class="meta-pill">0 + 00</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="plinko.html" data-game="plinko">
+      <div class="preview plinko">
+        <div class="pk-stage">
+          <div class="pk-peg-grid">
+            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
+            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
+            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
+            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
+            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
+          </div>
+          <div class="pk-ball"></div>
+          <div class="pk-slots">
+            <span class="pk-slot">29×</span>
+            <span class="pk-slot">4×</span>
+            <span class="pk-slot">1.5×</span>
+            <span class="pk-slot">0.2×</span>
+            <span class="pk-slot">1.5×</span>
+            <span class="pk-slot">4×</span>
+            <span class="pk-slot">29×</span>
+          </div>
+        </div>
+      </div>
+      <div class="game-title">PLINKO</div>
+      <div class="game-tagline">DROP &middot; BOUNCE &middot; WIN</div>
+      <div class="game-desc">Drop a chrome ball into a glowing peg pyramid. Pick your risk, pick your rows, and chase the 1,000× edge slots.</div>
+      <div class="game-meta">
+        <span class="meta-pill">3 RISK LEVELS</span>
+        <span class="meta-pill">UP TO 1000×</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
     <a class="game-card" href="slots.html" data-game="slots">
       <div class="preview slots">
         <div class="reel-strip">
@@ -2275,94 +2512,6 @@ body::after {
       <div class="game-meta">
         <span class="meta-pill">MEGAWAYS</span>
         <span class="meta-pill">FREE SPINS</span>
-        <span class="meta-pill hot">NEW</span>
-      </div>
-      <div class="play-cta">PLAY</div>
-    </a>
-
-    <a class="game-card" href="plinko.html" data-game="plinko">
-      <div class="preview plinko">
-        <div class="pk-stage">
-          <div class="pk-peg-grid">
-            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
-            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
-            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
-            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
-            <div class="pk-row"><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span><span class="pk-peg"></span></div>
-          </div>
-          <div class="pk-ball"></div>
-          <div class="pk-slots">
-            <span class="pk-slot">29×</span>
-            <span class="pk-slot">4×</span>
-            <span class="pk-slot">1.5×</span>
-            <span class="pk-slot">0.2×</span>
-            <span class="pk-slot">1.5×</span>
-            <span class="pk-slot">4×</span>
-            <span class="pk-slot">29×</span>
-          </div>
-        </div>
-      </div>
-      <div class="game-title">PLINKO</div>
-      <div class="game-tagline">DROP &middot; BOUNCE &middot; WIN</div>
-      <div class="game-desc">Drop a chrome ball into a glowing peg pyramid. Pick your risk, pick your rows, and chase the 1,000× edge slots.</div>
-      <div class="game-meta">
-        <span class="meta-pill">3 RISK LEVELS</span>
-        <span class="meta-pill">UP TO 1000×</span>
-        <span class="meta-pill hot">NEW</span>
-      </div>
-      <div class="play-cta">PLAY</div>
-    </a>
-
-    <a class="game-card" href="rocket.html" data-game="rocket">
-      <div class="preview rocket">
-        <div class="rk-stage">
-          <div class="rk-logo"><span>DIAMOND</span><b>ROCKET</b></div>
-          <div class="rk-balance">BAL $1,000</div>
-          <div class="rk-curve"></div>
-          <div class="rk-mult m1">1.62x</div>
-          <div class="rk-mult m2">3.18x</div>
-          <div class="rk-mult m3">8.40x</div>
-          <span class="rk-dot d1"></span>
-          <span class="rk-dot d2"></span>
-          <span class="rk-dot d3"></span>
-          <div class="rk-ship">
-            <span class="rk-fin left"></span>
-            <span class="rk-fin right"></span>
-            <span class="rk-body"><span class="rk-window"></span></span>
-            <span class="rk-flame"></span>
-          </div>
-        </div>
-      </div>
-      <div class="game-title">ROCKET</div>
-      <div class="game-tagline">GLOBAL CRASH TABLE &middot; LIVE DOTS</div>
-      <div class="game-desc">Join the shared launch, cash out before burnout, and watch every player land as a glowing dot on the trail.</div>
-      <div class="game-meta">
-        <span class="meta-pill">GLOBAL</span>
-        <span class="meta-pill">MANUAL FIRST</span>
-        <span class="meta-pill hot">NEW</span>
-      </div>
-      <div class="play-cta">PLAY</div>
-    </a>
-
-    <a class="game-card" href="roulette.html" data-game="roulette">
-      <div class="preview roulette">
-        <div class="rt-felt">
-          <span class="rt-cell green">0</span>
-          <span class="rt-cell green">00</span>
-          <span class="rt-cell red">1</span>
-          <span class="rt-cell black">2</span>
-          <span class="rt-cell red">3</span>
-          <span class="rt-cell black">4</span>
-          <span class="rt-cell red">5</span>
-          <span class="rt-cell black">6</span>
-        </div>
-      </div>
-      <div class="game-title">ROULETTE</div>
-      <div class="game-tagline">GLOBAL AMERICAN WHEEL</div>
-      <div class="game-desc">Join shared American roulette spins with 0 and 00, full inside and outside betting, quick covers, chat, and live table wins.</div>
-      <div class="game-meta">
-        <span class="meta-pill">GLOBAL</span>
-        <span class="meta-pill">0 + 00</span>
         <span class="meta-pill hot">NEW</span>
       </div>
       <div class="play-cta">PLAY</div>

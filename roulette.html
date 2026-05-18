@@ -276,41 +276,6 @@ button { cursor: pointer; }
   background: var(--neon-cyan);
   box-shadow: 0 0 10px currentColor;
 }
-.wheel-timer {
-  position: absolute;
-  z-index: 8;
-  left: 50%;
-  top: 14px;
-  transform: translateX(-50%);
-  min-width: 124px;
-  padding: 7px 12px 8px;
-  border-radius: 14px;
-  text-align: center;
-  background:
-    radial-gradient(circle at top, rgba(255,210,74,0.22), transparent 68%),
-    rgba(5,1,18,0.72);
-  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.30), 0 10px 24px rgba(0,0,0,0.34);
-  pointer-events: none;
-}
-.wheel-timer span {
-  display: block;
-  font-family: 'Bungee', cursive;
-  font-size: 7px;
-  letter-spacing: 0.22em;
-  color: rgba(255,255,255,0.58);
-}
-.wheel-timer strong {
-  display: block;
-  margin-top: 1px;
-  font-family: 'Geist Mono', monospace;
-  font-size: 28px;
-  line-height: 1;
-  color: var(--gold-1);
-  text-shadow: 0 0 18px rgba(255,210,74,0.34);
-}
-.wheel-timer.urgent {
-  animation: timerPulse 0.74s ease-in-out infinite;
-}
 @keyframes timerPulse {
   0%, 100% { box-shadow: inset 0 0 0 1px rgba(255,210,74,0.30), 0 10px 24px rgba(0,0,0,0.34); }
   50% { box-shadow: inset 0 0 0 1px rgba(255,46,147,0.55), 0 0 28px rgba(255,46,147,0.28); }
@@ -710,18 +675,20 @@ button { cursor: pointer; }
 .wheel-live-wins {
   position: absolute;
   z-index: 7;
-  right: 22px;
-  top: 56px;
-  width: min(250px, 34%);
-  min-height: 220px;
+  right: 20px;
+  top: 70px;
+  width: min(380px, 44%);
+  height: min(320px, calc(100% - 96px));
   pointer-events: none;
   overflow: hidden;
 }
 .live-popups {
+  position: relative;
+  display: block;
   max-height: none;
+  height: 100%;
   overflow: hidden;
   padding: 0;
-  align-items: flex-end;
 }
 .recent-pill, .chat-msg, .chat-empty {
   border-radius: 11px;
@@ -732,31 +699,103 @@ button { cursor: pointer; }
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
 }
 .recent-pill.win { color: #d8ffe8; box-shadow: inset 0 0 0 1px rgba(92,255,161,0.28); }
-.live-popups .recent-pill {
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
-  border-radius: 0;
-  max-width: 100%;
+.round-win-burst {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(100%, 360px);
+  display: grid;
+  justify-items: end;
+  gap: 6px;
   text-align: right;
+  animation: roundWinReveal 0.34s cubic-bezier(0.16, 0.82, 0.24, 1) both;
+}
+.round-win-kicker {
   font-family: 'Bungee', cursive;
-  font-size: 10px;
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  color: rgba(255,240,168,0.78);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.75);
+}
+.round-win-row {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 100%;
+  min-height: 28px;
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
   letter-spacing: 0.06em;
   color: #d8ffe8;
-  text-shadow: 0 0 10px rgba(92,255,161,0.42), 0 2px 8px rgba(0,0,0,0.72);
-  animation: liveWinDrift 4.8s ease-out both;
+  text-shadow: 0 0 10px rgba(92,255,161,0.36), 0 2px 8px rgba(0,0,0,0.78);
+  animation: roundWinRowSlide 0.28s cubic-bezier(0.16, 0.82, 0.24, 1) both;
+  animation-delay: calc(var(--row-index, 0) * 38ms);
 }
-.live-popups .recent-pill strong {
+.round-win-player,
+.round-win-label {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.round-win-player {
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  text-align: left;
+  line-height: 1;
+  max-width: 122px;
   color: var(--gold-0);
 }
-.live-popups .recent-pill:nth-child(2) { animation-delay: 0.18s; }
-.live-popups .recent-pill:nth-child(3) { animation-delay: 0.36s; }
-.live-popups .recent-pill:nth-child(4) { animation-delay: 0.54s; }
-@keyframes liveWinDrift {
-  0% { opacity: 0; transform: translate(10px, -10px) scale(0.98); }
-  12% { opacity: 1; transform: translate(0, 0) scale(1); }
-  68% { opacity: 0.94; }
-  100% { opacity: 0; transform: translate(-10px, 72px) scale(0.98); }
+.round-win-player::before {
+  content: 'WINNER';
+  font-size: 6px;
+  letter-spacing: 0.2em;
+  color: rgba(92,255,161,0.72);
+}
+.round-win-hit {
+  flex: 0 0 auto;
+  min-width: 32px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 0;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18), 0 0 12px rgba(255,210,74,0.18);
+}
+.round-win-hit.red { background: linear-gradient(180deg, #d52d4e, #6c061c); }
+.round-win-hit.black { background: linear-gradient(180deg, #242330, #050509); }
+.round-win-hit.green { background: linear-gradient(180deg, #17b96b, #075734); }
+.round-win-amount {
+  flex: 0 0 auto;
+  font-family: 'Geist Mono', monospace;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0;
+  color: var(--gold-1);
+  text-shadow: 0 0 14px rgba(255,210,74,0.36), 0 2px 8px rgba(0,0,0,0.78);
+}
+.round-win-label {
+  flex: 0 1 auto;
+  max-width: 62px;
+  font-size: 7px;
+  color: rgba(216,255,232,0.66);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.72);
+}
+@keyframes roundWinReveal {
+  0% { opacity: 0; transform: translateX(54px) scale(0.985); filter: blur(1px); }
+  100% { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); }
+}
+@keyframes roundWinRowSlide {
+  0% { opacity: 0; transform: translateX(42px); }
+  100% { opacity: 1; transform: translateX(0); }
 }
 .chat-empty { color: rgba(255,255,255,0.45); text-align: center; }
 .chat-name {
@@ -802,17 +841,55 @@ button { cursor: pointer; }
   transition: max-height 0.48s ease, opacity 0.42s ease, transform 0.42s ease, filter 0.42s ease;
 }
 .board-head {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   margin-bottom: 12px;
 }
+.board-head .board-title {
+  margin-bottom: 0;
+}
 .board-lock {
+  justify-self: end;
   font-family: 'Bungee', cursive;
   font-size: 10px;
   letter-spacing: 0.18em;
   color: var(--neon-cyan);
+}
+.felt-timer {
+  justify-self: center;
+  min-width: 178px;
+  padding: 7px 14px 8px;
+  border-radius: 999px;
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: center;
+  background:
+    radial-gradient(circle at top, rgba(255,210,74,0.20), transparent 70%),
+    rgba(0,0,0,0.36);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.30), 0 10px 22px rgba(0,0,0,0.22);
+}
+.felt-timer span {
+  font-family: 'Bungee', cursive;
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: rgba(255,255,255,0.62);
+}
+.felt-timer strong {
+  font-family: 'Geist Mono', monospace;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--gold-1);
+  text-shadow: 0 0 16px rgba(255,210,74,0.34);
+}
+.felt-timer.urgent {
+  animation: timerPulse 0.74s ease-in-out infinite;
+}
+.felt-timer.urgent strong {
+  color: var(--neon-pink);
 }
 .felt {
   position: relative;
@@ -1136,14 +1213,6 @@ body[data-phase="betting"] .result-number {
 body[data-phase="betting"] .result-caption {
   font-size: 9px;
 }
-body[data-phase="betting"] .wheel-timer {
-  top: 9px;
-  min-width: 112px;
-  padding: 5px 10px 6px;
-}
-body[data-phase="betting"] .wheel-timer strong {
-  font-size: 22px;
-}
 body[data-phase="spinning"] .roulette-layout,
 body[data-phase="result"] .roulette-layout {
   order: 3;
@@ -1282,16 +1351,10 @@ body[data-phase="result"] .hot-cold-bar {
   .hot-cold-bar .hot-cold { grid-template-columns: 1fr; gap: 7px; }
   .wheel-live-wins {
     right: 12px;
-    top: 70px;
-    width: min(180px, 40%);
-    min-height: 150px;
+    top: 64px;
+    width: min(260px, 50%);
+    height: min(240px, calc(100% - 86px));
   }
-  .wheel-timer {
-    top: 10px;
-    min-width: 104px;
-    padding: 5px 9px 6px;
-  }
-  .wheel-timer strong { font-size: 22px; }
   .spin-bet-map {
     position: relative;
     left: auto;
@@ -1300,7 +1363,16 @@ body[data-phase="result"] .hot-cold-bar {
     margin: 2px auto 8px;
   }
   .mini-bet-list { max-height: 50px; }
-  .live-popups .recent-pill { font-size: 8px; }
+  .round-win-row {
+    gap: 3px;
+    font-size: 7px;
+  }
+  .round-win-player { max-width: 82px; gap: 3px; }
+  .round-win-player::before { font-size: 5px; }
+  .round-win-kicker { font-size: 7px; }
+  .round-win-hit { min-width: 26px; padding: 3px 5px; font-size: 9px; }
+  .round-win-amount { font-size: 10px; }
+  .round-win-label { max-width: 40px; font-size: 6px; }
   .result-readout { min-height: 68px; }
   .pocket { width: 24px; height: 15px; margin-left: -12px; margin-top: -7px; font-size: 7px; }
   .ball { width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; }
@@ -1309,6 +1381,15 @@ body[data-phase="result"] .hot-cold-bar {
   .topline-zone { grid-column: 1 / -1; }
   .number-area { grid-template-columns: 92px minmax(0, 1fr); }
   .roulette-grid { grid-auto-rows: 36px; }
+  .board-head {
+    grid-template-columns: 1fr auto;
+  }
+  .felt-timer {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+  }
   .row-handle-set { gap: 4px; }
   .row-handles .bet-zone { font-size: 10px; letter-spacing: 0.03em; }
   .outside-grid .bet-zone, .dozen-grid .bet-zone, .column-grid .bet-zone { font-size: 10px; letter-spacing: 0.08em; }
@@ -1339,6 +1420,8 @@ body[data-phase="result"] .hot-cold-bar {
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
 <script src="casino-jackpots.js"></script>
+<script src="casino-bots.js?v=roulette-round-bots-2"></script>
+<script src="casino-chat.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="rules-btn" id="btn-rules" type="button">RULES</button>
@@ -1392,10 +1475,6 @@ body[data-phase="result"] .hot-cold-bar {
         <div class="status-pill"><span class="status-dot" id="status-dot"></span><span id="status-text">STANDBY</span></div>
         <div class="status-pill" id="roulette-player-count">0 PLAYING</div>
       </div>
-      <div class="wheel-timer" id="wheel-timer" aria-live="polite">
-        <span id="wheel-timer-label">BETS CLOSE</span>
-        <strong id="wheel-timer-value">--</strong>
-      </div>
       <div class="spin-bet-map" id="spin-bet-map" aria-label="Your locked Roulette bets">
         <div class="mini-empty">NO BETS</div>
       </div>
@@ -1439,6 +1518,10 @@ body[data-phase="result"] .hot-cold-bar {
   <section class="bet-board">
     <div class="board-head">
       <div class="board-title">AMERICAN FELT</div>
+      <div class="felt-timer" id="felt-timer" aria-live="polite">
+        <span id="felt-timer-label">BETS CLOSE</span>
+        <strong id="felt-timer-value">--</strong>
+      </div>
       <div class="board-lock" id="board-lock">BETS OPEN</div>
     </div>
     <div class="felt">
@@ -1839,7 +1922,7 @@ if (window.Music) Music.init(encodeURI("Music/High Roller's Room.m4a"));
 const Core = window.RouletteCore;
 const BALANCE_KEY = 'casino.balance';
 const ROULETTE_EPOCH_MS = Date.UTC(2026, 4, 17, 0, 0, 0);
-const BETTING_MS = 15000;
+const BETTING_MS = 20000;
 const SPIN_MS = 8000;
 const RESULT_MS = 4000;
 const ROUND_MS = BETTING_MS + SPIN_MS + RESULT_MS;
@@ -1884,6 +1967,9 @@ const State = {
   roundOffsetMs: 0,
   resolvedRoundId: null,
   liveWins: [],
+  roundWinBurstEntries: [],
+  liveWinStartedAt: Date.now(),
+  renderedWinBurstSignature: '',
   unsubscribeWins: null,
   winsRoundId: null,
   lastRenderSecond: -1,
@@ -1905,9 +1991,9 @@ const resultCaptionEl = document.getElementById('result-caption');
 const statusTextEl = document.getElementById('status-text');
 const statusDotEl = document.getElementById('status-dot');
 const phaseTimerEl = document.getElementById('phase-timer');
-const wheelTimerEl = document.getElementById('wheel-timer');
-const wheelTimerLabelEl = document.getElementById('wheel-timer-label');
-const wheelTimerValueEl = document.getElementById('wheel-timer-value');
+const feltTimerEl = document.getElementById('felt-timer');
+const feltTimerLabelEl = document.getElementById('felt-timer-label');
+const feltTimerValueEl = document.getElementById('felt-timer-value');
 const statBetEl = document.getElementById('stat-bet');
 const statLastEl = document.getElementById('stat-last');
 const totalBetEl = document.getElementById('total-bet');
@@ -2028,9 +2114,27 @@ function canBet() {
   return round.phase === 'betting';
 }
 
+function usablePlayerLabel(label) {
+  const value = String(label || '').trim();
+  if (!value || /^(player|anonymous|sign in)$/i.test(value)) return '';
+  return value.slice(0, 24);
+}
+
 function activePlayerLabel() {
   try {
-    if (window.RouletteLive && RouletteLive.playerLabel) return RouletteLive.playerLabel();
+    const chipLabel = usablePlayerLabel(document.getElementById('cu-chip-lbl')?.textContent);
+    if (chipLabel) return chipLabel;
+  } catch (e) {}
+  try {
+    if (window.RouletteLive && RouletteLive.configured && RouletteLive.playerLabel) {
+      const liveLabel = usablePlayerLabel(RouletteLive.playerLabel());
+      if (liveLabel) return liveLabel;
+    }
+  } catch (e) {}
+  try {
+    const user = window.CasinoAccount && CasinoAccount.user && CasinoAccount.user();
+    const accountLabel = usablePlayerLabel(user && (user.displayName || (user.email ? user.email.split('@')[0] : '')));
+    if (accountLabel) return accountLabel;
   } catch (e) {}
   return 'You';
 }
@@ -2244,6 +2348,7 @@ function resolveCurrentBets(round) {
 function sendWinToLive(round, result) {
   if (!result.wins.length) return;
   const biggest = result.wins.slice().sort((a, b) => b.payout - a.payout)[0];
+  const timestamp = Date.now();
   const payload = {
     roundId: round.roundId,
     number: round.outcome,
@@ -2251,10 +2356,18 @@ function sendWinToLive(round, result) {
     bet: result.totalBet,
     payout: result.grossPaid,
     label: biggest.bet.label,
+    biggestPayout: biggest.payout,
     player: activePlayerLabel(),
     uid: activePlayerUid(),
+    t: timestamp,
   };
-  State.liveWins = State.liveWins.concat([{ ...payload, local: true }]).slice(-8);
+  const localPayload = { ...payload, local: true };
+  const localKey = liveWinKey(localPayload);
+  State.roundWinBurstEntries = State.roundWinBurstEntries
+    .filter(w => liveWinKey(w) !== localKey)
+    .concat([localPayload])
+    .slice(-8);
+  State.liveWins = State.liveWins.concat([localPayload]).slice(-12);
   renderRecentWins();
   const send = () => {
     try {
@@ -2268,11 +2381,17 @@ function sendWinToLive(round, result) {
 function bindWinsFeed(roundId, force) {
   if (!roundId) return;
   if (!force && State.winsRoundId === roundId) return;
+  const changingRound = State.winsRoundId !== roundId;
   if (State.unsubscribeWins) {
     try { State.unsubscribeWins(); } catch (e) {}
   }
   State.winsRoundId = roundId;
   State.liveWins = [];
+  if (changingRound) {
+    State.roundWinBurstEntries = [];
+    State.renderedWinBurstSignature = '';
+    recentListEl.innerHTML = '';
+  }
   State.unsubscribeWins = null;
   if (window.RouletteLive && RouletteLive.subscribeWins) {
     State.unsubscribeWins = RouletteLive.subscribeWins(roundId, list => {
@@ -2283,23 +2402,59 @@ function bindWinsFeed(roundId, force) {
   renderRecentWins();
 }
 
+function liveWinKey(w) {
+  const payout = Math.round((Number(w.biggestPayout || w.payout) || 0) * 100);
+  return [
+    w.roundId || 'feed',
+    w.uid || w.player || 'player',
+    w.number || '',
+    w.label || 'win',
+    payout,
+  ].join('|');
+}
+
+function isStaleFeedWin(w) {
+  const t = Number(w._t || w.t || 0);
+  return !w.local && !w.roundId && Number.isFinite(t) && t > 0 && t < State.liveWinStartedAt - 500;
+}
+
 function renderRecentWins() {
+  const round = State.activeRound;
+  if (!round || round.phase !== 'result') return;
   const seen = new Set();
-  const wins = State.liveWins.slice(-8).reverse().filter(w => {
-    const key = [w.roundId, w.uid || w.player, w.payout, w.label].join('|');
+  const candidates = (State.roundWinBurstEntries || []).concat(State.liveWins || []);
+  const wins = candidates.filter(w => {
+    if (!w || w.roundId !== round.roundId) return false;
+    if (isStaleFeedWin(w)) return false;
+    const key = liveWinKey(w);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  });
+  }).sort((a, b) => (Number(b.biggestPayout || b.payout) || 0) - (Number(a.biggestPayout || a.payout) || 0)).slice(0, 8);
+  const signature = round.roundId + '|' + wins.map(liveWinKey).join(',');
+  if (signature === State.renderedWinBurstSignature) return;
+  State.renderedWinBurstSignature = signature;
   if (!wins.length) {
     recentListEl.innerHTML = '';
     return;
   }
-  recentListEl.innerHTML = wins.map(w => {
+  const rows = wins.map((w, index) => {
     const player = escapeHTML(String(w.player || 'Player').slice(0, 18));
-    const label = escapeHTML(String(w.label || 'Win').slice(0, 26));
-    return `<div class="recent-pill win"><strong>${player}</strong> ${label} ${money(w.payout || 0)}</div>`;
+    const label = escapeHTML(String(w.label || 'Win').slice(0, 24));
+    const number = escapeHTML(String(w.number || round.outcome));
+    const color = w.color || Core.numberColor(number);
+    const payout = Number(w.biggestPayout || w.payout || 0);
+    return `<div class="round-win-row" style="--row-index:${index}">
+      <span class="round-win-player">${player}</span>
+      <strong class="round-win-amount">${money(payout)}</strong>
+      <span class="round-win-hit ${color}">${number}</span>
+      <span class="round-win-label">${label}</span>
+    </div>`;
   }).join('');
+  recentListEl.innerHTML = `<div class="round-win-burst">
+    <div class="round-win-kicker">ROUND WINS</div>
+    ${rows}
+  </div>`;
 }
 
 function spinMapBets() {
@@ -2581,6 +2736,7 @@ function syncRound(round) {
     State.resolvedRoundId = null;
     State.lastRenderSecond = -1;
     State.lockedSpinBets = [];
+    State.roundWinBurstEntries = [];
     State.spinSoundRoundId = null;
     State.renderSpinMapSignature = '';
     bindWinsFeed(round.roundId);
@@ -2591,6 +2747,10 @@ function syncRound(round) {
   }
 
   if (round.phase === 'betting') {
+    if (previousPhase !== 'betting' || recentListEl.innerHTML) {
+      recentListEl.innerHTML = '';
+      State.renderedWinBurstSignature = '';
+    }
     if (State.lockedSpinBets.length || previousPhase !== 'betting') {
       State.lockedSpinBets = [];
       State.renderSpinMapSignature = '';
@@ -2630,17 +2790,18 @@ function syncRound(round) {
     boardLockEl.textContent = 'NEXT ROUND SOON';
     statLastEl.textContent = round.outcome;
     resolveCurrentBets(round);
+    renderRecentWins();
   }
 
   const seconds = Math.ceil(round.phaseRemaining / 1000);
   phaseTimerEl.textContent = seconds + 's';
-  wheelTimerLabelEl.textContent = round.phase === 'betting'
+  feltTimerLabelEl.textContent = round.phase === 'betting'
     ? 'BETS CLOSE'
     : round.phase === 'spinning'
-      ? 'BALL DROPS'
+      ? 'BETS LOCKED'
       : 'NEXT SPIN';
-  wheelTimerValueEl.textContent = seconds + 's';
-  wheelTimerEl.classList.toggle('urgent', round.phase === 'betting' && seconds <= 5);
+  feltTimerValueEl.textContent = seconds + 's';
+  feltTimerEl.classList.toggle('urgent', round.phase === 'betting' && seconds <= 5);
   phaseTimerEl.closest('.meter-row').classList.toggle('urgent', round.phase === 'betting' && seconds <= 5);
   updateWheel(round);
   renderSpinBetMap();

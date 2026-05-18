@@ -2245,6 +2245,9 @@ body.is-spinning .symbol::before { animation-play-state: paused !important; }
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
 <script src="casino-jackpots.js"></script>
+<script>window.CB_BANNER_PLACEMENT = { anchor: '.topper', position: 'before', gapTop: '6px', gapBottom: '6px' };</script>
+<script src="casino-bots.js"></script>
+<script src="casino-chat.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>
@@ -2581,6 +2584,12 @@ const Audio = (() => {
   const SFX = {
     // reels
     'reel_start': 1, 'reel_loop': 1,
+    /* Four spin samples, each pre-sized to one of the four spin
+       lengths (normal / anticipate-reels-4&5 / anticipate-reel-5 /
+       both). doSpin picks the right one so the audio plays at 1.0×
+       and lands when the last reel does — no playbackRate stretch. */
+    'diamond_spin_normal': 1, 'diamond_spin_ant45': 1,
+    'diamond_spin_ant5':   1, 'diamond_spin_both':  1,
     'reel_stop_1': 2, 'reel_stop_2': 2, 'reel_stop_3': 2, 'reel_stop_final': 1,
     /* One slot per reel so reel 4/5 never reuse the slot a still-ringing
        earlier reel is using (the diamond_reel_stop sample is ~1.8 s and
@@ -2617,6 +2626,11 @@ const Audio = (() => {
   const pools = {};
   const loops = {};
   let loaded = false;
+  /* Reference to the active spin sample element so spinEnd can fade
+     it out the moment the last reel lands. Each spin variant is
+     pre-sized to its spin length, so playback runs at 1.0× without
+     stretching. */
+  let activeSpinSound = null;
 
   function sfxGain() {
     return window.Settings ? Settings.sfxVolume() : 1;
@@ -2747,11 +2761,42 @@ const Audio = (() => {
   return {
     init: load,
 
-    // Silence between spin-click and reel landings — the button click
-    // sells the action, the reel-stops punctuate, and only interesting
-    // events (wins, scatters, bonus) get sound. Cleaner than a hum.
-    spinStart() {
-      stopLoop('reel_loop', 0); // safety in case it was started elsewhere
+    // Spin sample starts on press and is faded out by spinEnd when
+    // the last reel lands. variant picks one of four pre-sized samples
+    // ('normal' / 'ant45' / 'ant5' / 'both') so audio plays at 1.0×
+    // and naturally finishes near the last reel's landing — no
+    // playbackRate stretching, no resampler artifacts.
+    spinStart(variant = 'normal') {
+      stopLoop('reel_loop', 0);
+      // Stop any prior spin sound still in flight (e.g. user spammed spin).
+      if (activeSpinSound) {
+        try { activeSpinSound.pause(); activeSpinSound.currentTime = 0; } catch (e) {}
+        activeSpinSound = null;
+      }
+      const name = 'diamond_spin_' + variant;
+      activeSpinSound = fire(name, { gain: 0.7, pitchVariance: 0 });
+      if (!activeSpinSound) return;
+      try { activeSpinSound.playbackRate = 1; } catch (e) {}
+    },
+    // Fade-out + reset on the active spin sound element. Called from
+    // doSpin once all reels have finished landing. Fade is 10×25ms
+    // = 250 ms — gentle enough to avoid any pause-click.
+    spinEnd() {
+      const el = activeSpinSound;
+      activeSpinSound = null;
+      if (!el) return;
+      const startVol = el.volume;
+      let i = 0;
+      const tick = () => {
+        i++;
+        try { el.volume = Math.max(0, startVol * (1 - i / 10)); } catch (e) {}
+        if (i >= 10) {
+          try { el.pause(); el.currentTime = 0; el.volume = startVol; } catch (e) {}
+        } else {
+          setTimeout(tick, 25);
+        }
+      };
+      setTimeout(tick, 25);
     },
 
     // Generic "buzz" (still used by flashLowFunds) — kept for back-compat.
@@ -3385,7 +3430,6 @@ async function doSpin(opts = {}) {
   document.getElementById('screen').classList.remove('antic-pulse');
 
   if (!opts.boughtBonus) setBalance(State.balance - getEffectiveBet());
-  Audio.spinStart();
 
   // History tracking — record at end of spin, OR defer until collectBonus
   // so a bonus-trigger spin records ONE combined entry (line + bonus).
@@ -3415,6 +3459,14 @@ async function doSpin(opts = {}) {
   if (anticipate5) {
     dur[4] += 750;
   }
+
+  // Pick the spin-sample variant that's pre-sized to this spin length.
+  // 4 variants: normal / ant45 / ant5 / both — see Audio.spinStart.
+  let spinVariant = 'normal';
+  if (anticipate4and5 && anticipate5) spinVariant = 'both';
+  else if (anticipate4and5)           spinVariant = 'ant45';
+  else if (anticipate5)               spinVariant = 'ant5';
+  Audio.spinStart(spinVariant);
 
   // Kick all reels off in parallel; each stops at its scheduled time.
   // As each reel lands, count visible diamonds and fire an escalating
@@ -3464,6 +3516,7 @@ async function doSpin(opts = {}) {
   }
 
   await Promise.all(reelPromises);
+  Audio.spinEnd();
 
   // Evaluate
   const { wins, diamondCount: dc } = evaluateWin(grid);

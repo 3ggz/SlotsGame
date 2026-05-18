@@ -2125,6 +2125,9 @@ body::after {
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
 <script src="casino-jackpots.js"></script>
+<script>window.CB_BANNER_PLACEMENT = { anchor: '.topper', position: 'before', gapTop: '6px', gapBottom: '6px' };</script>
+<script src="casino-bots.js"></script>
+<script src="casino-chat.js"></script>
 
 <div class="bubbles" id="bg-bubbles"></div>
 
@@ -2475,6 +2478,48 @@ const Audio = (() => {
   let master = null;
   let reverbBus = null;
 
+  /* The spin sample is the one non-synth sound in this engine — a
+     single HTMLAudioElement whose src is swapped per spin to one of
+     four pre-sized variants (normal / ant45 / ant5 / both) matching
+     this game's actual spin lengths. Plays at 1.0× so there's no
+     resampling stretch or wind-down artifact. Faded out by stopSpin-
+     Sound when the last reel lands. */
+  let spinSoundEl = null;
+  const SPIN_SRC = {
+    normal: 'sfx/slots/kraken_spin_normal.mp3',
+    ant45:  'sfx/slots/kraken_spin_ant45.mp3',
+    ant5:   'sfx/slots/kraken_spin_ant5.mp3',
+    both:   'sfx/slots/kraken_spin_both.mp3',
+  };
+  function startSpinSound(variant = 'normal') {
+    if (!spinSoundEl) {
+      spinSoundEl = document.createElement('audio');
+      spinSoundEl.preload = 'auto';
+    }
+    const a = spinSoundEl;
+    const src = SPIN_SRC[variant] || SPIN_SRC.normal;
+    if (a.src.indexOf(src) === -1) { a.src = src; }
+    const vol = (window.Settings ? Settings.sfxVolume() : 1) * 0.55;
+    try { a.pause(); a.currentTime = 0; a.playbackRate = 1; } catch (e) {}
+    a.volume = Math.max(0, Math.min(1, vol));
+    const p = a.play();
+    if (p && p.catch) p.catch(() => {});
+  }
+  function stopSpinSound() {
+    const a = spinSoundEl;
+    if (!a) return;
+    const startVol = a.volume;
+    let i = 0;
+    // 10-step / 250 ms fade so the cutoff isn't a click.
+    const tick = () => {
+      i++;
+      try { a.volume = Math.max(0, startVol * (1 - i / 10)); } catch (e) {}
+      if (i >= 10) { try { a.pause(); a.currentTime = 0; a.volume = startVol; } catch (e) {} }
+      else setTimeout(tick, 25);
+    };
+    setTimeout(tick, 25);
+  }
+
   function makeIR(c, duration, decay) {
     const len = Math.floor(c.sampleRate * duration);
     const buf = c.createBuffer(2, len, c.sampleRate);
@@ -2602,13 +2647,25 @@ const Audio = (() => {
     tone(72, 0.10, 'square', 0.10 * intensity, 0.002, 0.08, 0.05);
   }
 
+  // Anchor-drop into the sea: low thump + rising whoosh + bright clink.
+  // Shared between the main-reel spin and the bonus-cell respin —
+  // only the main spin also fires the slot sample on top.
+  function anchorDropSynth() {
+    tone(95, 0.12, 'sine',   0.22, 0.002, 0.08, 0.05);
+    tone(2400, 0.025, 'square', 0.06, 0.001, 0.02, 0.06);
+    noise(0.30, 0.10, 380, 1900, 0.08, 'bandpass');
+  }
+
   return {
-    spinStart() {
-      // Anchor-drop into the sea: low thump + rising whoosh + bright clink
-      tone(95, 0.12, 'sine',   0.22, 0.002, 0.08, 0.05);
-      tone(2400, 0.025, 'square', 0.06, 0.001, 0.02, 0.06);
-      noise(0.30, 0.10, 380, 1900, 0.08, 'bandpass');
+    spinStart(variant = 'normal') {
+      anchorDropSynth();
+      // Pre-sized kraken spin sample layered on top.
+      startSpinSound(variant);
     },
+    spinEnd() { stopSpinSound(); },
+    // Bonus-cell respin uses only the synth anchor-drop — no slot
+    // sample, since the mini-spinners aren't the full reel cascade.
+    bonusSpinIntro() { anchorDropSynth(); },
     reelStop() { thud(1); },
     reelLand(s = 0.85) { thud(0.55 + s * 0.45); },
     smallWin() {
@@ -3160,7 +3217,6 @@ async function doSpin(opts = {}) {
   document.getElementById('screen').classList.remove('antic-pulse');
 
   if (!opts.boughtBonus) setBalance(State.balance - getEffectiveBet());
-  Audio.spinStart();
 
   // History tracking — defer record until collectBonus if bonus triggers
   State.spinBet = opts.boughtBonus ? getBuyBonusCost() : getEffectiveBet();
@@ -3185,6 +3241,13 @@ async function doSpin(opts = {}) {
   const dur = [...baseDur];
   if (anticipate4and5) { dur[3] += 950; dur[4] += 950; }
   if (anticipate5) { dur[4] += 750; }
+
+  // Pick the spin-sample variant pre-sized to this spin length.
+  let spinVariant = 'normal';
+  if (anticipate4and5 && anticipate5) spinVariant = 'both';
+  else if (anticipate4and5)           spinVariant = 'ant45';
+  else if (anticipate5)               spinVariant = 'ant5';
+  Audio.spinStart(spinVariant);
 
   const reelPromises = [];
   for (let r = 0; r < REEL_COUNT; r++) {
@@ -3211,6 +3274,7 @@ async function doSpin(opts = {}) {
   }
 
   await Promise.all(reelPromises);
+  Audio.spinEnd();
 
   const { wins, bonusCount: dc } = evaluateWin(grid);
   let totalWin = 0;
@@ -4152,7 +4216,7 @@ async function doBonusRespin() {
     if (o.isUpgrade) startUpgradeSpinner(o.idx);
     else             startCellSpinner(o.idx);
   }
-  Audio.spinStart();
+  Audio.bonusSpinIntro();
 
   await sleep(620);
 

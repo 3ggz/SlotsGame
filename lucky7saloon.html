@@ -1413,6 +1413,9 @@ button { border: 0; cursor: pointer; }
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
 <script src="casino-jackpots.js"></script>
+<script>window.CB_BANNER_PLACEMENT = { anchor: '.topper', position: 'after', gapTop: '8px', gapBottom: '8px' };</script>
+<script src="casino-bots.js"></script>
+<script src="casino-chat.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>
@@ -2041,6 +2044,39 @@ button { border: 0; cursor: pointer; }
       freqs.forEach(freq => tone(freq, dur, type, vol, delay));
     }
 
+    /* The slots-spin sample (the same "regular" diamond-normal sample
+       used in slots.html) layered on top of this game's synth wood-
+       knock + tick spinStart. Plays at 1.0× — the synth ticks fill
+       any time the sample doesn't cover, and the synth layer also
+       masks the gap when the spin runs longer than the sample. */
+    let spinSoundEl = null;
+    function startSpinSound() {
+      if (!spinSoundEl) {
+        spinSoundEl = document.createElement('audio');
+        spinSoundEl.preload = 'auto';
+        spinSoundEl.src = 'sfx/diamond_spin_normal.mp3';
+        spinSoundEl.load();
+      }
+      const a = spinSoundEl;
+      try { a.pause(); a.currentTime = 0; a.playbackRate = 1; } catch (e) {}
+      a.volume = Math.max(0, Math.min(1, gainValue() * 0.55));
+      const p = a.play();
+      if (p && p.catch) p.catch(() => {});
+    }
+    function stopSpinSound() {
+      const a = spinSoundEl;
+      if (!a) return;
+      const startVol = a.volume;
+      let i = 0;
+      const tick = () => {
+        i++;
+        try { a.volume = Math.max(0, startVol * (1 - i / 10)); } catch (e) {}
+        if (i >= 10) { try { a.pause(); a.currentTime = 0; a.volume = startVol; } catch (e) {} }
+        else setTimeout(tick, 25);
+      };
+      setTimeout(tick, 25);
+    }
+
     return {
       unlock: ensure,
       click() {
@@ -2066,7 +2102,10 @@ button { border: 0; cursor: pointer; }
           const d = 0.13 + i * 0.055;
           noise(0.018, 0.011, 1600 + i * 34, 'bandpass', d, -0.35 + (i % 6) * 0.14, 6);
         }
+        // Slots-spin sample layered on top of the synth wood-knock intro.
+        startSpinSound();
       },
+      spinEnd() { stopSpinSound(); },
       reelTick(i = 0, step = 0) {
         const pan = reelPan(i);
         const base = [560, 520, 590, 505, 545, 492][i % 6];
@@ -2473,6 +2512,7 @@ button { border: 0; cursor: pointer; }
     AudioFX.spinStart(totalMs);
     await new Promise(resolve => requestAnimationFrame(resolve));
     await Promise.all(reels.map((reel, i) => settleReel(reel, i)));
+    AudioFX.spinEnd();
   }
 
   async function animateWaysTo(value) {

@@ -999,6 +999,9 @@ body::before {
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
 <script src="casino-jackpots.js"></script>
+<script>window.CB_BANNER_PLACEMENT = { anchor: '.felt', position: 'before', gapTop: '12px', gapBottom: '10px' };</script>
+<script src="casino-bots.js"></script>
+<script src="casino-chat.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>
@@ -1149,7 +1152,7 @@ const Audio = (() => {
     'chip_stack_a', 'chip_stack_b',
     'chip_select', 'chip_payout', 'chip_clear',
     'win_chime', 'blackjack_fanfare', 'push_neutral',
-    'bust_thud', 'lose_low', 'button_soft',
+    'bust_thud', 'lose_low', 'button_soft', 'stand_thump',
   ];
   const EXTS = [
     { ext: 'wav', mime: 'audio/wav' },
@@ -1251,6 +1254,7 @@ const Audio = (() => {
     peek()          { play('card_peek', { gain: 0.95, pitchVariance: 0.03 }); },
     shuffle()       { play('shuffle', { gain: 0.7, pitchVariance: 0.02 }); },
     bust()          { play('bust_thud', { gain: 0.85 }); },
+    stand()         { play('stand_thump', { gain: 0.95, pitch: 0.85, pitchVariance: 0.04 }); },
     win()           { play('win_chime', { gain: 0.85 }); },
     bigWin()        {
       play('win_chime', { gain: 0.95 });
@@ -2096,6 +2100,7 @@ async function stand(force = false) {
   }
   hideConfirm();
   h.stood = true;
+  Audio.stand();
   advanceHand();
 }
 

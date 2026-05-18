@@ -1,0 +1,2153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Diamond Casino — Mines</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0a0418">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Diamond Casino">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Outfit:wght@400;600;800&family=Geist+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-0: #0a0418;
+  --bg-1: #150828;
+  --gold-0: #fff0a8;
+  --gold-1: #ffd24a;
+  --gold-2: #b8860b;
+  --gold-deep: #5c3d00;
+  --neon-pink: #ff2e93;
+  --neon-cyan: #22d3ee;
+  --neon-violet: #a855f7;
+  --neon-green: #5cffa1;
+  --danger: #ff4d6d;
+  --tile-rest-1: #1c0d3c;
+  --tile-rest-2: #0a0420;
+  --shadow-deep: 0 30px 60px -10px rgba(0,0,0,0.7), 0 18px 36px -18px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Outfit', sans-serif;
+  color: #fff;
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(168,85,247,0.20) 0%, transparent 50%),
+    radial-gradient(ellipse at 82% 18%, rgba(34,211,238,0.14) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 100%, rgba(255,46,147,0.12) 0%, transparent 55%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 58%, var(--bg-0));
+  background-attachment: fixed;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>");
+}
+
+button, input { font: inherit; }
+
+/* TOP CHROME */
+.lobby-link, .history-btn, .rules-btn {
+  position: fixed;
+  top: 12px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  text-decoration: none;
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  line-height: 1;
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(42,18,77,0.85), rgba(15,4,30,0.85));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.1s, filter 0.15s;
+}
+.lobby-link {
+  left: 12px;
+  color: var(--gold-1);
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 3px 0 rgba(0,0,0,0.5);
+}
+.history-btn {
+  left: 122px;
+  color: var(--neon-cyan);
+  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.4), 0 3px 0 rgba(0,0,0,0.5);
+}
+.lobby-link::before { content: '<'; font-size: 14px; line-height: 1; }
+.history-btn::before { content: '#'; font-size: 13px; line-height: 1; }
+.rules-btn {
+  left: 252px;
+  color: var(--gold-0);
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.38), 0 3px 0 rgba(0,0,0,0.5);
+}
+.rules-btn::before { content: '?'; font-size: 13px; line-height: 1; }
+.lobby-link:hover, .history-btn:hover, .rules-btn:hover { filter: brightness(1.15); }
+.lobby-link:active, .history-btn:active, .rules-btn:active { transform: translateY(2px); }
+
+.balance-link {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px 8px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(42,18,77,0.85), rgba(15,4,30,0.85));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 3px 0 rgba(0,0,0,0.5);
+  color: #fff;
+}
+.balance-link .label {
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  color: rgba(255,210,74,0.78);
+}
+.balance-link .value {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.01em;
+}
+.btn-add {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: 0;
+  font-family: 'Bungee', cursive;
+  font-size: 16px;
+  cursor: pointer;
+  color: #0a0418;
+  background: linear-gradient(180deg, #5cffa1, #14b85a);
+  box-shadow: 0 3px 0 rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.45);
+  transition: transform 0.08s;
+}
+.btn-add:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.45); }
+
+/* STAGE */
+.stage {
+  position: relative;
+  z-index: 2;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 70px 18px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* HEADER */
+.game-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding-top: 6px;
+}
+.title-block .pre {
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.55em;
+  color: rgba(34,211,238,0.78);
+  text-shadow: 0 0 10px rgba(34,211,238,0.45);
+  margin-bottom: 6px;
+}
+.title-block .title {
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(38px, 7vw, 66px);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  background: linear-gradient(180deg, #fff7d1 0%, var(--gold-1) 45%, #b8860b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 4px 0 rgba(0,0,0,0.55)) drop-shadow(0 0 18px rgba(255,210,74,0.32));
+}
+.title-block .subtitle {
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.36em;
+  color: rgba(255,255,255,0.45);
+  margin-top: 6px;
+}
+
+/* MULTIPLIER + COUNTER PANEL */
+.multiplier-panel {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 18px 26px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,210,74,0.20), transparent 70%),
+    linear-gradient(180deg, #1b083a, #0c0420);
+  box-shadow:
+    var(--shadow-deep),
+    inset 0 0 0 1.5px rgba(255,210,74,0.28);
+  overflow: hidden;
+}
+.multiplier-panel::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 16px;
+  pointer-events: none;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--neon-pink), var(--gold-1) 35%, var(--neon-cyan) 70%, var(--neon-pink));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.40;
+  animation: mpBorder 9s linear infinite;
+}
+@keyframes mpBorder {
+  0%   { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+.mp-left {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  z-index: 1;
+}
+.mp-left .lbl {
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
+  letter-spacing: 0.28em;
+  color: rgba(255,210,74,0.7);
+}
+.mp-value {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: clamp(40px, 7vw, 64px);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  background: linear-gradient(180deg, #fff7d1, var(--gold-1) 55%, #b8860b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 14px rgba(255,210,74,0.45));
+  transition: transform 0.18s, filter 0.2s;
+}
+.multiplier-panel.bust .mp-value {
+  background: linear-gradient(180deg, #ffd7df, var(--danger) 60%, #6a0418);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 14px rgba(255,77,109,0.55));
+}
+.multiplier-panel.win .mp-value {
+  background: linear-gradient(180deg, #c8ffd9, var(--neon-green) 60%, #14b85a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 16px rgba(92,255,161,0.55));
+}
+.mp-value.bump { transform: scale(1.08); filter: drop-shadow(0 0 22px rgba(255,210,74,0.7)); }
+
+.mp-right {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 1;
+}
+.next-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(34,211,238,0.18), rgba(0,0,0,0.5));
+  box-shadow: inset 0 0 0 1px rgba(34,211,238,0.45);
+  color: #c8f5ff;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+.next-pill .lbl {
+  font-family: 'Bungee', cursive;
+  font-size: 8px;
+  letter-spacing: 0.24em;
+  color: rgba(34,211,238,0.85);
+}
+.next-pill.hide { opacity: 0; pointer-events: none; }
+.gems-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 5px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(168,85,247,0.18), rgba(0,0,0,0.5));
+  box-shadow: inset 0 0 0 1px rgba(168,85,247,0.35);
+  font-family: 'Geist Mono', monospace;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+.gems-pill span { color: rgba(255,255,255,0.55); font-size: 10px; }
+.gems-pill .gem-c { color: var(--neon-green); }
+.gems-pill .mine-c { color: var(--danger); }
+
+/* PAYOUT PILL (shown only during a round) */
+.payout-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(92,255,161,0.16), rgba(0,0,0,0.5));
+  box-shadow: inset 0 0 0 1px rgba(92,255,161,0.42);
+  font-family: 'Geist Mono', monospace;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--neon-green);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.payout-pill .lbl {
+  font-family: 'Bungee', cursive;
+  font-size: 8px;
+  letter-spacing: 0.24em;
+  color: rgba(92,255,161,0.85);
+}
+.payout-pill.hide { display: none; }
+
+/* GRID FRAME */
+.grid-frame {
+  position: relative;
+  align-self: center;
+  width: min(560px, 100%);
+  padding: 18px;
+  border-radius: 24px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(168,85,247,0.18), transparent 70%),
+    linear-gradient(180deg, #170730, #0a0419);
+  box-shadow:
+    var(--shadow-deep),
+    inset 0 0 0 1.5px rgba(255,210,74,0.22);
+}
+.grid-frame::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 18px;
+  pointer-events: none;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--gold-0), var(--gold-1) 30%, var(--gold-deep) 50%, var(--gold-1) 70%, var(--gold-0));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.4;
+}
+.grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--grid-n, 5), 1fr);
+  grid-template-rows: repeat(var(--grid-n, 5), 1fr);
+  gap: clamp(5px, 1.6vw, 10px);
+  aspect-ratio: 1 / 1;
+  transition: gap 0.18s ease;
+}
+.grid[data-n="5"] { --grid-n: 5; }
+.grid[data-n="6"] { --grid-n: 6; }
+.grid[data-n="7"] { --grid-n: 7; }
+.grid.lock { pointer-events: none; }
+.grid.flash::after {
+  content: '';
+  position: absolute;
+  inset: -18px;
+  border-radius: 24px;
+  background: radial-gradient(ellipse at center, rgba(255,77,109,0.45), transparent 60%);
+  pointer-events: none;
+  animation: gridFlashRed 0.5s ease-out forwards;
+}
+@keyframes gridFlashRed {
+  0%   { opacity: 0; }
+  18%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.grid.win-flash::after {
+  content: '';
+  position: absolute;
+  inset: -18px;
+  border-radius: 24px;
+  background: radial-gradient(ellipse at center, rgba(92,255,161,0.40), transparent 60%);
+  pointer-events: none;
+  animation: gridFlashGreen 0.9s ease-out forwards;
+}
+@keyframes gridFlashGreen {
+  0%   { opacity: 0; }
+  18%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.grid.shake { animation: gridShake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes gridShake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 1px, 0); }
+  40%, 60% { transform: translate3d(4px, -1px, 0); }
+}
+
+/* TILE */
+.tile {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  cursor: pointer;
+  perspective: 700px;
+  transform-style: preserve-3d;
+  transition: transform 0.18s cubic-bezier(.2,1.4,.4,1), filter 0.15s;
+  outline: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+.tile:hover .face-front { filter: brightness(1.18); }
+.tile:hover {
+  transform: translateY(-2px);
+}
+.tile:active {
+  transform: translateY(0);
+}
+.tile.disabled {
+  cursor: default;
+}
+.tile.disabled:hover { transform: none; }
+.tile.disabled:hover .face-front { filter: none; }
+.tile-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.42s cubic-bezier(.2,.8,.2,1.05);
+}
+.tile.revealed .tile-inner {
+  transform: rotateY(180deg);
+}
+.face {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.face-front {
+  background:
+    radial-gradient(ellipse at 30% 22%, rgba(255,255,255,0.10), transparent 60%),
+    linear-gradient(160deg, var(--tile-rest-1), var(--tile-rest-2) 60%, #07021a);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,210,74,0.30),
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 10px 18px -10px rgba(0,0,0,0.7);
+}
+.face-front::before {
+  /* faint diamond watermark */
+  content: '';
+  position: absolute;
+  width: 56%;
+  height: 56%;
+  background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(168,85,247,0.06));
+  clip-path: polygon(50% 4%, 96% 38%, 50% 96%, 4% 38%);
+  filter: blur(0.4px);
+  opacity: 0.55;
+}
+.face-front::after {
+  /* subtle facet highlight line */
+  content: '';
+  position: absolute;
+  top: 8%;
+  left: 8%;
+  width: 28%;
+  height: 22%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.18), transparent 70%);
+  border-radius: 8px;
+  filter: blur(2px);
+}
+.face-back {
+  transform: rotateY(180deg);
+  background: linear-gradient(160deg, #1a0838, #0a0420 70%);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(92,255,161,0.45),
+    inset 0 0 20px rgba(92,255,161,0.12);
+}
+.tile.mine .face-back {
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,77,109,0.5),
+    inset 0 0 22px rgba(255,77,109,0.18);
+  background: linear-gradient(160deg, #2a0716, #0a0418 70%);
+}
+.tile.fade .face-front {
+  opacity: 0.34;
+  transition: opacity 0.6s ease;
+}
+.tile.fade.show-hint .tile-inner {
+  /* show what was hidden under the unpicked tiles, but faint */
+  transform: rotateY(180deg);
+}
+.tile.fade .face-back {
+  opacity: 0.42;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,0.10),
+    inset 0 0 18px rgba(0,0,0,0.4);
+}
+.tile.fade.mine .face-back {
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,77,109,0.28),
+    inset 0 0 18px rgba(255,77,109,0.10);
+}
+
+/* DIAMOND SVG (inside .face-back when safe) */
+.diamond-svg {
+  width: 64%;
+  height: 64%;
+  filter: drop-shadow(0 0 10px rgba(92,255,161,0.55)) drop-shadow(0 0 22px rgba(34,211,238,0.4));
+  animation: diamondAppear 0.5s cubic-bezier(.2,1.4,.4,1) both;
+}
+.tile.fade .diamond-svg {
+  filter: drop-shadow(0 0 4px rgba(255,255,255,0.20));
+  animation: none;
+  opacity: 0.7;
+}
+@keyframes diamondAppear {
+  from { transform: scale(0.4) rotate(-12deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0); opacity: 1; }
+}
+.tile.revealed.safe .diamond-svg {
+  animation: diamondAppear 0.5s cubic-bezier(.2,1.4,.4,1) both, diamondIdle 4s ease-in-out 0.6s infinite;
+}
+@keyframes diamondIdle {
+  0%, 100% { transform: rotate(0); }
+  50%      { transform: rotate(2deg); }
+}
+
+/* MINE SVG (inside .face-back when mine) */
+.mine-svg {
+  width: 64%;
+  height: 64%;
+  filter: drop-shadow(0 0 10px rgba(255,77,109,0.7)) drop-shadow(0 0 22px rgba(255,46,147,0.45));
+  animation: mineAppear 0.36s cubic-bezier(.2,1.4,.4,1) both;
+}
+.tile.fade .mine-svg {
+  filter: drop-shadow(0 0 4px rgba(255,77,109,0.30));
+  animation: none;
+  opacity: 0.7;
+}
+@keyframes mineAppear {
+  0%   { transform: scale(0.2); opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* CRACK OVERLAY shown briefly on the mine tile */
+.crack-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+}
+.tile.revealed.mine .crack-overlay {
+  animation: crackShow 0.6s ease-out forwards;
+}
+@keyframes crackShow {
+  0%   { opacity: 0; transform: scale(0.6); }
+  30%  { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+
+/* SPARKLE motes that burst from a safe reveal */
+.sparkle-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  overflow: visible;
+}
+.mote {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff7d1, var(--gold-1) 35%, transparent 70%);
+  filter: drop-shadow(0 0 6px rgba(255,210,74,0.65));
+  transform: translate(-50%, -50%);
+  animation: moteFly 0.85s ease-out forwards;
+  opacity: 0;
+}
+@keyframes moteFly {
+  0%   { opacity: 1; transform: translate(-50%, -50%) translate(var(--mx0, 0px), var(--my0, 0px)) scale(0.4); }
+  60%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) translate(var(--mx, 0px), var(--my, 0px)) scale(0.2); }
+}
+
+/* RED SHARD particles that burst from a mine reveal */
+.shard {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 5px; height: 11px;
+  background: linear-gradient(180deg, #ffd7df, var(--danger) 60%, #6a0418);
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 4px rgba(255,77,109,0.7));
+  animation: shardFly 0.7s ease-out forwards;
+  opacity: 0;
+}
+@keyframes shardFly {
+  0%   { opacity: 1; transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) translate(0, 0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) translate(var(--sx, 0px), var(--sy, 0px)) scale(0.6); }
+}
+
+/* TILE IDLE SHIMMER — random tiles glint */
+.tile.shimmer .face-front::after {
+  animation: shimmerLine 0.95s ease-out;
+}
+@keyframes shimmerLine {
+  0%   { background: linear-gradient(135deg, rgba(255,255,255,0.10), transparent 70%); top: 8%; left: 8%; }
+  50%  { background: linear-gradient(135deg, rgba(255,255,255,0.45), transparent 70%); top: 30%; left: 35%; }
+  100% { background: linear-gradient(135deg, rgba(255,255,255,0.10), transparent 70%); top: 65%; left: 65%; }
+}
+
+/* CONTROL DECK */
+.control-deck {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 1.4fr;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(168,85,247,0.16), transparent 60%),
+    linear-gradient(180deg, #1a0838, #0a0419);
+  box-shadow:
+    var(--shadow-deep),
+    inset 0 0 0 1.5px rgba(255,210,74,0.20);
+}
+.control-card {
+  position: relative;
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.4));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.control-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--gold-0);
+}
+.control-label .hint {
+  font-family: 'Bungee', cursive;
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: rgba(255,255,255,0.4);
+}
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-wrap.money::before {
+  content: '$';
+  position: absolute;
+  left: 12px;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--gold-1);
+  pointer-events: none;
+}
+.control-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 12px 0 30px;
+  border-radius: 12px;
+  border: 0;
+  background: linear-gradient(180deg, #07021a, #04010f);
+  color: #fff;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  text-align: right;
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.34), inset 0 1px 0 rgba(0,0,0,0.6);
+  -moz-appearance: textfield;
+}
+.control-input::-webkit-outer-spin-button,
+.control-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.control-input:focus { outline: none; box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.6), inset 0 1px 0 rgba(0,0,0,0.6), 0 0 14px rgba(255,210,74,0.25); }
+.control-input:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.button-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.mini-btn {
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #2a1170, #160734);
+  color: var(--gold-0);
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.28), 0 2px 0 rgba(0,0,0,0.5);
+  transition: filter 0.12s, transform 0.08s;
+}
+.mini-btn:hover { filter: brightness(1.15); }
+.mini-btn:active { transform: translateY(2px); box-shadow: inset 0 0 0 1px rgba(255,210,74,0.28), 0 0 0 rgba(0,0,0,0.5); }
+.mini-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* MINES slider + presets */
+.mines-readout {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 0 2px;
+}
+.mines-readout .num {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: 28px;
+  background: linear-gradient(180deg, #fff7d1, var(--gold-1) 55%, #b8860b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.mines-readout .of {
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  color: rgba(255,255,255,0.45);
+}
+.mines-slider {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(92,255,161,0.5), rgba(255,210,74,0.55) 50%, rgba(255,77,109,0.65));
+  outline: none;
+  cursor: pointer;
+}
+.mines-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff7d1, var(--gold-1) 50%, #b8860b);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,210,74,0.35);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.mines-slider::-webkit-slider-thumb:hover { transform: scale(1.1); }
+.mines-slider::-moz-range-thumb {
+  width: 22px; height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff7d1, var(--gold-1) 50%, #b8860b);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,210,74,0.35);
+  cursor: pointer;
+}
+.mines-slider:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.mines-quick {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.mines-quick button {
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.5));
+  color: rgba(255,255,255,0.7);
+  font-family: 'Geist Mono', monospace;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.18);
+  transition: filter 0.12s;
+}
+.mines-quick button.active {
+  background: linear-gradient(180deg, rgba(255,210,74,0.35), rgba(184,134,11,0.4));
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.7), 0 0 12px rgba(255,210,74,0.25);
+}
+.mines-quick button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ACTION CARD */
+.action-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.4));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+.action-btn {
+  width: 100%;
+  height: 84px;
+  border: 0;
+  border-radius: 14px;
+  font-family: 'Bungee', cursive;
+  font-size: 16px;
+  letter-spacing: 0.18em;
+  color: #1a0640;
+  cursor: pointer;
+  box-shadow: 0 6px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.5);
+  transition: transform 0.08s, filter 0.12s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.action-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.32) 50%, transparent 100%);
+  transform: translateX(-100%);
+  animation: actionSheen 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes actionSheen {
+  0%   { transform: translateX(-110%); }
+  35%  { transform: translateX(110%); }
+  100% { transform: translateX(110%); }
+}
+.action-btn.start {
+  background: linear-gradient(180deg, #fff7d1, var(--gold-1) 50%, #b8860b);
+}
+.action-btn.cashout {
+  background: linear-gradient(180deg, #d4ffe4, var(--neon-green) 50%, #14b85a);
+}
+.action-btn.cashout .sub { color: rgba(20,40,28,0.85); }
+.action-btn.locked {
+  background: linear-gradient(180deg, #5a5266, #2a2330);
+  color: rgba(255,255,255,0.55);
+  cursor: not-allowed;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.4);
+}
+.action-btn.locked::after { display: none; }
+.action-btn:active:not(.locked) { transform: translateY(3px); box-shadow: 0 3px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.5); }
+.action-btn .main { font-size: 20px; letter-spacing: 0.18em; }
+.action-btn .sub {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: rgba(26,6,64,0.78);
+}
+
+/* MOBILE */
+@media (max-width: 720px) {
+  .stage { padding: 60px 12px 30px; gap: 12px; }
+  .lobby-link { left: 8px; }
+  .history-btn { left: 96px; }
+  .rules-btn { left: 200px; }
+  .lobby-link, .history-btn, .rules-btn { height: 32px; padding: 0 11px; font-size: 9px; letter-spacing: 0.14em; }
+  .balance-link { padding: 7px 10px; gap: 7px; }
+  .balance-link .label { font-size: 8px; letter-spacing: 0.18em; }
+  .balance-link .value { font-size: 14px; }
+  .btn-add { width: 24px; height: 24px; font-size: 14px; }
+  .multiplier-panel { padding: 14px 18px; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mp-left { align-items: flex-start; }
+  .mp-right { align-items: flex-end; }
+  .mp-value { font-size: clamp(34px, 11vw, 52px); }
+  .next-pill, .gems-pill, .payout-pill { font-size: 11px; padding: 5px 9px 4px; }
+  .next-pill .lbl, .payout-pill .lbl { font-size: 7px; letter-spacing: 0.18em; }
+  .grid-frame { padding: 12px; }
+  .grid { gap: 7px; }
+  .control-deck { grid-template-columns: 1fr 1fr; padding: 12px; gap: 9px; }
+  .action-card { grid-column: 1 / -1; }
+  .action-btn { height: 70px; font-size: 14px; }
+  .action-btn .main { font-size: 17px; }
+  .action-btn .sub { font-size: 13px; }
+  .control-card { padding: 11px; }
+  .control-input { height: 42px; font-size: 19px; }
+  .button-row { gap: 5px; }
+  .mini-btn { height: 32px; font-size: 9px; }
+  .mines-quick button { height: 28px; font-size: 11px; }
+  .mines-readout .num { font-size: 24px; }
+  .title-block .title { font-size: clamp(34px, 11vw, 52px); }
+}
+
+/* RESULT TOAST */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%) translateY(20px);
+  z-index: 60;
+  pointer-events: none;
+  min-width: 230px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(42,18,77,0.95), rgba(15,4,30,0.95));
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.42), 0 0 28px rgba(255,210,74,0.22), 0 20px 42px rgba(0,0,0,0.52);
+  backdrop-filter: blur(8px);
+  text-align: center;
+  font-family: 'Bungee', cursive;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--gold-0);
+  opacity: 0;
+  transition: opacity 0.18s, transform 0.18s;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.win { color: #c8ffd9; box-shadow: inset 0 0 0 1px rgba(92,255,161,0.5), 0 0 28px rgba(92,255,161,0.25), 0 20px 42px rgba(0,0,0,0.52); }
+.toast.bust { color: #ffd7df; box-shadow: inset 0 0 0 1px rgba(255,77,109,0.5), 0 0 28px rgba(255,77,109,0.25), 0 20px 42px rgba(0,0,0,0.52); }
+.toast .amount {
+  display: block;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  margin-top: 4px;
+}
+@media (max-width: 720px) {
+  .toast { bottom: 14px; font-size: 10px; min-width: 200px; padding: 10px 14px; }
+  .toast .amount { font-size: 18px; }
+}
+
+/* RULES MODAL */
+.modal-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(2,6,18,0.78);
+  backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+.modal-veil.show { display: flex; }
+.modal-card {
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+  padding: 22px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #1a0838, #0a0418 70%);
+  box-shadow: var(--shadow-deep), inset 0 0 0 1.5px rgba(255,210,74,0.35);
+  color: #fff;
+}
+.modal-title {
+  font-family: 'Bungee Shade', cursive;
+  font-size: 32px;
+  background: linear-gradient(180deg, #fff7d1, var(--gold-1) 50%, #b8860b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 6px;
+}
+.modal-sub {
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  color: var(--neon-cyan);
+  margin-bottom: 12px;
+}
+.rules-section {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.16);
+}
+.rules-section h3 {
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--gold-0);
+  margin-bottom: 8px;
+}
+.rules-section ul {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.45;
+  color: rgba(255,255,255,0.8);
+}
+.rules-section li { margin: 4px 0; font-size: 13px; }
+.modal-close {
+  width: 100%;
+  margin-top: 16px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  font-family: 'Bungee', cursive;
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  cursor: pointer;
+  color: #0a0418;
+  background: linear-gradient(180deg, #fff7d1, var(--gold-1) 50%, #b8860b);
+  box-shadow: 0 4px 0 rgba(0,0,0,0.5);
+  transition: transform 0.08s;
+}
+.modal-close:active { transform: translateY(2px); }
+
+/* Reduce-motion */
+@media (prefers-reduced-motion: reduce) {
+  .multiplier-panel::before,
+  .diamond-svg,
+  .action-btn::after,
+  .tile.shimmer .face-front::after { animation: none !important; }
+}
+</style>
+</head>
+<body>
+<script src="casino-audio.js"></script>
+<script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
+<script>window.CB_BANNER_PLACEMENT = { anchor: '#mp-panel', position: 'before', gapTop: '10px', gapBottom: '6px' };</script>
+<script src="casino-bots.js"></script>
+
+<a class="lobby-link" href="index.html">LOBBY</a>
+<button class="history-btn" id="btn-history" title="History">HISTORY</button>
+<button class="rules-btn" id="btn-rules" title="Rules">RULES</button>
+<div class="balance-link">
+  <span class="label">BAL</span>
+  <span class="value">$<span id="balance">0</span></span>
+  <button class="btn-add" id="btn-add" title="Add chips">+</button>
+</div>
+
+<main class="stage">
+  <header class="game-header">
+    <div class="title-block">
+      <div class="pre">DIAMOND CASINO</div>
+      <h1 class="title">MINES</h1>
+      <div class="subtitle">DIAMOND VAULT</div>
+    </div>
+  </header>
+
+  <section class="multiplier-panel" id="mp-panel">
+    <div class="mp-left">
+      <div class="lbl">MULTIPLIER</div>
+      <div class="mp-value" id="mp-value">1.00×</div>
+    </div>
+    <div class="mp-right">
+      <div class="next-pill hide" id="next-pill"><span class="lbl">NEXT</span><span id="next-mult">—</span></div>
+      <div class="payout-pill hide" id="payout-pill"><span class="lbl">CASH OUT</span><span id="payout-amt">—</span></div>
+      <div class="gems-pill">
+        <span class="gem-c" id="gems-count">0</span> <span>GEMS</span>
+        <span class="mine-c" id="mines-count">3</span> <span>MINES</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid-frame">
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="control-deck">
+    <div class="control-card bet-card">
+      <div class="control-label"><span>BET</span><span class="hint" id="bet-hint">LOCKED ON START</span></div>
+      <div class="input-wrap money" id="bet-wrap">
+        <input class="control-input" id="bet-input" type="number" min="1" step="1" value="25" inputmode="decimal" />
+      </div>
+      <div class="button-row">
+        <button class="mini-btn" data-bet="10">$10</button>
+        <button class="mini-btn" data-bet="25">$25</button>
+        <button class="mini-btn" data-bet="100">$100</button>
+        <button class="mini-btn" data-bet="MAX">MAX</button>
+      </div>
+    </div>
+    <div class="control-card mines-card">
+      <div class="control-label"><span>MINES</span><span class="hint" id="mines-hint">5×5 BOARD</span></div>
+      <div class="mines-readout">
+        <span class="num" id="mines-display">3</span><span class="of" id="mines-of">OF 25</span>
+      </div>
+      <input class="mines-slider" id="mines-slider" type="range" min="3" max="47" value="3" />
+      <div class="mines-quick">
+        <button data-mines="3" class="active">3</button>
+        <button data-mines="7">7</button>
+        <button data-mines="12">12</button>
+        <button data-mines="28">28</button>
+        <button data-mines="40">40</button>
+      </div>
+    </div>
+    <div class="control-card action-card">
+      <button class="action-btn start" id="action-btn">
+        <span class="main" id="action-main">START GAME</span>
+        <span class="sub" id="action-sub">Pick a tile after</span>
+      </button>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-veil" id="rules-veil">
+  <div class="modal-card">
+    <div class="modal-title">MINES</div>
+    <div class="modal-sub">DIAMOND VAULT</div>
+    <div class="rules-section">
+      <h3>HOW TO PLAY</h3>
+      <ul>
+        <li>Pick how many mines (3–47) to hide on the vault.</li>
+        <li>Hit START, then reveal tiles. Each safe tile is a diamond and grows your multiplier.</li>
+        <li>Reveal a mine and the round ends — that bet is lost.</li>
+        <li>Cash out any time after the first safe reveal to bank <strong>bet × multiplier</strong>.</li>
+        <li>Clear every safe tile and the full vault pays out.</li>
+      </ul>
+    </div>
+    <div class="rules-section">
+      <h3>BOARD SIZE</h3>
+      <ul>
+        <li>The vault grows with the mines: 3–15 mines on a 5×5, 16–27 on a 6×6, 28–47 on a 7×7.</li>
+        <li>More mines means tighter odds but much bigger jumps per safe reveal.</li>
+      </ul>
+    </div>
+    <div class="rules-section">
+      <h3>MULTIPLIER</h3>
+      <ul>
+        <li>Math is fair with a 1% house edge.</li>
+        <li>The NEXT pill always shows what your next safe reveal pays.</li>
+      </ul>
+    </div>
+    <button class="modal-close" id="btn-rules-close">CLOSE</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   MINES — Diamond Vault
+   ============================================================ */
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+
+if (window.SettingsUI) SettingsUI.mount();
+if (window.HistoryUI) HistoryUI.mount();
+if (window.Music) Music.init(encodeURI('Music/Velvet Pitfall.wav'));
+
+/* ---------- shared balance ---------- */
+const BALANCE_KEY = 'casino.balance';
+function loadBalance() {
+  const v = parseFloat(localStorage.getItem(BALANCE_KEY));
+  return isNaN(v) || v < 0 ? 1000 : v;
+}
+function persistBalance(v) {
+  try { localStorage.setItem(BALANCE_KEY, String(v)); } catch (e) {}
+}
+function fmt(n) {
+  const cents = Math.round(Number(n || 0) * 100) / 100;
+  return Number.isInteger(cents)
+    ? cents.toLocaleString('en-US')
+    : cents.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function money(n) { return '$' + fmt(n); }
+function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+
+let balance = loadBalance();
+const balEl = document.getElementById('balance');
+function refreshBalance() { balEl.textContent = fmt(balance); }
+refreshBalance();
+window.addEventListener('focus',    () => { balance = loadBalance(); refreshBalance(); });
+window.addEventListener('pageshow', () => { balance = loadBalance(); refreshBalance(); });
+document.addEventListener('jackpot-win', () => { balance = loadBalance(); refreshBalance(); });
+
+document.getElementById('btn-add').addEventListener('click', () => {
+  window.location.href = 'index.html';
+});
+document.getElementById('btn-history').addEventListener('click', () => {
+  if (window.HistoryUI) HistoryUI.open({ scope: 'session', game: 'mines' });
+});
+
+/* ---------- rules modal ---------- */
+const rulesVeil = document.getElementById('rules-veil');
+document.getElementById('btn-rules').addEventListener('click', () => rulesVeil.classList.add('show'));
+document.getElementById('btn-rules-close').addEventListener('click', () => rulesVeil.classList.remove('show'));
+rulesVeil.addEventListener('click', (e) => { if (e.target === rulesVeil) rulesVeil.classList.remove('show'); });
+
+/* ---------- SFX (file pool) ---------- */
+const SFX_PATHS = {
+  buttonSoft:  'sfx/button_soft.mp3',
+  chipSelect:  'sfx/chip_select.mp3',
+  chipPlaceA:  'sfx/chip_place_a.mp3',
+  chipPlaceB:  'sfx/chip_place_b.mp3',
+  chipPlaceC:  'sfx/chip_place_c.mp3',
+  chipPayout:  'sfx/chip_payout.mp3',
+  winChime:    'sfx/win_chime.mp3',
+  fanfare:     'sfx/blackjack_fanfare.mp3',
+  bubbleSettle:'sfx/bubble_settle.mp3',
+  // Designed mine-hit sample. Plays in place of the in-engine synth when
+  // it loads. If the file is ever missing the synth fallback kicks in
+  // automatically so the game never goes silent on a hit.
+  mineHitWav: 'sfx/new sfx/mine hit.wav',
+  // Designed "play again" / START sample. Replaces the buttonSoft tail
+  // on round start so we don't have to fade a clipping mp3.
+  playAgainWav: 'sfx/new sfx/play again.wav',
+};
+const sfxPool = {};
+const sfxAvailable = {};
+Object.entries(SFX_PATHS).forEach(([key, path]) => {
+  const pool = [];
+  let ok = true;
+  for (let i = 0; i < 3; i++) {
+    const a = new Audio(path);
+    a.preload = 'metadata';
+    a.addEventListener('error', () => { sfxAvailable[key] = false; }, { once: true });
+    pool.push(a);
+  }
+  sfxPool[key] = { pool, idx: 0 };
+  sfxAvailable[key] = ok;
+});
+/* ---------- click-prone keys ----------
+   Some of the source mp3s end on a non-zero sample, which the codec
+   reads as a hard step and the browser plays as an audible click at
+   the tail. For those keys we route playback through WebAudio with a
+   short linear gain ramp at the end so the file always lands silently.
+   Plain <audio> playback is used for everything else. */
+const CLIP_FADE_KEYS = new Set(['buttonSoft', 'chipSelect', 'chipPlaceA', 'chipPlaceB', 'chipPlaceC']);
+const CLIP_FADE_MS = 40;
+const decodedBuf = {};        // key -> AudioBuffer (or null if decode failed)
+const decodePromise = {};     // key -> in-flight Promise<AudioBuffer|null>
+function decodeSfx(key) {
+  if (key in decodedBuf) return Promise.resolve(decodedBuf[key]);
+  if (decodePromise[key]) return decodePromise[key];
+  const path = SFX_PATHS[key];
+  const c = ensureAudio();
+  if (!c || !path) return Promise.resolve(null);
+  decodePromise[key] = fetch(path)
+    .then(r => r.ok ? r.arrayBuffer() : null)
+    .then(ab => ab ? c.decodeAudioData(ab) : null)
+    .then(buf => { decodedBuf[key] = buf; return buf; })
+    .catch(() => { decodedBuf[key] = null; return null; });
+  return decodePromise[key];
+}
+
+// Plain <audio>-element playback — used as both the primary path for
+// sounds without click artifacts and the fallback when WebAudio isn't
+// ready for the faded path.
+function playSfxRaw(key, volMul) {
+  if (sfxAvailable[key] === false) return false;
+  const entry = sfxPool[key];
+  if (!entry) return false;
+  const a = entry.pool[entry.idx];
+  entry.idx = (entry.idx + 1) % entry.pool.length;
+  try {
+    a.currentTime = 0;
+    a.volume = (window.Settings ? Settings.sfxVolume() : 0.85) * volMul;
+    const p = a.play();
+    if (p && typeof p.then === 'function') p.catch(() => {});
+  } catch (e) {}
+  return true;
+}
+
+function playSfx(key, volMul = 1) {
+  if (sfxAvailable[key] === false) return false;
+  if (!CLIP_FADE_KEYS.has(key)) return playSfxRaw(key, volMul);
+  const c = ensureAudio();
+  if (!c || c.state === 'suspended') return playSfxRaw(key, volMul);
+  decodeSfx(key).then(buf => {
+    if (!buf) { playSfxRaw(key, volMul); return; }
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const g = c.createGain();
+    const vol = (window.Settings ? Settings.sfxVolume() : 0.85) * volMul;
+    const now = c.currentTime;
+    const dur = buf.duration;
+    const fade = Math.min(CLIP_FADE_MS / 1000, dur * 0.5);
+    g.gain.setValueAtTime(vol, now);
+    g.gain.setValueAtTime(vol, now + dur - fade);
+    g.gain.linearRampToValueAtTime(0.0001, now + dur);
+    src.connect(g).connect(c.destination);
+    src.start(now);
+  });
+  return true;
+}
+
+function playChipRand(vol = 0.8) {
+  const choices = ['chipPlaceA', 'chipPlaceB', 'chipPlaceC'];
+  playSfx(choices[Math.floor(Math.random() * choices.length)], vol);
+}
+
+/* ---------- WebAudio synth ---------- */
+let actx = null;
+function ensureAudio() {
+  if (actx) {
+    try { if (actx.state === 'suspended') actx.resume().catch(() => {}); } catch (e) {}
+    return actx;
+  }
+  try { actx = new (window.AudioContext || window.webkitAudioContext)(); }
+  catch (e) { actx = null; }
+  return actx;
+}
+// Unlock on first gesture
+function onGestureOnce() {
+  ensureAudio();
+  // Pre-decode click-prone sounds so the first faded play has zero lag.
+  // Once the buffer is cached, subsequent plays start immediately.
+  CLIP_FADE_KEYS.forEach(k => { decodeSfx(k); });
+  document.removeEventListener('click', onGestureOnce, true);
+  document.removeEventListener('keydown', onGestureOnce, true);
+}
+document.addEventListener('click', onGestureOnce, true);
+document.addEventListener('keydown', onGestureOnce, true);
+
+function sfxVol() { return window.Settings ? Settings.sfxVolume() : 0.85; }
+
+/**
+ * Crystalline bell for a safe reveal. FM synthesis (one sine modulating
+ * another) produces inharmonic high-frequency overtones — sounds glassy
+ * rather than synthy. Pitch rises one perfect fifth per consecutive safe
+ * reveal, capped after 8 picks.
+ */
+function safeBell(streak) {
+  const c = ensureAudio();
+  if (!c || c.state === 'suspended') return;
+  const now = c.currentTime;
+  const vol = sfxVol();
+  const cap = Math.min(streak, 8);
+  // Base note climbs in fifths until cap.
+  const base = 660 * Math.pow(2, (cap * 7) / 24);   // 7 semitones per step but compressed into the chromatic ratio scale (3/2 ish per 4 picks)
+  const carrier = c.createOscillator();
+  const modulator = c.createOscillator();
+  const modGain = c.createGain();
+  const out = c.createGain();
+  carrier.type = 'sine';
+  modulator.type = 'sine';
+  carrier.frequency.setValueAtTime(base, now);
+  modulator.frequency.setValueAtTime(base * 2.74, now);
+  modGain.gain.setValueAtTime(base * 1.3, now);
+  modGain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+  modulator.connect(modGain);
+  modGain.connect(carrier.frequency);
+  out.gain.setValueAtTime(0.0001, now);
+  out.gain.exponentialRampToValueAtTime(0.16 * vol, now + 0.008);
+  out.gain.exponentialRampToValueAtTime(0.0001, now + 0.34);
+  carrier.connect(out).connect(c.destination);
+  carrier.start(now);
+  modulator.start(now);
+  carrier.stop(now + 0.4);
+  modulator.stop(now + 0.4);
+
+  // Add a faint upper-octave ping for sparkle on longer streaks.
+  if (streak >= 3) {
+    const o2 = c.createOscillator();
+    const g2 = c.createGain();
+    o2.type = 'sine';
+    o2.frequency.setValueAtTime(base * 2.005, now);
+    g2.gain.setValueAtTime(0.0001, now);
+    g2.gain.exponentialRampToValueAtTime(0.05 * vol, now + 0.005);
+    g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    o2.connect(g2).connect(c.destination);
+    o2.start(now);
+    o2.stop(now + 0.26);
+  }
+}
+
+/**
+ * Shimmer cascade — once the safeBell pitch has capped (streak >= 9), each
+ * additional safe pick gets a fast 3-note descending FM cascade layered on
+ * top so the streak keeps escalating audibly. Pitch climbs slowly past the
+ * cap so the cascade itself feels like it's getting higher and richer.
+ */
+function shimmerCascade(streak) {
+  if (streak < 9) return;
+  const c = ensureAudio();
+  if (!c || c.state === 'suspended') return;
+  const now = c.currentTime;
+  const vol = sfxVol();
+  const overCap = streak - 8;
+  // Half-semitone climb past cap, capped at +8 steps so it doesn't go ultrasonic.
+  const base = 1320 * Math.pow(1.0293, Math.min(overCap, 8));
+  // Three quick notes that ring out and overlap, walking up a major sixth.
+  const notes = [
+    { mul: 1.0,  t: 0.00, dur: 0.34, vol: 0.11 },
+    { mul: 1.5,  t: 0.07, dur: 0.30, vol: 0.085 },
+    { mul: 2.25, t: 0.14, dur: 0.26, vol: 0.060 },
+  ];
+  notes.forEach(n => {
+    const f = base * n.mul;
+    const t0 = now + n.t;
+    const carrier = c.createOscillator();
+    const modulator = c.createOscillator();
+    const modGain = c.createGain();
+    const out = c.createGain();
+    carrier.type = 'sine';
+    modulator.type = 'sine';
+    carrier.frequency.setValueAtTime(f, t0);
+    modulator.frequency.setValueAtTime(f * 2.74, t0);
+    modGain.gain.setValueAtTime(f * 0.85, t0);
+    modGain.gain.exponentialRampToValueAtTime(0.01, t0 + n.dur);
+    modulator.connect(modGain);
+    modGain.connect(carrier.frequency);
+    out.gain.setValueAtTime(0.0001, t0);
+    out.gain.exponentialRampToValueAtTime(n.vol * vol, t0 + 0.006);
+    out.gain.exponentialRampToValueAtTime(0.0001, t0 + n.dur);
+    carrier.connect(out).connect(c.destination);
+    carrier.start(t0);
+    modulator.start(t0);
+    carrier.stop(t0 + n.dur + 0.05);
+    modulator.stop(t0 + n.dur + 0.05);
+  });
+  // Soft sustained shimmer pad — filtered noise that swells under the bells,
+  // gets a touch brighter and louder the deeper into the streak we are.
+  const padDur = 0.55;
+  const padBuf = c.createBuffer(1, Math.floor(c.sampleRate * padDur), c.sampleRate);
+  const padData = padBuf.getChannelData(0);
+  for (let i = 0; i < padData.length; i++) {
+    padData[i] = (Math.random() * 2 - 1);
+  }
+  const pad = c.createBufferSource();
+  pad.buffer = padBuf;
+  const padFilt = c.createBiquadFilter();
+  padFilt.type = 'bandpass';
+  const padCenter = 2400 + Math.min(overCap, 8) * 220;
+  padFilt.frequency.setValueAtTime(padCenter, now);
+  padFilt.Q.setValueAtTime(5.5, now);
+  const padGain = c.createGain();
+  const padPeak = (0.026 + Math.min(overCap, 8) * 0.004) * vol;
+  padGain.gain.setValueAtTime(0.0001, now);
+  padGain.gain.exponentialRampToValueAtTime(padPeak, now + 0.12);
+  padGain.gain.exponentialRampToValueAtTime(0.0001, now + padDur);
+  pad.connect(padFilt).connect(padGain).connect(c.destination);
+  pad.start(now);
+}
+
+/**
+ * Mine hit — plays the designed sample (sfx/new sfx/mine hit.wav) if it
+ * loaded, falls back to the three-layer synth if the file is missing or
+ * errored. playSfx returns false once it has seen a load error for the
+ * key, which is how we switch.
+ */
+function mineHit() {
+  if (playSfx('mineHitWav', 1.0)) return;
+  mineHitSynth();
+}
+
+/**
+ * Synth fallback — three layered transients, no downward pitch sweep:
+ *   1) Glass-crack noise burst (~70ms): white noise pushed through a
+ *      bandpass that opens fast and closes faster.
+ *   2) Sub-bass thump (~120ms): single short 45Hz sine ping with a
+ *      sharp attack and exp decay. Flat pitch — no glide.
+ *   3) Stone-rumble tail (~450ms): low-passed brown-ish noise that
+ *      decays into silence.
+ */
+function mineHitSynth() {
+  const c = ensureAudio();
+  if (!c || c.state === 'suspended') return;
+  const now = c.currentTime;
+  const vol = sfxVol();
+
+  /* 1. glass crack */
+  const crackDur = 0.09;
+  const crackBuf = c.createBuffer(1, Math.floor(c.sampleRate * crackDur), c.sampleRate);
+  const crackData = crackBuf.getChannelData(0);
+  for (let i = 0; i < crackData.length; i++) {
+    crackData[i] = (Math.random() * 2 - 1) * (1 - i / crackData.length);
+  }
+  const crack = c.createBufferSource();
+  crack.buffer = crackBuf;
+  const crackFilt = c.createBiquadFilter();
+  crackFilt.type = 'bandpass';
+  crackFilt.frequency.setValueAtTime(5200, now);
+  crackFilt.Q.setValueAtTime(2.6, now);
+  // brightness drops slightly (NOT a pitch sweep — Q-controlled filter
+  // narrowing, which sounds like the crack settling, not a swoop).
+  crackFilt.frequency.exponentialRampToValueAtTime(3400, now + crackDur);
+  const crackGain = c.createGain();
+  crackGain.gain.setValueAtTime(0.0001, now);
+  crackGain.gain.exponentialRampToValueAtTime(0.55 * vol, now + 0.006);
+  crackGain.gain.exponentialRampToValueAtTime(0.0001, now + crackDur);
+  crack.connect(crackFilt).connect(crackGain).connect(c.destination);
+  crack.start(now);
+
+  /* 2. sub thump */
+  const sub = c.createOscillator();
+  const subG = c.createGain();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(45, now);   // FLAT — no exponential ramp on frequency
+  subG.gain.setValueAtTime(0.0001, now);
+  subG.gain.exponentialRampToValueAtTime(0.42 * vol, now + 0.012);
+  subG.gain.exponentialRampToValueAtTime(0.0001, now + 0.30);
+  sub.connect(subG).connect(c.destination);
+  sub.start(now);
+  sub.stop(now + 0.34);
+
+  /* 3. stone rumble */
+  const rumbleDur = 0.55;
+  const rumbleBuf = c.createBuffer(1, Math.floor(c.sampleRate * rumbleDur), c.sampleRate);
+  const rumbleData = rumbleBuf.getChannelData(0);
+  // pseudo-brown noise via running sum
+  let last = 0;
+  for (let i = 0; i < rumbleData.length; i++) {
+    const w = Math.random() * 2 - 1;
+    last = (last + 0.04 * w) / 1.04;
+    rumbleData[i] = last * 3.2 * (1 - i / rumbleData.length);
+  }
+  const rumble = c.createBufferSource();
+  rumble.buffer = rumbleBuf;
+  const rumbleFilt = c.createBiquadFilter();
+  rumbleFilt.type = 'lowpass';
+  rumbleFilt.frequency.setValueAtTime(280, now);
+  rumbleFilt.Q.setValueAtTime(0.7, now);
+  const rumbleGain = c.createGain();
+  rumbleGain.gain.setValueAtTime(0.0001, now);
+  rumbleGain.gain.exponentialRampToValueAtTime(0.22 * vol, now + 0.06);
+  rumbleGain.gain.exponentialRampToValueAtTime(0.0001, now + rumbleDur);
+  rumble.connect(rumbleFilt).connect(rumbleGain).connect(c.destination);
+  rumble.start(now + 0.005);
+}
+
+/**
+ * Full-board clear — a four-note ascending chord using the same FM bell,
+ * plus the fanfare mp3 layered on top.
+ */
+function fullClearChord() {
+  const c = ensureAudio();
+  if (!c || c.state === 'suspended') return;
+  const now = c.currentTime;
+  const vol = sfxVol();
+  const notes = [523.25, 659.25, 783.99, 1046.50];   // C5 E5 G5 C6
+  notes.forEach((f, i) => {
+    const t0 = now + i * 0.10;
+    const carrier = c.createOscillator();
+    const modulator = c.createOscillator();
+    const modGain = c.createGain();
+    const out = c.createGain();
+    carrier.type = 'sine';
+    modulator.type = 'sine';
+    carrier.frequency.setValueAtTime(f, t0);
+    modulator.frequency.setValueAtTime(f * 2.74, t0);
+    modGain.gain.setValueAtTime(f * 1.2, t0);
+    modGain.gain.exponentialRampToValueAtTime(0.01, t0 + 0.32);
+    modulator.connect(modGain);
+    modGain.connect(carrier.frequency);
+    out.gain.setValueAtTime(0.0001, t0);
+    out.gain.exponentialRampToValueAtTime(0.18 * vol, t0 + 0.01);
+    out.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.6);
+    carrier.connect(out).connect(c.destination);
+    carrier.start(t0);
+    modulator.start(t0);
+    carrier.stop(t0 + 0.7);
+    modulator.stop(t0 + 0.7);
+  });
+  playSfx('fanfare', 0.55);
+}
+
+/* ---------- math ---------- */
+/** Grid edge size for a given mine count — the vault grows with the mines. */
+function gridSizeFor(M) {
+  if (M <= 15) return 5;
+  if (M <= 27) return 6;
+  return 7;
+}
+function tileCountFor(M) { const n = gridSizeFor(M); return n * n; }
+
+/** Multiplier after k safe reveals with M mines on a T-tile board.
+ *  The fair Stake formula is C(T,k)/C(T-M,k) · edge, but the raw ramp grows
+ *  ~40–50% per pick which feels too explosive. We power-dampen the curve to
+ *  flatten per-pick growth to ~20–25% — the shape stays the same, but each
+ *  step is a smaller bite. The dampening also acts as the effective house
+ *  edge at higher k (it widens with the streak). */
+const MULT_DAMP = 0.6;
+const MULT_EDGE = 0.99;
+function multAfter(k, M, T) {
+  if (k <= 0) return 1;
+  let raw = 1;
+  for (let i = 0; i < k; i++) {
+    raw *= (T - i) / (T - M - i);
+  }
+  return Math.pow(raw, MULT_DAMP) * MULT_EDGE;
+}
+
+/* ---------- state ---------- */
+const State = {
+  mode: 'idle',        // idle | playing | over
+  bet: 25,
+  mines: 3,
+  tiles: [],           // [{ idx, el, revealed, isMine }]
+  mineSet: new Set(),  // indices of mines
+  safeCount: 0,
+  currentMult: 1,
+  tileCount: 25,       // recomputed when grid resizes
+};
+
+/* ---------- DOM refs ---------- */
+const gridEl = document.getElementById('grid');
+const mpPanelEl = document.getElementById('mp-panel');
+const mpValueEl = document.getElementById('mp-value');
+const nextPillEl = document.getElementById('next-pill');
+const nextMultEl = document.getElementById('next-mult');
+const payoutPillEl = document.getElementById('payout-pill');
+const payoutAmtEl = document.getElementById('payout-amt');
+const gemsCountEl = document.getElementById('gems-count');
+const minesCountEl = document.getElementById('mines-count');
+const minesDisplayEl = document.getElementById('mines-display');
+const minesSlider = document.getElementById('mines-slider');
+const minesHintEl = document.getElementById('mines-hint');
+const minesOfEl = document.getElementById('mines-of');
+const betInput = document.getElementById('bet-input');
+const betWrap = document.getElementById('bet-wrap');
+const betHint = document.getElementById('bet-hint');
+const actionBtn = document.getElementById('action-btn');
+const actionMain = document.getElementById('action-main');
+const actionSub = document.getElementById('action-sub');
+const toastEl = document.getElementById('toast');
+
+/* ---------- SVG factories ---------- */
+function diamondSVG() {
+  // Faceted teardrop diamond — gradient + facet highlights.
+  return `<svg class="diamond-svg" viewBox="0 0 100 100" aria-hidden="true">
+    <defs>
+      <linearGradient id="dGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0" stop-color="#e7fbff"/>
+        <stop offset="0.40" stop-color="#5cffa1"/>
+        <stop offset="0.78" stop-color="#22d3ee"/>
+        <stop offset="1" stop-color="#a855f7"/>
+      </linearGradient>
+      <linearGradient id="dHi" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0" stop-color="rgba(255,255,255,0.95)"/>
+        <stop offset="0.5" stop-color="rgba(255,255,255,0.0)"/>
+      </linearGradient>
+    </defs>
+    <polygon points="50,4 90,34 80,40 20,40 10,34" fill="url(#dGrad)" stroke="rgba(255,255,255,0.6)" stroke-width="1.2"/>
+    <polygon points="10,34 20,40 50,96 0,40" fill="url(#dGrad)" opacity="0.85"/>
+    <polygon points="20,40 50,96 50,4" fill="url(#dGrad)" opacity="0.65"/>
+    <polygon points="80,40 50,96 50,4" fill="url(#dGrad)" opacity="0.78"/>
+    <polygon points="90,34 80,40 50,96 100,40" fill="url(#dGrad)" opacity="0.92"/>
+    <polygon points="50,4 90,34 80,40 20,40 10,34" fill="url(#dHi)" opacity="0.55"/>
+    <polyline points="22,40 50,90" stroke="rgba(255,255,255,0.45)" stroke-width="1" fill="none"/>
+    <polyline points="78,40 50,90" stroke="rgba(255,255,255,0.25)" stroke-width="1" fill="none"/>
+  </svg>`;
+}
+function mineSVG() {
+  // Obsidian shard cluster — sharp spiky polygon with a red core glow.
+  return `<svg class="mine-svg" viewBox="0 0 100 100" aria-hidden="true">
+    <defs>
+      <radialGradient id="mGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0" stop-color="#ffd7df"/>
+        <stop offset="0.30" stop-color="#ff4d6d"/>
+        <stop offset="0.78" stop-color="#6a0418"/>
+        <stop offset="1" stop-color="#1a0010"/>
+      </radialGradient>
+      <linearGradient id="mShard" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0" stop-color="#2a0716"/>
+        <stop offset="0.6" stop-color="#0a0418"/>
+        <stop offset="1" stop-color="#1a0838"/>
+      </linearGradient>
+    </defs>
+    <circle cx="50" cy="50" r="34" fill="url(#mGlow)" opacity="0.78"/>
+    <polygon points="50,8 64,38 88,42 70,60 76,90 50,72 24,90 30,60 12,42 36,38" fill="url(#mShard)" stroke="#ff4d6d" stroke-width="1.4" stroke-linejoin="miter"/>
+    <polyline points="50,8 50,72" stroke="rgba(255,77,109,0.45)" stroke-width="1" fill="none"/>
+    <polyline points="36,38 64,38" stroke="rgba(255,77,109,0.35)" stroke-width="1" fill="none"/>
+  </svg>`;
+}
+function crackLinesSVG() {
+  // Radial crack lines that animate outward when a mine is hit. The
+  // wrapping div carries the .crack-overlay class; this SVG just paints.
+  return `<svg viewBox="0 0 100 100" aria-hidden="true" style="width:100%;height:100%;position:absolute;inset:0">
+    <g stroke="rgba(255,77,109,0.9)" stroke-width="1.2" fill="none" stroke-linecap="round">
+      <path d="M50 50 L18 12"/>
+      <path d="M50 50 L86 18"/>
+      <path d="M50 50 L94 56"/>
+      <path d="M50 50 L72 92"/>
+      <path d="M50 50 L26 90"/>
+      <path d="M50 50 L8 60"/>
+      <path d="M50 50 L42 6"/>
+      <path d="M50 50 L62 8"/>
+    </g>
+  </svg>`;
+}
+
+/* ---------- build grid ---------- */
+function buildGrid(M) {
+  const n = gridSizeFor(M);
+  const tiles = n * n;
+  gridEl.innerHTML = '';
+  gridEl.dataset.n = String(n);
+  State.tiles = [];
+  State.tileCount = tiles;
+  for (let i = 0; i < tiles; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'tile disabled';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Tile ' + (i + 1));
+    btn.innerHTML = `
+      <div class="tile-inner">
+        <div class="face face-front"></div>
+        <div class="face face-back"></div>
+      </div>
+      <div class="sparkle-layer"></div>`;
+    btn.addEventListener('click', () => onTileClick(i));
+    gridEl.appendChild(btn);
+    State.tiles.push({ idx: i, el: btn, revealed: false, isMine: false });
+  }
+  if (minesOfEl) minesOfEl.textContent = 'OF ' + tiles;
+  if (minesHintEl) minesHintEl.textContent = n + '×' + n + ' BOARD';
+}
+buildGrid(State.mines);
+
+/* ---------- idle shimmer ---------- */
+let shimmerTimer = null;
+function startIdleShimmer() {
+  stopIdleShimmer();
+  const tick = () => {
+    if (State.mode === 'idle' || State.mode === 'over') {
+      const candidates = State.tiles.filter(t => !t.revealed);
+      if (candidates.length) {
+        const t = candidates[Math.floor(Math.random() * candidates.length)];
+        t.el.classList.add('shimmer');
+        setTimeout(() => t.el.classList.remove('shimmer'), 950);
+      }
+    }
+    shimmerTimer = setTimeout(tick, 3200 + Math.random() * 2800);
+  };
+  shimmerTimer = setTimeout(tick, 1500);
+}
+function stopIdleShimmer() {
+  if (shimmerTimer) { clearTimeout(shimmerTimer); shimmerTimer = null; }
+}
+startIdleShimmer();
+
+/* ---------- bet + mines controls ---------- */
+function getBet() {
+  const v = parseFloat(betInput.value);
+  if (!Number.isFinite(v) || v <= 0) return 0;
+  return Math.round(v * 100) / 100;
+}
+function setBet(v) {
+  v = Math.max(1, Math.round(v * 100) / 100);
+  betInput.value = Number.isInteger(v) ? String(v) : v.toFixed(2);
+}
+function getMines() {
+  const v = parseInt(minesSlider.value, 10);
+  return clamp(v, 3, 47);
+}
+function setMines(v) {
+  v = clamp(v, 3, 47);
+  const prevGridN = gridSizeFor(State.mines);
+  const nextGridN = gridSizeFor(v);
+  minesSlider.value = String(v);
+  minesDisplayEl.textContent = String(v);
+  document.querySelectorAll('.mines-quick button').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.mines, 10) === v);
+  });
+  if (State.mode === 'idle' || State.mode === 'over') {
+    State.mines = v;
+    minesCountEl.textContent = String(v);
+    if (nextGridN !== prevGridN) {
+      // Grid size needs to change — rebuild.
+      buildGrid(v);
+    } else {
+      // Same grid size, just update the OF count text.
+      if (minesOfEl) minesOfEl.textContent = 'OF ' + (nextGridN * nextGridN);
+      if (minesHintEl) minesHintEl.textContent = nextGridN + '×' + nextGridN + ' BOARD';
+    }
+    refreshNextPreview();
+  }
+}
+
+function isBettable() { return State.mode === 'idle' || State.mode === 'over'; }
+minesSlider.addEventListener('input', () => {
+  setMines(getMines());
+  playSfx('buttonSoft', 0.35);
+});
+document.querySelectorAll('.mines-quick button').forEach(b => {
+  b.addEventListener('click', () => {
+    if (!isBettable()) return;
+    setMines(parseInt(b.dataset.mines, 10));
+    syncControls();
+    playSfx('chipSelect', 0.5);
+  });
+});
+document.querySelectorAll('.mini-btn[data-bet]').forEach(b => {
+  b.addEventListener('click', () => {
+    if (!isBettable()) return;
+    const v = b.dataset.bet;
+    if (v === 'MAX') setBet(Math.max(1, balance));
+    else setBet(parseFloat(v));
+    syncControls();
+    playChipRand(0.7);
+  });
+});
+betInput.addEventListener('change', () => {
+  setBet(getBet() || 1);
+  if (isBettable()) syncControls();
+});
+
+/* ---------- multiplier preview ---------- */
+function refreshNextPreview() {
+  const M = State.mode === 'playing' ? State.mines : getMines();
+  const T = State.tileCount;
+  const k = State.safeCount;
+  // No more safe tiles?
+  if (k >= T - M) {
+    nextPillEl.classList.add('hide');
+    return;
+  }
+  const next = multAfter(k + 1, M, T);
+  nextMultEl.textContent = next.toFixed(2) + '×';
+  nextPillEl.classList.remove('hide');
+}
+refreshNextPreview();
+
+/* ---------- toast ---------- */
+let toastTimer = null;
+function showToast(text, amount, kind) {
+  toastEl.className = 'toast' + (kind ? ' ' + kind : '');
+  toastEl.innerHTML = `${text}${amount != null ? `<span class="amount">${amount}</span>` : ''}`;
+  // force reflow so animation restarts
+  // eslint-disable-next-line no-unused-expressions
+  toastEl.offsetHeight;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2400);
+}
+
+/* ---------- round flow ---------- */
+function syncControls() {
+  const playing = State.mode === 'playing';
+  betInput.disabled = playing;
+  minesSlider.disabled = playing;
+  document.querySelectorAll('.mines-quick button, .mini-btn[data-bet]').forEach(b => { b.disabled = playing; });
+  betHint.textContent = playing ? 'LOCKED' : 'LOCKED ON START';
+  State.tiles.forEach(t => {
+    if (!t.revealed) t.el.classList.toggle('disabled', !playing);
+  });
+
+  if (State.mode === 'idle') {
+    actionBtn.className = 'action-btn start';
+    actionMain.textContent = 'START GAME';
+    actionSub.textContent  = `Bet ${money(getBet())} · ${getMines()} mines`;
+    payoutPillEl.classList.add('hide');
+  } else if (State.mode === 'playing') {
+    if (State.safeCount === 0) {
+      actionBtn.className = 'action-btn locked';
+      actionMain.textContent = 'PICK A TILE';
+      actionSub.textContent  = 'Cash out after first safe';
+      payoutPillEl.classList.add('hide');
+    } else {
+      actionBtn.className = 'action-btn cashout';
+      actionMain.textContent = 'CASH OUT';
+      actionSub.textContent  = money(State.bet * State.currentMult);
+    }
+  } else { // over
+    actionBtn.className = 'action-btn start';
+    actionMain.textContent = 'PLAY AGAIN';
+    actionSub.textContent  = `Bet ${money(getBet())} · ${getMines()} mines`;
+  }
+}
+syncControls();
+
+function startRound() {
+  if (State.mode !== 'idle' && State.mode !== 'over') return;
+  ensureAudio();
+  const bet = getBet();
+  if (bet <= 0) { flashBet(); return; }
+  if (bet > balance) { flashBet(); showToast('NOT ENOUGH BALANCE', null, 'bust'); return; }
+
+  const M = getMines();
+  // Make sure the grid matches the current mines count, then clear it.
+  if (gridSizeFor(M) !== gridSizeFor(State.mines) || State.tiles.length !== tileCountFor(M)) {
+    buildGrid(M);
+  } else {
+    resetGrid();
+  }
+
+  State.bet = bet;
+  State.mines = M;
+  State.mineSet = sampleMines(M, State.tileCount);
+  State.tiles.forEach((t, i) => { t.isMine = State.mineSet.has(i); });
+  State.safeCount = 0;
+  State.currentMult = 1;
+  State.mode = 'playing';
+
+  balance = Math.round((balance - bet) * 100) / 100;
+  persistBalance(balance);
+  refreshBalance();
+
+  mpPanelEl.classList.remove('bust', 'win');
+  mpValueEl.textContent = '1.00×';
+  gemsCountEl.textContent = '0';
+  minesCountEl.textContent = String(M);
+  refreshNextPreview();
+  syncControls();
+
+  playChipRand(0.9);
+  playSfx('playAgainWav', 0.4);
+}
+
+function sampleMines(M, T) {
+  const set = new Set();
+  while (set.size < M) {
+    set.add(Math.floor(Math.random() * T));
+  }
+  return set;
+}
+
+function resetGrid() {
+  State.tiles.forEach(t => {
+    t.revealed = false;
+    t.isMine = false;
+    const el = t.el;
+    el.classList.remove('revealed', 'safe', 'mine', 'fade', 'show-hint', 'shimmer');
+    el.querySelector('.face-back').innerHTML = '';
+    const overlay = el.querySelector('.crack-overlay');
+    if (overlay) overlay.remove();
+    const sparkleLayer = el.querySelector('.sparkle-layer');
+    if (sparkleLayer) sparkleLayer.innerHTML = '';
+  });
+}
+
+function onTileClick(idx) {
+  if (State.mode !== 'playing') return;
+  const t = State.tiles[idx];
+  if (t.revealed) return;
+
+  if (t.isMine) {
+    revealMine(t);
+    bustRound(t);
+  } else {
+    revealSafe(t);
+    const safeRemaining = (State.tileCount - State.mines) - State.safeCount;
+    if (safeRemaining === 0) {
+      // Full clear!
+      fullClear();
+    }
+  }
+}
+
+function revealSafe(t) {
+  t.revealed = true;
+  t.el.classList.add('revealed', 'safe');
+  t.el.querySelector('.face-back').innerHTML = diamondSVG();
+  burstSparkles(t.el);
+  State.safeCount += 1;
+  State.currentMult = multAfter(State.safeCount, State.mines, State.tileCount);
+  mpValueEl.textContent = State.currentMult.toFixed(2) + '×';
+  mpValueEl.classList.remove('bump');
+  // eslint-disable-next-line no-unused-expressions
+  mpValueEl.offsetHeight;
+  mpValueEl.classList.add('bump');
+  gemsCountEl.textContent = String(State.safeCount);
+  payoutPillEl.classList.remove('hide');
+  payoutAmtEl.textContent = money(State.bet * State.currentMult);
+  refreshNextPreview();
+  syncControls();
+  safeBell(State.safeCount);
+  shimmerCascade(State.safeCount);
+  if (State.safeCount >= 5) playSfx('bubbleSettle', 0.45);
+}
+
+function revealMine(t) {
+  t.revealed = true;
+  t.el.classList.add('revealed', 'mine');
+  t.el.querySelector('.face-back').innerHTML = mineSVG();
+  // Crack overlay sits above the tile inner
+  const overlay = document.createElement('div');
+  overlay.className = 'crack-overlay';
+  overlay.innerHTML = crackLinesSVG();
+  t.el.appendChild(overlay);
+  burstShards(t.el);
+  gridEl.classList.add('flash', 'shake');
+  setTimeout(() => gridEl.classList.remove('flash', 'shake'), 600);
+  mineHit();
+}
+
+function bustRound(hitTile) {
+  State.mode = 'over';
+  mpPanelEl.classList.add('bust');
+  // Reveal all remaining tiles faintly so the player sees the path
+  setTimeout(() => {
+    State.tiles.forEach(t => {
+      if (t.revealed) return;
+      t.el.classList.add('fade', 'show-hint');
+      t.revealed = true;
+      const back = t.el.querySelector('.face-back');
+      back.innerHTML = t.isMine ? mineSVG() : diamondSVG();
+      if (t.isMine) t.el.classList.add('mine');
+      else t.el.classList.add('safe');
+    });
+  }, 320);
+  if (window.History) History.record('mines', State.bet, -State.bet, `BUST ${State.currentMult.toFixed(2)}× · ${State.mines} mines`);
+  showToast('BUST', money(-State.bet), 'bust');
+  syncControls();
+}
+
+function cashOut() {
+  if (State.mode !== 'playing' || State.safeCount === 0) return;
+  const payout = Math.round(State.bet * State.currentMult * 100) / 100;
+  const net = Math.round((payout - State.bet) * 100) / 100;
+  balance = Math.round((balance + payout) * 100) / 100;
+  persistBalance(balance);
+  refreshBalance();
+  State.mode = 'over';
+  mpPanelEl.classList.add('win');
+  gridEl.classList.add('win-flash');
+  setTimeout(() => gridEl.classList.remove('win-flash'), 900);
+  // Reveal remaining tiles faintly so the player sees what was left.
+  setTimeout(() => {
+    State.tiles.forEach(t => {
+      if (t.revealed) return;
+      t.el.classList.add('fade', 'show-hint');
+      t.revealed = true;
+      const back = t.el.querySelector('.face-back');
+      back.innerHTML = t.isMine ? mineSVG() : diamondSVG();
+      if (t.isMine) t.el.classList.add('mine');
+      else t.el.classList.add('safe');
+    });
+  }, 240);
+  playSfx('chipPayout', 0.9);
+  playSfx('winChime', 0.6);
+  if (window.History) History.record('mines', State.bet, net, `WIN ${State.currentMult.toFixed(2)}× · ${State.mines} mines`);
+  showToast(`CASH OUT ${State.currentMult.toFixed(2)}×`, money(payout), 'win');
+  syncControls();
+}
+
+function fullClear() {
+  // Treat like an automatic cashout — but bigger fanfare.
+  const payout = Math.round(State.bet * State.currentMult * 100) / 100;
+  const net = Math.round((payout - State.bet) * 100) / 100;
+  balance = Math.round((balance + payout) * 100) / 100;
+  persistBalance(balance);
+  refreshBalance();
+  State.mode = 'over';
+  mpPanelEl.classList.add('win');
+  // light up every diamond again
+  State.tiles.forEach((t, i) => {
+    if (!t.revealed) {
+      // remaining are mines if any
+      t.el.classList.add('fade', 'show-hint', 'mine');
+      const back = t.el.querySelector('.face-back');
+      back.innerHTML = mineSVG();
+      t.revealed = true;
+    } else {
+      // do a small celebratory shimmer on diamond tiles
+      t.el.classList.add('shimmer');
+      setTimeout(() => t.el.classList.remove('shimmer'), 900);
+    }
+  });
+  gridEl.classList.add('win-flash');
+  setTimeout(() => gridEl.classList.remove('win-flash'), 900);
+  fullClearChord();
+  if (window.History) History.record('mines', State.bet, net, `FULL CLEAR ${State.currentMult.toFixed(2)}× · ${State.mines} mines`);
+  showToast('FULL CLEAR!', money(payout), 'win');
+  syncControls();
+}
+
+function flashBet() {
+  betWrap.animate(
+    [{ transform: 'translateX(0)' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(0)' }],
+    { duration: 280, easing: 'cubic-bezier(.36,.07,.19,.97)' }
+  );
+}
+
+/* ---------- particle bursts ---------- */
+function burstSparkles(tileEl) {
+  const layer = tileEl.querySelector('.sparkle-layer');
+  if (!layer) return;
+  const n = 6;
+  for (let i = 0; i < n; i++) {
+    const m = document.createElement('span');
+    m.className = 'mote';
+    const ang = (Math.PI * 2 * i) / n + Math.random() * 0.5;
+    const r0 = 4 + Math.random() * 4;
+    const r1 = 36 + Math.random() * 18;
+    m.style.setProperty('--mx0', Math.cos(ang) * r0 + 'px');
+    m.style.setProperty('--my0', Math.sin(ang) * r0 + 'px');
+    m.style.setProperty('--mx', Math.cos(ang) * r1 + 'px');
+    m.style.setProperty('--my', Math.sin(ang) * r1 + 'px');
+    layer.appendChild(m);
+    setTimeout(() => m.remove(), 900);
+  }
+}
+function burstShards(tileEl) {
+  const layer = tileEl.querySelector('.sparkle-layer');
+  if (!layer) return;
+  const n = 10;
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('span');
+    s.className = 'shard';
+    const ang = Math.random() * Math.PI * 2;
+    const r = 30 + Math.random() * 30;
+    s.style.setProperty('--sx', Math.cos(ang) * r + 'px');
+    s.style.setProperty('--sy', Math.sin(ang) * r + 'px');
+    s.style.setProperty('--rot', (Math.random() * 360 | 0) + 'deg');
+    layer.appendChild(s);
+    setTimeout(() => s.remove(), 800);
+  }
+}
+
+/* ---------- action button ---------- */
+actionBtn.addEventListener('click', () => {
+  if (State.mode === 'idle' || State.mode === 'over') {
+    startRound();
+  } else if (State.mode === 'playing') {
+    if (State.safeCount > 0) cashOut();
+    // else: locked button (no-op)
+  }
+});
+
+/* ---------- keyboard niceties ---------- */
+document.addEventListener('keydown', (e) => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  if (e.key === ' ' || e.key === 'Enter') {
+    if (State.mode === 'idle' || State.mode === 'over') { e.preventDefault(); startRound(); }
+    else if (State.mode === 'playing' && State.safeCount > 0) { e.preventDefault(); cashOut(); }
+  }
+});
+</script>
+</body>
+</html>

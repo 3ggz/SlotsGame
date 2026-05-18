@@ -956,6 +956,7 @@ if (!CONFIGURED) {
         if (!roundId) return Promise.resolve();
         const bet = Number(data.bet) || 0;
         const payout = Number(data.payout) || 0;
+        const biggestPayout = Number(data.biggestPayout) || payout;
         const number = String(data.number || '');
         const color = String(data.color || '');
         const label = String(data.label || 'Roulette win').slice(0, 80);
@@ -970,6 +971,7 @@ if (!CONFIGURED) {
           label,
           bet,
           payout,
+          biggestPayout,
           player: playerLabel(currentUser),
           uid: currentUser?.uid || null,
           anonymous: !!currentUser?.isAnonymous,

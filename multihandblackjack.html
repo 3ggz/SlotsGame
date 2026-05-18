@@ -963,7 +963,27 @@ body::before {
   .card .center-suit { font-size: 32px; }
   .card.flip-pending::after { font-size: 22px; }
   .cards-row { min-height: 90px; }
-  .hand-group { gap: 10px; }
+  /* Multi-hand on mobile: the three hands sit side-by-side and grow as
+     cards are dealt. Without intervention each hand-box reaches its
+     intrinsic width and the outer ones get clipped by the felt.
+     Fix: tighter card overlap inside hand-groups (so each hand stays
+     narrow even at 5+ cards) plus horizontal scroll on the player row
+     as a safety net so cards are never fully hidden. */
+  .hand-group { gap: 8px; min-width: max-content; padding-bottom: 2px; }
+  .hand-group .hand-box { padding: 4px 6px; }
+  .hand-group .hand-box .card { width: 50px; height: 72px; margin-left: -32px; }
+  .hand-group .hand-box .card .corner .r { font-size: 12px; }
+  .hand-group .hand-box .card .corner .s { font-size: 9px; }
+  .hand-group .hand-box .card .center-suit { font-size: 26px; }
+  .hand-group .hand-box .card.flip-pending::after { font-size: 18px; }
+  #player-cards {
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  #player-cards::-webkit-scrollbar { display: none; }
   .bet-row { gap: 8px; padding: 14px 4px 4px; }
   .bet-circle { max-width: 100px; padding-top: 16%; }
   .bet-circle.main { max-width: 124px; }
@@ -989,6 +1009,12 @@ body::before {
 @media (max-width: 420px) {
   .card { width: 54px; height: 78px; margin-left: -18px; }
   .card .center-suit { font-size: 28px; }
+  .hand-group { gap: 6px; }
+  .hand-group .hand-box { padding: 4px 4px; }
+  .hand-group .hand-box .card { width: 44px; height: 64px; margin-left: -30px; }
+  .hand-group .hand-box .card .corner .r { font-size: 11px; }
+  .hand-group .hand-box .card .corner .s { font-size: 8px; }
+  .hand-group .hand-box .card .center-suit { font-size: 22px; }
   .chip { width: 48px; height: 48px; font-size: 11px; }
   .bet-circle { max-width: 88px; padding-top: 14%; }
   .bet-circle.main { max-width: 108px; }
@@ -1002,6 +1028,9 @@ body::before {
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
 <script src="casino-jackpots.js"></script>
+<script>window.CB_BANNER_PLACEMENT = { anchor: '.felt', position: 'before', gapTop: '12px', gapBottom: '10px' };</script>
+<script src="casino-bots.js"></script>
+<script src="casino-chat.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>
@@ -1152,7 +1181,7 @@ const Audio = (() => {
     'chip_stack_a', 'chip_stack_b',
     'chip_select', 'chip_payout', 'chip_clear',
     'win_chime', 'blackjack_fanfare', 'push_neutral',
-    'bust_thud', 'lose_low', 'button_soft',
+    'bust_thud', 'lose_low', 'button_soft', 'stand_thump',
   ];
   const EXTS = [
     { ext: 'wav', mime: 'audio/wav' },
@@ -1254,6 +1283,7 @@ const Audio = (() => {
     peek()          { play('card_peek', { gain: 0.95, pitchVariance: 0.03 }); },
     shuffle()       { play('shuffle', { gain: 0.7, pitchVariance: 0.02 }); },
     bust()          { play('bust_thud', { gain: 0.85 }); },
+    stand()         { play('stand_thump', { gain: 0.95, pitch: 0.85, pitchVariance: 0.04 }); },
     win()           { play('win_chime', { gain: 0.85 }); },
     bigWin()        {
       play('win_chime', { gain: 0.95 });
@@ -1548,6 +1578,14 @@ function renderPlayer() {
       group.appendChild(box);
     });
     row.appendChild(group);
+    // On mobile #player-cards scrolls horizontally so all three hands
+    // stay reachable when filled — keep the active hand in view.
+    if (State.phase === 'PLAYER') {
+      const active = group.children[State.activeHandIdx];
+      if (active && active.scrollIntoView) {
+        active.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+      }
+    }
   }
   refreshPlayerTotal();
 }
@@ -2166,6 +2204,7 @@ async function stand(force = false) {
   }
   hideConfirm();
   h.stood = true;
+  Audio.stand();
   advanceHand();
 }
 
