@@ -1987,9 +1987,24 @@ body::after {
 .preview.mines .mn-tile.mine::before {
   content: '';
   position: absolute;
-  inset: 15%;
-  background: radial-gradient(circle at 50% 50%, #ffd7df, #ff4d6d 30%, #6a0418 70%);
-  clip-path: polygon(50% 8%, 64% 38%, 88% 42%, 70% 60%, 76% 90%, 50% 72%, 24% 90%, 30% 60%, 12% 42%, 36% 38%);
+  inset: 22%;
+  z-index: 2;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255,255,255,0.76), transparent 18%),
+    radial-gradient(circle at 52% 54%, #ff4d6d 0 18%, #4d0719 42%, #050309 76%);
+  box-shadow:
+    0 0 8px rgba(255,77,109,0.72),
+    inset -2px -3px 4px rgba(0,0,0,0.62);
+}
+.preview.mines .mn-tile.mine::after {
+  content: '';
+  position: absolute;
+  inset: 11%;
+  z-index: 1;
+  background: linear-gradient(180deg, #ff9bb0, #ff2e58 48%, #460513);
+  clip-path: polygon(50% 0%, 58% 25%, 77% 8%, 72% 35%, 100% 28%, 78% 50%, 100% 72%, 72% 65%, 77% 92%, 58% 75%, 50% 100%, 42% 75%, 23% 92%, 28% 65%, 0% 72%, 22% 50%, 0% 28%, 28% 35%, 23% 8%, 42% 25%);
+  filter: drop-shadow(0 0 5px rgba(255,46,88,0.76));
 }
 @keyframes mnMinePulse {
   0%, 100% { box-shadow: inset 0 0 0 1px rgba(255,77,109,0.45), inset 0 0 10px rgba(255,77,109,0.16); }
