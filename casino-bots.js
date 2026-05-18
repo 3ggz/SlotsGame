@@ -692,6 +692,7 @@
   // Tick loop.
   // -----------------------------------------------------------
   let tickAt = loadKey(TICK_KEY, now()) || now();
+  const scheduledReplies = [];
 
   function tickOnce(t) {
     let touched = false;
@@ -750,7 +751,6 @@
   // -----------------------------------------------------------
   // Player chat reactivity.
   // -----------------------------------------------------------
-  const scheduledReplies = [];
   function classifyPlayerIntent(text) {
     const s = String(text || '').toLowerCase();
     if (/^(hi|hey|yo|sup|hello|wassup|gm|gn)\b/.test(s) || /^(hello|hey|hi)$/.test(s.trim())) return 'greet';
