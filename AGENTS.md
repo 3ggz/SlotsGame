@@ -22,33 +22,45 @@ Diamond Casino is a **single-machine, single-player web casino**. Each game is *
 
 ```
 SlotsGame/                          (repo root, "OneDrive\Desktop\SlotsGame")
-├── index.html                      Lobby — game grid + balance + add-funds modal
+├── index.html                      Lobby — game grid + balance + add-funds modal + LIVE FROM THE FLOOR
 ├── launcher.html                   QR code / phone-share screen
 ├── slots.html                      Diamond Deluxe — 5×3 hold-and-win slot
 ├── kraken.html                     Kraken's Depths — slot with two side wheels
 ├── lucky7saloon.html               Lucky 7 Saloon — Megaways-style slot
+├── dragontree.html                 Dragon Tree — Japanese-themed slot
 ├── blackjack.html                  Classic 6-deck blackjack
+├── multihandblackjack.html         3-hand blackjack
+├── roulette.html                   American roulette (global wheel, Firestore-backed)
+├── rocket.html                     Rocket crash game (global rounds, Firestore-backed)
+├── plinko.html                     Risk-adjustable plinko
+├── mines.html                      Mines — uncover cells, avoid bombs
+├── easycraps.html                  Simplified craps
+├── standardcraps.html              Standard rules craps
 ├── craplesscraps.html              Crapless bubble craps (Plaza-style)
-├── casino-audio.js                 Shared runtime — Settings / Music / SettingsUI / Loader
+├── casino-audio.js                 Settings / Music / SettingsUI / Loader / History
+├── casino-account.js               Firebase auth + CasinoStats + RocketLive + RouletteLive (ES module)
+├── casino-jackpots.js              Community Mini/Minor/Major/Grand jackpot pools
+├── casino-bots.js                  Bot players, presence, per-game wins feed, lobby pills
+├── casino-chat.js                  Slide-up chat panel (roulette + rocket only)
+├── service-worker.js               PWA shell — precache + runtime caches (bump CACHE_VERSION to ship)
+├── manifest.webmanifest            PWA manifest
 ├── serve.bat                       Local static server (python -m http.server 8080)
 ├── sfx/                            SFX library (mp3) + generator
-│   ├── generate_sfx.py             ElevenLabs SFX generator (skips existing)
-│   └── *.mp3                       Card/chip/dice/UI/outcome sounds
-├── Music/                          Background tracks (AAC m4a @ 128k, externally sourced; .wav masters kept locally but gitignored)
-│   ├── Diamond Spin.m4a            → slots.html
-│   ├── Kraken's Haunted Jackpots.m4a → kraken.html
-│   ├── Blackjack Velvet.m4a        → blackjack.html
-│   ├── Snake Eyes Shuffle.m4a      → lucky7saloon.html
-│   └── High Roller's Room.m4a      → craplesscraps.html
+├── Music/                          Background tracks (AAC m4a @ 128k, externally sourced)
+├── tests/                          Node CJS unit tests for game cores
+│   ├── lucky7saloon-core.test.cjs
+│   ├── roulette-core.test.cjs
+│   ├── dragontree-math.test.cjs
+│   └── dragontree-audio.test.cjs
 ├── docs/superpowers/               Specs and implementation plans (when used)
-│   ├── specs/
-│   └── plans/
-└── node_modules/                   Mostly unused (http-server is an option)
+└── node_modules/                   Mostly unused (firebase is a runtime dep, fetched off CDN)
 ```
 
-**This IS a git repo** (initialized 2026-05-16). Commits welcome; the user runs `git push` themselves. No CI yet. No automated tests beyond `tests/lucky7saloon-core.test.cjs`.
+**This IS a git repo** (initialized 2026-05-16). The user runs `git push` themselves unless they explicitly ask you to commit/push.
 
 `.gitignore` excludes the `.wav` audio masters under `/Music` — only the `.m4a` web transcodes ship to the repo (and to Netlify). Don't commit `node_modules`, `nanobanana-output/`, or `.superpowers/`.
+
+The site is live on Netlify. The PWA precaches a small shell via `service-worker.js`; you MUST bump `CACHE_VERSION` whenever you change a shipped asset or the SW will serve the stale cached copy to existing clients. See "Service worker" below.
 
 ---
 
@@ -87,9 +99,25 @@ All loaded from Google Fonts via `<link>` in each game's head. Match the existin
 
 ---
 
-## Shared runtime — `casino-audio.js`
+## Shared scripts
 
-Loaded near the **top of `<body>`** in every page (this matters — see "Gotchas"). Exposes four global modules:
+Every game loads five shared scripts near the top of `<body>` in this order:
+
+```html
+<script src="casino-audio.js"></script>
+<script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
+<script src="casino-bots.js"></script>
+<script src="casino-chat.js"></script>
+```
+
+`casino-account.js` is a real ES module — the others are classic scripts. The lobby (`index.html`) loads the same five.
+
+---
+
+## `casino-audio.js`
+
+Loaded near the **top of `<body>`** in every page (this matters — see "Gotchas"). Exposes five global modules:
 
 ### `window.Settings`
 Persists audio prefs across the whole casino under localStorage key `casino.settings`.
@@ -124,6 +152,52 @@ You shouldn't need to touch it. If you must:
 
 The loader is the canonical Diamond Casino brand moment. **Don't add a different loader to any individual game.**
 
+### `window.History`
+Per-game round log + the single source of truth for "a round happened."
+- `History.record(game, bet, net, note)` — call at end of every round. `bet` is the wagered amount, `net` is profit (positive = win, negative = loss, 0 = push). `note` is freeform; specific strings trigger downstream behaviour (see below).
+- `History.onChange(fn)` — fires after every `record()`. Use THIS for cross-cutting listeners (it survives wrap order); only wrap `History.record` itself if you need to mutate args or block the call.
+- `History.getSession()` / `getAll()` — recent entries.
+
+Three other shared scripts piggyback on `History.record`:
+- `casino-audio.js` itself forwards the round to `CasinoStats.recordRound` (global stats).
+- `casino-jackpots.js` wraps `History.record` to contribute every bet to the four pool tiers and roll for a trigger.
+- `casino-bots.js` subscribes via `History.onChange` to post player big-wins into the recent-wins feed.
+
+---
+
+## `casino-account.js`  (ES module)
+
+Firebase wiring. Provides `window.CasinoAccount`, `window.CasinoStats`, `window.RocketLive`, `window.RouletteLive`. The script ships a **no-op stub** synchronously and replaces it once the Firebase dynamic import resolves (`configured: true`). **Always poll for `configured === true` before subscribing** — subscribing to the stub gives you one fn(empty) call and silence forever.
+
+- `CasinoAccount.user()` — current Firebase user (anonymous by default).
+- `CasinoStats.subscribe(fn)` — global counters (`totalSpins`, `totalWagered`, `totalWon`, `jackpotsHit`).
+- `CasinoStats.subscribePresence(fn)` — `{ gameKey: count }` of real players currently on each page (5 s heartbeat, 60 s stale).
+- `CasinoStats.recordRound({ game, bet, win, note })` — writes a Firestore round entry. **Called automatically by `History.record`; don't call directly.** Honours the `BOT` note convention (see below).
+- `CasinoStats.subscribeJackpots(fn, n)` — most-recent jackpot wins (cross-casino flyby banner data source).
+- `RocketLive` / `RouletteLive` — per-round chat + cashout subscriptions for those two games' global multiplayer rounds.
+
+---
+
+## `casino-jackpots.js`
+
+Four community pools (`mini` / `minor` / `major` / `grand`) shared across the casino. Reads/writes `/globals/jackpots` in Firestore. Wraps `History.record` to:
+1. Contribute a percentage of every bet to all four pools.
+2. Roll a per-tier per-spin probability — if true, fires a jackpot for the local player, credits balance, dispatches `'jackpot-win'` on `document`, and records the entry under the player's name.
+
+Skips both contribution and trigger for entries with `note` containing `JACKPOT` (re-records of jackpot wins) and skips the trigger roll for entries with `note` matching `^BOT` (bot bets feed the pool but can never award a prize).
+
+---
+
+## `casino-bots.js`
+
+The bot players + presence + per-game wins feed + per-game chat buffers. Big module; see "Bot players and presence" section below for the full picture.
+
+---
+
+## `casino-chat.js`
+
+Slide-up chat panel. Mounts **only on `roulette.html` and `rocket.html`** (the rest of the games stay chat-free). Closed by default, never auto-opens. Hides those pages' native rail-card chats so the slide-up is the only chat surface. Reads/writes via `CasinoBots.subscribeChat(game, fn)` and `CasinoBots.sendChat(game, text)`.
+
 ---
 
 ## The shared bankroll
@@ -141,7 +215,16 @@ function persistBalance(v) {
 }
 ```
 
-Default starting balance: **$1,000** (a fresh tab gets handed a stack). Lobby and games both refresh the balance on `focus` / `pageshow`, so you can switch tables without re-loading. Don't store anything else in localStorage besides settings (`casino.settings`) and balance (`casino.balance`).
+Default starting balance: **$1,000** (a fresh tab gets handed a stack). Lobby and games both refresh the balance on `focus` / `pageshow`, so you can switch tables without re-loading.
+
+**Other localStorage keys in active use** (don't collide with these):
+- `casino.balance` — the chip stack
+- `casino.settings` — audio prefs
+- `casino.history.v1` — recent round entries (capped, written by `History.record`)
+- `casino.bots.v5.*` — bot roster, feeds, chat, leader-election, presence heartbeats (current version is **v5**; bump when you change the bot schema)
+- `casino.presence.tab` (sessionStorage) — per-tab id for Firestore presence
+
+If you add a new key, prefix it `casino.` and keep it small — quota is shared per-origin.
 
 ---
 
@@ -198,7 +281,7 @@ These will save you a debugging session:
 
 5. **Local server + browser cache.** `python -m http.server` doesn't aggressively cache, but Chrome does. After a CSS or JS edit, hard-refresh (Ctrl+F5) or open DevTools → Network → check "Disable cache." If the user reports "I changed it and nothing happened," 80% it's cache.
 
-6. **No git, no tests.** Don't suggest commit messages, don't ask the user to "run the test suite." Verification is `open the page → click stuff → confirm visually`. Build small, ship small, let the user click.
+6. **Git + a few tests.** Repo is initialized. There are Node CJS unit tests under `tests/` (run individually: `node tests/<name>.test.cjs`). They cover game cores (lucky7saloon, roulette, dragontree math + audio). No CI yet. Most verification is still `open the page → click stuff → confirm visually` — UI behaviour can't be tested headlessly here.
 
 7. **Don't import external CSS or JS libraries** unless explicitly asked. The casino is vanilla on purpose — adds up quickly when every game would otherwise drag in its own framework. The only cross-page dependency is `casino-audio.js`.
 
@@ -217,6 +300,46 @@ Rough recipe — adapt to taste:
 5. **Test the full loop:** load lobby → click card → game loads → loader hides → music starts on first click → balance debits on bet → wins credit back → return to lobby → balance persists.
 
 Keep the game self-contained in one HTML file. The casino's superpower is that each game can be opened in isolation and just works.
+
+---
+
+## Bot players and presence
+
+`casino-bots.js` runs a simulated population of ~22 permanent regulars + procedurally-generated guests that wander the casino. They show up as:
+- **Lobby presence pills** on every `.game-card[data-game]` (`● N PLAYING` / `QUIET`). The pill merges real-player count (from `CasinoStats.subscribePresence`) with bot count and renders the sum. **Don't add a separate presence indicator** — `casino-bots.js` owns the pill.
+- **Recent-wins feed** per game. Roulette merges into the native `#recent-list`; rocket's bot cashouts merge into the existing `mergedCashouts()` flow (so they appear as dots on the trail and pills in the right rail); other games get a small fixed-position banner pinned top-center.
+- **Chat** on roulette + rocket only (via `casino-chat.js`).
+
+### The `BOT` note convention
+
+When a bot completes a round, the engine calls `History.record(game, bet, net, 'BOT')`. Two downstream wrappers check for this:
+- `casino-jackpots.js` — contributes the bet to the pool but **skips the trigger roll**. Bots can never award the local player a jackpot prize.
+- `casino-account.js` `recordRound` — writes to `globals/stats` (so bot activity shows in `LIVE FROM THE FLOOR`) but **skips the per-user write** to `users/{uid}`. The signed-in player's personal stats are never inflated by bot bets.
+
+**If you add new code that reacts to `History.record`, you almost certainly want to skip BOT entries.** Pattern:
+```js
+if (note && /^BOT\b/i.test(String(note))) return; // bot bet, leave it alone
+```
+
+### Listening for player wins
+
+Prefer `History.onChange(fn)` over wrapping `History.record`. Wrap order with `casino-jackpots.js` and `casino-bots.js` is not guaranteed (both `setTimeout`-poll until `window.History` exists), and a poorly-ordered wrap chain will silently swallow your hook. `onChange` is fired by `casino-audio.js` itself and is wrap-independent. Track the last seen `ts` to dedup.
+
+### Leader election
+
+Only one tab simulates at a time. Tabs claim leadership via a heartbeat on `casino.bots.v5.leader` (4 s lease, 1.5 s refresh). Follower tabs read state from `localStorage` and listen for `storage` events. Cross-tab broadcasts piggyback on a `casino.bots.v5.bus` key whose value rotates with each message.
+
+---
+
+## Service worker
+
+`service-worker.js` precaches the app shell on install and uses content-type-based runtime caches (audio: cache-first, html: network-first, assets: stale-while-revalidate).
+
+**Bump `CACHE_VERSION` (currently `v75`) on EVERY shipped change to JS/CSS/HTML/SW itself.** Without a bump, existing PWA clients keep serving the stale cached copy from `RUNTIME_ASSET` and your fix never reaches them. The version string also rolls the precache name, which triggers eviction of old caches on `activate`.
+
+If a user reports "I shipped a fix but they still see the old behaviour", first ask them to **hard-refresh** (Ctrl+F5). If that doesn't do it, confirm you bumped `CACHE_VERSION`.
+
+Precached files are listed in `PRECACHE_URLS` at the top of the SW. New shared `.js` files and new game `.html` files should be added there.
 
 ---
 
