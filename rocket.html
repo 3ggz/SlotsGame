@@ -1445,6 +1445,8 @@ const rulesBtn = document.getElementById('btn-rules');
 const introRulesVeil = document.getElementById('intro-rules-veil');
 const introDontShow = document.getElementById('intro-dont-show');
 const introPlayBtn = document.getElementById('intro-play-btn');
+const miniBetButtons = Array.from(document.querySelectorAll('.mini-btn, .bet-add-btn'));
+const targetButtons = Array.from(document.querySelectorAll('.target-btn'));
 
 const RULES_INTRO_KEY = 'casino.rules.rocket.intro';
 const BASE_GRAPH_MAX = 5;
@@ -1605,7 +1607,7 @@ function getTarget() {
 function setTarget(v) {
   v = clamp(Math.round(v * 100) / 100, 1.01, 99);
   targetInput.value = v.toFixed(2);
-  document.querySelectorAll('.target-btn').forEach(btn => {
+  targetButtons.forEach(btn => {
     btn.classList.toggle('active', Math.abs(parseFloat(btn.dataset.target) - v) < 0.001);
   });
   syncControls();
@@ -1617,7 +1619,8 @@ function syncControls() {
   State.target = getTarget();
   betInput.disabled = locked;
   targetInput.disabled = locked;
-  document.querySelectorAll('.mini-btn, .bet-add-btn, .target-btn').forEach(btn => { btn.disabled = locked; });
+  miniBetButtons.forEach(btn => { btn.disabled = locked; });
+  targetButtons.forEach(btn => { btn.disabled = locked; });
   statBetEl.textContent = money(locked ? State.roundBet : State.bet);
   statTargetEl.textContent = State.target.toFixed(2) + 'x';
   statPeakEl.textContent = multText(State.peak);
@@ -2799,6 +2802,9 @@ function renderActiveCount(round = State.activeRound || getGlobalRound(casinoNow
   if (!rocketActiveCountEl) return;
   const counts = activeRoundCounts(round);
   const running = counts.phase === 'running';
+  const key = [counts.phase, counts.total, counts.left].join('|');
+  if (State.activeCountRenderKey === key) return;
+  State.activeCountRenderKey = key;
   rocketActiveCountEl.textContent = running ? `${counts.left} LEFT` : `${counts.total} IN`;
   rocketActiveCountEl.classList.toggle('hot', running && counts.left > 0);
 }
@@ -3059,7 +3065,7 @@ function setTarget(v, enableAuto = true) {
     targetInput.value = clean.toFixed(2);
     if (enableAuto) State.autoEnabled = true;
   }
-  document.querySelectorAll('.target-btn').forEach(btn => {
+  targetButtons.forEach(btn => {
     const raw = btn.dataset.target;
     const active = State.autoEnabled
       ? Math.abs(parseFloat(raw) - State.target) < 0.001
@@ -3079,11 +3085,32 @@ function syncControls() {
   State.bet = getBet();
   State.target = getTarget();
 
-  const canPlace = phase === 'betting' && !localBetInRound && !betSafetyLocked();
+  const safetyLocked = betSafetyLocked();
+  const canPlace = phase === 'betting' && !localBetInRound && !safetyLocked;
+  const countdown = phase !== 'betting' && phase !== 'running' ? Math.ceil(round.timeToNext / 1000) : 0;
+  const controlKey = [
+    phase,
+    round.roundId,
+    localBetInRound ? 1 : 0,
+    State.localCashed ? 1 : 0,
+    State.localResolved ? 1 : 0,
+    State.autoEnabled ? 1 : 0,
+    State.autoBetEnabled ? 1 : 0,
+    safetyLocked ? 1 : 0,
+    State.bet.toFixed(2),
+    State.target.toFixed(2),
+    Number(State.localBet || 0).toFixed(2),
+    State.multiplier.toFixed(2),
+    State.peak.toFixed(2),
+    countdown,
+  ].join('|');
+  if (State.controlsRenderKey === controlKey) return;
+  State.controlsRenderKey = controlKey;
+
   betInput.disabled = !canPlace;
-  document.querySelectorAll('.mini-btn, .bet-add-btn').forEach(btn => { btn.disabled = !canPlace; });
+  miniBetButtons.forEach(btn => { btn.disabled = !canPlace; });
   targetInput.disabled = !State.autoEnabled;
-  document.querySelectorAll('.target-btn').forEach(btn => { btn.disabled = false; });
+  targetButtons.forEach(btn => { btn.disabled = false; });
   autoBetToggle.disabled = phase !== 'betting' && phase !== 'running';
   autoBetToggle.textContent = State.autoBetEnabled ? 'AUTO ON' : 'AUTO BET';
   autoBetToggle.setAttribute('aria-pressed', State.autoBetEnabled ? 'true' : 'false');
@@ -3106,8 +3133,8 @@ function syncControls() {
 
   if (phase === 'betting') {
     launchBtn.className = 'launch-btn';
-    launchBtn.disabled = localBetInRound || betSafetyLocked();
-    launchBtn.textContent = localBetInRound ? 'BET PLACED' : betSafetyLocked() ? 'SETTLING' : 'PLACE BET';
+    launchBtn.disabled = localBetInRound || safetyLocked;
+    launchBtn.textContent = localBetInRound ? 'BET PLACED' : safetyLocked ? 'SETTLING' : 'PLACE BET';
   } else if (phase === 'running') {
     if (localBetInRound && !State.localCashed && !State.localResolved) {
       launchBtn.className = 'launch-btn cash';
@@ -3125,7 +3152,7 @@ function syncControls() {
   } else {
     launchBtn.className = 'launch-btn stop';
     launchBtn.disabled = true;
-    launchBtn.textContent = 'NEXT ROUND ' + Math.ceil(round.timeToNext / 1000) + 's';
+    launchBtn.textContent = 'NEXT ROUND ' + countdown + 's';
   }
 }
 
@@ -3447,7 +3474,7 @@ function frame(now) {
 /* ---------- controls ---------- */
 betInput.addEventListener('input', syncControls);
 targetInput.addEventListener('input', () => {
-  document.querySelectorAll('.target-btn').forEach(btn => btn.classList.remove('active'));
+  targetButtons.forEach(btn => btn.classList.remove('active'));
   syncControls();
 });
 betInput.addEventListener('change', () => {
@@ -3472,7 +3499,7 @@ document.querySelectorAll('.bet-add-btn').forEach(btn => {
     setBet(Math.min(maxBet, getBet() + add));
   });
 });
-document.querySelectorAll('.target-btn').forEach(btn => {
+targetButtons.forEach(btn => {
   btn.addEventListener('click', () => {
     playSfx('buttonSoft', 0.55);
     const raw = btn.dataset.target;

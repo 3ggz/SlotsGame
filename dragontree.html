@@ -18,9 +18,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Outfit:wght@400;600;800&family=Geist+Mono:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
-<script src="casino-jackpots.js?v=77"></script>
+<script src="casino-jackpots.js?v=78"></script>
 <script>window.CB_BANNER_PLACEMENT = { anchor: '#scene-wrap', position: 'before', gapTop: '10px', gapBottom: '8px' };</script>
-<script src="casino-bots.js?v=77"></script>
+<script src="casino-bots.js?v=78"></script>
 <script src="casino-chat.js"></script>
 <style>
 :root {
@@ -1726,14 +1726,22 @@ const AudioFX = (() => {
     const settingVolume = window.Settings && typeof Settings.sfxVolume === 'function' ? Settings.sfxVolume() : 1;
     a.volume = Math.max(0, Math.min(1, settingVolume * volume));
     activeAudio.add(a);
+    let released = false;
     const release = () => {
+      if (released) return;
+      released = true;
       activeAudio.delete(a);
       a.removeEventListener('ended', release);
       a.removeEventListener('error', release);
+      try {
+        a.pause();
+        a.removeAttribute('src');
+        a.load();
+      } catch (e) {}
     };
     a.addEventListener('ended', release, { once: true });
     a.addEventListener('error', release, { once: true });
-    a.play().catch(() => {});
+    a.play().catch(release);
   }
   return {
     play,
@@ -2433,13 +2441,19 @@ function spawnFallingLeaves(n) {
       { duration: dur, delay, easing: 'cubic-bezier(.45,.05,.55,.95)', fill: 'forwards' }
     );
     activeLeafAnimations.add(animation);
+    let removeTimer = 0;
     const removeLeaf = () => {
+      if (removeTimer) {
+        clearTimeout(removeTimer);
+        transientTimers.delete(removeTimer);
+        removeTimer = 0;
+      }
       activeLeafAnimations.delete(animation);
       leaf.remove();
     };
     animation.addEventListener('finish', removeLeaf, { once: true });
     animation.addEventListener('cancel', removeLeaf, { once: true });
-    trackTimer(removeLeaf, dur + delay + 100);
+    removeTimer = trackTimer(removeLeaf, dur + delay + 100);
   }
 }
 

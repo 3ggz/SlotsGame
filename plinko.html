@@ -767,6 +767,17 @@ let wallTopY  = 0;       // upper extent of the angled walls
 // area — physically seals each slot so a ball can't drift through the gap
 // between the last peg row and the chip strip into the wrong cup.
 let slotDividers = [];   // [{ ax, ay, bx, by }, ...]
+let frameRequest = 0;
+let boardDirty = true;
+
+function requestLoopNow() {
+  if (!frameRequest) frameRequest = requestAnimationFrame(frame);
+}
+
+function markBoardDirty() {
+  boardDirty = true;
+  requestLoopNow();
+}
 
 function layoutBoard() {
   const N = state.rows;          // 8/12/16
@@ -862,6 +873,7 @@ function resizeCanvas() {
   canvas.height = Math.round(LH * dpr);
   ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
   layoutBoard();
+  markBoardDirty();
 }
 window.addEventListener('resize', resizeCanvas);
 
@@ -1470,6 +1482,13 @@ function ballsInFlight() {
   for (const b of balls) if (!b.landed) return true;
   return false;
 }
+function slotFlashesActive() {
+  for (const v of slotFlash) if (v > 0.01) return true;
+  return false;
+}
+function plinkoWorkActive() {
+  return balls.length > 0 || floaters.length > 0 || slotFlashesActive() || state.pendingAuto > 0;
+}
 function updateControlLocks() {
   const locked = ballsInFlight();
   if (locked === lastLockState) return;   // cheap: only touch DOM on edges
@@ -1480,17 +1499,25 @@ function updateControlLocks() {
     .forEach(b => b.disabled = locked);
 }
 function frame(now) {
+  frameRequest = 0;
   let dt = (now - lastT) / 1000;
   lastT = now;
   if (dt > 0.05) dt = 0.05;   // clamp big tab-switch deltas
-  step(dt);
-  renderBoard();
+  const active = plinkoWorkActive();
+  if (active) {
+    step(dt);
+    boardDirty = true;
+  }
+  if (boardDirty) {
+    renderBoard();
+    boardDirty = false;
+  }
   updateControlLocks();
   // Auto-drop scheduler
   if (state.pendingAuto > 0 && balance >= getBet() && now - state.lastDropTime > 240) {
     triggerDrop(/*fromAuto*/ true);
   }
-  requestAnimationFrame(frame);
+  if (plinkoWorkActive()) requestLoopNow();
 }
 
 /* ---------- bet controls ---------- */
@@ -1571,6 +1598,7 @@ function onSegChange(key, v) {
     }
     updateDropBtn();
   }
+  markBoardDirty();
 }
 wireSeg('risk-seg', 'risk', s => s);
 wireSeg('rows-seg', 'rows', s => parseInt(s, 10));
@@ -1613,6 +1641,7 @@ function triggerDrop(fromAuto) {
   persistBalance(balance);
   refreshBalance();
   spawnBall(bet);
+  markBoardDirty();
   playSfx('chipPlace', 0.7);
   state.lastDropTime = performance.now();
   if (fromAuto) {
@@ -1659,7 +1688,7 @@ function boot() {
   // Two resize ticks to handle late font/layout settling
   setTimeout(resizeCanvas, 80);
   setTimeout(resizeCanvas, 300);
-  requestAnimationFrame(frame);
+  requestLoopNow();
 }
 boot();
 </script>

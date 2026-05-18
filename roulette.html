@@ -1981,10 +1981,14 @@ const State = {
   renderSpinMapSignature: '',
   lockedSpinBets: [],
   spinSoundRoundId: null,
+  wheelMetricWidth: 0,
+  wheelMetrics: null,
+  winnerPocketEl: null,
 };
 
 const balEl = document.getElementById('balance');
 const wheelEl = document.getElementById('roulette-wheel');
+const wheelStageEl = document.querySelector('.wheel-stage');
 const ballEl = document.getElementById('roulette-ball');
 const resultNumberEl = document.getElementById('result-number');
 const resultCaptionEl = document.getElementById('result-caption');
@@ -2661,22 +2665,40 @@ function renderHistory(round) {
   coldListEl.innerHTML = cold.map(x => `<span class="roll-pill ${Core.numberColor(x.n)}">${x.n}</span>`).join('');
 }
 
+function wheelMetrics() {
+  const stageWidth = Math.round((wheelStageEl ? wheelStageEl.clientWidth : 0) || 0);
+  if (State.wheelMetrics && State.wheelMetricWidth === stageWidth) return State.wheelMetrics;
+  const width = stageWidth || Math.round(wheelStageEl ? wheelStageEl.getBoundingClientRect().width : 0) || 320;
+  State.wheelMetricWidth = width;
+  State.wheelMetrics = {
+    outerRadius: Math.max(118, width * 0.415),
+    pocketRadius: Math.max(104, width * 0.368),
+    pocketLabelRadius: Math.max(98, width * 0.335),
+    restPoint: {
+      x: width * 0.35 - 41,
+      y: -width * 0.41 + 9,
+    },
+  };
+  return State.wheelMetrics;
+}
+
+window.addEventListener('resize', () => {
+  State.wheelMetricWidth = 0;
+  State.wheelMetrics = null;
+});
+
 function updateWheel(round) {
   const slice = 360 / Core.AMERICAN_WHEEL.length;
   const idx = Core.AMERICAN_WHEEL.indexOf(round.outcome);
   const target = 360 - idx * slice - slice / 2;
-  const stage = document.querySelector('.wheel-stage');
-  const stageWidth = stage.getBoundingClientRect().width;
-  const outerRadius = Math.max(118, stageWidth * 0.415);
-  const pocketRadius = Math.max(104, stageWidth * 0.368);
-  const pocketLabelRadius = Math.max(98, stageWidth * 0.335);
+  const metrics = wheelMetrics();
+  const outerRadius = metrics.outerRadius;
+  const pocketRadius = metrics.pocketRadius;
+  const pocketLabelRadius = metrics.pocketLabelRadius;
   const landingAngle = 0;
-  const tubeCenter = {
-    x: stageWidth * 0.35 - 41,
-    y: -stageWidth * 0.41 + 9,
-  };
-  const restPoint = tubeCenter;
+  const restPoint = metrics.restPoint;
   const entryAngle = 46;
+  const nowMs = Date.now();
   let wheelRot = target;
   let ballAngle = landingAngle;
   let radius = pocketRadius;
@@ -2703,9 +2725,9 @@ function updateWheel(round) {
     ballX = lerp(restPoint.x, orbitPoint.x, dropIn);
     ballY = lerp(restPoint.y, orbitPoint.y, dropIn) + Math.sin(dropIn * Math.PI) * 12;
   } else if (round.phase === 'betting') {
-    wheelRot = target + Math.sin(Date.now() / 1800) * 1.2;
+    wheelRot = target + Math.sin(nowMs / 1800) * 1.2;
     ballX = restPoint.x;
-    ballY = restPoint.y + Math.sin(Date.now() / 900) * 1.2;
+    ballY = restPoint.y + Math.sin(nowMs / 900) * 1.2;
     ballScale = 0.96;
   } else {
     const settledPoint = ballPoint(landingAngle, pocketRadius);
@@ -2717,10 +2739,14 @@ function updateWheel(round) {
   ballEl.style.transform = `translate(${ballX.toFixed(1)}px, ${ballY.toFixed(1)}px) scale(${ballScale.toFixed(3)})`;
   ballEl.classList.toggle('resting', round.phase === 'betting');
   ballEl.classList.toggle('settled', round.phase === 'result');
-  document.querySelectorAll('.pocket.winner').forEach(el => el.classList.remove('winner'));
-  if (round.phase === 'result') {
+  if (round.phase !== 'result') {
+    if (State.winnerPocketEl) State.winnerPocketEl.classList.remove('winner');
+    State.winnerPocketEl = null;
+  } else if (!State.winnerPocketEl || State.winnerPocketEl.dataset.pocket !== String(round.outcome)) {
+    if (State.winnerPocketEl) State.winnerPocketEl.classList.remove('winner');
     const pocket = document.querySelector(`.pocket[data-pocket="${CSS.escape(round.outcome)}"]`);
     if (pocket) pocket.classList.add('winner');
+    State.winnerPocketEl = pocket || null;
   }
 }
 

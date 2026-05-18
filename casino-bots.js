@@ -693,6 +693,15 @@
   // -----------------------------------------------------------
   let tickAt = loadKey(TICK_KEY, now()) || now();
   const scheduledReplies = [];
+  const MAX_SCHEDULED_REPLIES = 36;
+
+  function pushScheduledReply(reply) {
+    scheduledReplies.push(reply);
+    if (scheduledReplies.length > MAX_SCHEDULED_REPLIES) {
+      scheduledReplies.sort((a, b) => (a.at || 0) - (b.at || 0));
+      scheduledReplies.splice(0, scheduledReplies.length - MAX_SCHEDULED_REPLIES);
+    }
+  }
 
   function tickOnce(t) {
     let touched = false;
@@ -768,7 +777,7 @@
     if (!inRoom.length) return;
     const bot = choose(inRoom);
     const intent = classifyPlayerIntent(text);
-    scheduledReplies.push({ at: now() + randInt(2500, 9000), game, botId: bot.id, kind: 'reply_' + intent, playerName });
+    pushScheduledReply({ at: now() + randInt(2500, 9000), game, botId: bot.id, kind: 'reply_' + intent, playerName });
   }
 
   // Coordinated reactions to a big win in a room.
@@ -796,7 +805,7 @@
       do { bot = choose(inRoom); tries++; } while (picks.has(bot.id) && tries < 6);
       if (picks.has(bot.id)) break;
       picks.add(bot.id);
-      scheduledReplies.push({
+      pushScheduledReply({
         at: now() + randInt(2500, 9000),
         game, botId: bot.id, kind: 'react_big',
         playerName: winnerName,

@@ -98,6 +98,8 @@ run('bonus transient effects are centrally cleaned up for mobile performance', (
   assert(html.includes("cleanupTransientEffects('bonus-end')"), 'bonus end should clear animations and nodes before control returns');
   assert(html.includes('const MOBILE_EFFECT_SCALE'), 'mobile should use reduced effect counts');
   assert(html.includes('const MAX_ACTIVE_AUDIO'), 'audio clones should be capped so repeated bonuses do not pile up');
+  assert(html.includes('a.play().catch(release)'), 'failed autoplay attempts should release cloned audio elements');
+  assert(html.includes('removeTimer = trackTimer(removeLeaf'), 'leaf fallback timers should be cleared when animations finish');
 });
 
 console.log('Dragon Tree audio tests complete');

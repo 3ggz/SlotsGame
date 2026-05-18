@@ -71,10 +71,6 @@
   // event multiple tiers fire on one spin, the biggest wins.
 
   const TIER_BY_ID = Object.fromEntries(TIERS.map(t => [t.id, t]));
-  const JACKPOTS_LIVE_ALLOWED = !(
-    /dragontree\.html/i.test(location.pathname) &&
-    matchMedia('(max-width: 760px), (pointer: coarse)').matches
-  );
 
   // Seed snapshot used until the live Firestore value arrives.
   function seedSnapshot() {
@@ -450,16 +446,33 @@
   let firestoreInitStarted = false;
   let jackpotLiveDisabled = false;
   let unsubPools = null;
+  const JACKPOT_BACKOFF_KEY = 'casino.jackpots.liveBackoffUntil';
+  const JACKPOT_BACKOFF_MS = 5 * 60 * 1000;
 
   function isResourceExhausted(error) {
     const code = String(error && error.code || '').toLowerCase();
     const msg = String(error && error.message || error || '').toLowerCase();
-    return code.includes('resource-exhausted') || msg.includes('resource-exhausted');
+    return code.includes('resource-exhausted') || msg.includes('resource-exhausted') || msg.includes('quota exceeded');
+  }
+
+  function jackpotBackoffActive() {
+    try {
+      const until = Number(localStorage.getItem(JACKPOT_BACKOFF_KEY)) || 0;
+      return Date.now() < until;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function markJackpotBackoff(error) {
+    if (!isResourceExhausted(error)) return;
+    try { localStorage.setItem(JACKPOT_BACKOFF_KEY, String(Date.now() + JACKPOT_BACKOFF_MS)); } catch (e) {}
   }
 
   function disableJackpotLiveSync(error) {
     if (jackpotLiveDisabled) return;
     jackpotLiveDisabled = true;
+    markJackpotBackoff(error);
     try { if (typeof unsubPools === 'function') unsubPools(); } catch (e) {}
     unsubPools = null;
     window.CasinoJackpots = {
@@ -482,7 +495,7 @@
   }
 
   function tryStartFirestore() {
-    if (!JACKPOTS_LIVE_ALLOWED) return;
+    if (jackpotBackoffActive()) return;
     if (jackpotLiveDisabled) return;
     if (firestoreInitStarted) return;
     if (!window.CasinoStats || !window.CasinoStats.configured) return;
@@ -649,7 +662,7 @@
   };
 
   async function processBet(game, bet, skipTrigger) {
-    if (!JACKPOTS_LIVE_ALLOWED) return null;
+    if (jackpotBackoffActive()) return null;
     if (jackpotLiveDisabled) return null;
     if (!docRef || !fs) {
       console.debug('[casino-jackpots] skipped contribute (firestore not ready)', { game, bet });
@@ -724,6 +737,10 @@
         trigger = won;
       });
     } catch (e) {
+      if (isResourceExhausted(e)) {
+        disableJackpotLiveSync(e);
+        return null;
+      }
       // Transaction failure (contention or rules). Surface to console
       // so misconfigurations (e.g. missing /globals/jackpots rule)
       // don't fail silently.

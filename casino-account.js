@@ -575,6 +575,52 @@ if (!CONFIGURED) {
       const app  = initializeApp(FIREBASE_CONFIG);
       const auth = getAuth(app);
       const db   = getFirestore(app);
+      const LIVE_BACKOFF_KEY = 'casino.firebase.liveBackoffUntil';
+      const LIVE_BACKOFF_MS = 5 * 60 * 1000;
+      let liveBackoffWarned = false;
+
+      function isResourceExhausted(error) {
+        const code = String(error && error.code || '').toLowerCase();
+        const msg = String(error && error.message || error || '').toLowerCase();
+        return code.includes('resource-exhausted') || msg.includes('resource-exhausted') || msg.includes('quota exceeded');
+      }
+
+      function liveBackoffActive() {
+        try {
+          const until = Number(localStorage.getItem(LIVE_BACKOFF_KEY)) || 0;
+          return Date.now() < until;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      function noteLiveSnapshotError(error) {
+        if (!isResourceExhausted(error)) return;
+        try { localStorage.setItem(LIVE_BACKOFF_KEY, String(Date.now() + LIVE_BACKOFF_MS)); } catch (e) {}
+        if (!liveBackoffWarned) {
+          liveBackoffWarned = true;
+          console.warn('[casino-account] live Firestore reads paused briefly: quota/resource exhausted');
+        }
+      }
+
+      function safeOnSnapshot(ref, next, onError, fallback) {
+        if (liveBackoffActive()) {
+          try { if (typeof fallback === 'function') fallback(); } catch (e) {}
+          return () => {};
+        }
+        try {
+          return onSnapshot(ref, next, error => {
+            noteLiveSnapshotError(error);
+            try { if (typeof fallback === 'function') fallback(error); } catch (e) {}
+            try { if (typeof onError === 'function') onError(error); } catch (e) {}
+          });
+        } catch (error) {
+          noteLiveSnapshotError(error);
+          try { if (typeof fallback === 'function') fallback(error); } catch (e) {}
+          try { if (typeof onError === 'function') onError(error); } catch (e) {}
+          return () => {};
+        }
+      }
 
       // Explicit local persistence (insurance). Default is already
       // browser-local on the web SDK, but some browsers/contexts fall
@@ -853,7 +899,7 @@ if (!CONFIGURED) {
       }
 
       function subscribe(fn) {
-        return onSnapshot(globalsRef, snap => {
+        return safeOnSnapshot(globalsRef, snap => {
           const d = snap.data() || {};
           fn({
             totalSpins:       d.totalSpins       || 0,
@@ -862,49 +908,49 @@ if (!CONFIGURED) {
             jackpotsHit:      d.jackpotsHit      || 0,
             totalJackpotPaid: d.totalJackpotPaid || 0,
           });
-        }, () => {});
+        }, null, () => fn(ZERO_STATS));
       }
 
       function subscribeJackpots(fn, n = 8) {
         const q = query(collection(db, 'recentJackpots'), orderBy('ts', 'desc'), limit(n));
-        return onSnapshot(q, snap => {
+        return safeOnSnapshot(q, snap => {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
           fn(list);
-        }, () => {});
+        }, null, () => fn([]));
       }
 
       function subscribeRocketCashouts(roundId, fn, n = 80) {
         const rid = String(roundId || '');
         if (!rid) { try { fn([]); } catch (e) {} return () => {}; }
         const q = query(collection(db, 'rocketRoundCashouts', rid, 'cashouts'), orderBy('ts', 'desc'), limit(n));
-        return onSnapshot(q, snap => {
+        return safeOnSnapshot(q, snap => {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
           fn(list);
-        }, () => {});
+        }, null, () => fn([]));
       }
 
       function subscribeRocketEntries(roundId, fn, n = 120) {
         const rid = String(roundId || '');
         if (!rid) { try { fn([]); } catch (e) {} return () => {}; }
         const q = query(collection(db, 'rocketRoundEntries', rid, 'entries'), orderBy('enteredAt', 'desc'), limit(n));
-        return onSnapshot(q, snap => {
+        return safeOnSnapshot(q, snap => {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
           fn(list);
-        }, () => {});
+        }, null, () => fn([]));
       }
 
       function subscribeRouletteWins(roundId, fn, n = 80) {
         const rid = String(roundId || '');
         if (!rid) { try { fn([]); } catch (e) {} return () => {}; }
         const q = query(collection(db, 'rouletteRoundWins', rid, 'wins'), orderBy('ts', 'desc'), limit(n));
-        return onSnapshot(q, snap => {
+        return safeOnSnapshot(q, snap => {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
           fn(list);
-        }, () => {});
+        }, null, () => fn([]));
       }
 
       function subscribePresence(fn) {
@@ -922,11 +968,11 @@ if (!CONFIGURED) {
           }
           try { fn(counts); } catch (e) {}
         };
-        const off = onSnapshot(ref, snap => {
+        const off = safeOnSnapshot(ref, snap => {
           docs = [];
           snap.forEach(d => docs.push(d.data() || {}));
           emit();
-        }, () => {});
+        }, null, () => { docs = []; emit(); });
         timer = setInterval(emit, 10000);
         emit();
         return () => {
@@ -969,13 +1015,13 @@ if (!CONFIGURED) {
             try { off(); } catch (e) {}
             resolve(Number.isFinite(offset) ? offset : 0);
           };
-          off = onSnapshot(ref, snap => {
+          off = safeOnSnapshot(ref, snap => {
             const d = snap.data() || {};
             if (!d.ts || typeof d.ts.toMillis !== 'function') return;
             const receivedAt = Date.now();
             const midpoint = sentAt + (receivedAt - sentAt) / 2;
             finish(d.ts.toMillis() - midpoint);
-          }, () => finish(0));
+          }, null, () => finish(0));
           setTimeout(() => finish(0), 5000);
         });
       }
@@ -995,13 +1041,13 @@ if (!CONFIGURED) {
             try { off(); } catch (e) {}
             resolve(Number.isFinite(offset) ? offset : 0);
           };
-          off = onSnapshot(ref, snap => {
+          off = safeOnSnapshot(ref, snap => {
             const d = snap.data() || {};
             if (!d.ts || typeof d.ts.toMillis !== 'function') return;
             const receivedAt = Date.now();
             const midpoint = sentAt + (receivedAt - sentAt) / 2;
             finish(d.ts.toMillis() - midpoint);
-          }, () => finish(0));
+          }, null, () => finish(0));
           setTimeout(() => finish(0), 5000);
         });
       }
@@ -1081,20 +1127,20 @@ if (!CONFIGURED) {
 
       function subscribeRocketChat(fn, n = 30) {
         const q = query(collection(db, 'rocketChat'), orderBy('ts', 'desc'), limit(n));
-        return onSnapshot(q, snap => {
+        return safeOnSnapshot(q, snap => {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
           fn(list.reverse());
-        }, () => {});
+        }, null, () => fn([]));
       }
 
       function subscribeRouletteChat(fn, n = 30) {
         const q = query(collection(db, 'rouletteChat'), orderBy('ts', 'desc'), limit(n));
-        return onSnapshot(q, snap => {
+        return safeOnSnapshot(q, snap => {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
           fn(list.reverse());
-        }, () => {});
+        }, null, () => fn([]));
       }
 
       function sendRocketChat(message) {
@@ -1159,9 +1205,9 @@ if (!CONFIGURED) {
 
       function subscribeUserDoc(uid, fn) {
         if (!uid) { try { fn({}); } catch (e) {} return () => {}; }
-        return onSnapshot(doc(db, 'users', uid), snap => {
+        return safeOnSnapshot(doc(db, 'users', uid), snap => {
           fn(snap.data() || {});
-        }, () => {});
+        }, null, () => fn({}));
       }
       async function saveProfile({ username, avatar }) {
         if (!currentUser) throw new Error('Not signed in');

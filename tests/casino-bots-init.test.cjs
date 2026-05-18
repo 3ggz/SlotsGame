@@ -22,7 +22,8 @@ run('scheduled bot replies are initialized before tick loop starts', () => {
   assert(scheduledAt > -1 && tickAt > -1 && intervalAt > -1, 'expected scheduled replies, tickOnce, and interval loop');
   assert(scheduledAt < tickAt, 'scheduledReplies must be initialized before tickOnce can flush replies');
   assert(scheduledAt < intervalAt, 'scheduledReplies must be initialized before the interval starts');
-  assert(dragonTreeHtml.includes('casino-bots.js?v=77'), 'Dragon Tree should bypass stale cached bot scripts');
+  assert(src.includes('const MAX_SCHEDULED_REPLIES'), 'scheduled replies should be bounded');
+  assert(dragonTreeHtml.includes('casino-bots.js?v=78'), 'Dragon Tree should bypass stale cached bot scripts');
 });
 
 console.log('Casino bot init tests complete');
