@@ -45,6 +45,7 @@ const PRECACHE_URLS = [
   './casino-audio.js',
   './casino-account.js',
   './casino-jackpots.js',
+  './casino-level.js',
   './casino-bots.js',
   './casino-chat.js',
   './manifest.webmanifest',

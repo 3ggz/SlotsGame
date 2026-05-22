@@ -101,17 +101,18 @@ All loaded from Google Fonts via `<link>` in each game's head. Match the existin
 
 ## Shared scripts
 
-Every game loads five shared scripts near the top of `<body>` in this order:
+Every game loads six shared scripts near the top of `<body>` in this order:
 
 ```html
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
 <script src="casino-jackpots.js"></script>
+<script src="casino-level.js"></script>
 <script src="casino-bots.js"></script>
 <script src="casino-chat.js"></script>
 ```
 
-`casino-account.js` is a real ES module — the others are classic scripts. The lobby (`index.html`) loads the same five.
+`casino-account.js` is a real ES module — the others are classic scripts. The lobby (`index.html`) loads the same six.
 
 ---
 
@@ -188,6 +189,20 @@ Skips both contribution and trigger for entries with `note` containing `JACKPOT`
 
 ---
 
+## `casino-level.js`
+
+Bet-based XP and player leveling. Subscribes to `History.onChange` (skips entries with notes matching `/^BOT\b/i`), persists a single `totalXp` scalar to `casino.level.v1`, and on level-up credits chips to `casino.balance` and shows a slide-down toast top-center.
+
+- `CasinoLevel.get()` → `{ level, xp, xpInLevel, xpForNext, totalXp }`
+- `CasinoLevel.onChange(fn)` — subscribe.
+- Dispatches `'level-up'` `CustomEvent` on `document` with `{ oldLevel, newLevel, reward }`.
+
+Mounts a progress bar into any element matching `.level-bar-slot` (one per page). The bar's CSS is injected at runtime — no per-page styling needed. Reward formula: `newLevel * 50` chips per level-up, summed across multi-level jumps. Caps at level 99.
+
+Underscore-prefixed members (`_xpForLevel`, `_applyEntry`, etc.) are test seams — don't call from game code.
+
+---
+
 ## `casino-bots.js`
 
 The bot players + presence + per-game wins feed + per-game chat buffers. Big module; see "Bot players and presence" section below for the full picture.
@@ -223,6 +238,7 @@ Default starting balance: **$1,000** (a fresh tab gets handed a stack). Lobby an
 - `casino.history.v1` — recent round entries (capped, written by `History.record`)
 - `casino.bots.v5.*` — bot roster, feeds, chat, leader-election, presence heartbeats (current version is **v5**; bump when you change the bot schema)
 - `casino.presence.tab` (sessionStorage) — per-tab id for Firestore presence
+- `casino.level.v1` — player XP (single field: `{ totalXp: number }`); current level/progress derived on read
 
 If you add a new key, prefix it `casino.` and keep it small — quota is shared per-origin.
 
