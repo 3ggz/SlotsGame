@@ -115,7 +115,7 @@
     const reward = totalRewardForJump(oldLevel, newLevel);
 
     saveState({ totalXp: nextTotal });
-    return { xpGain: gain, oldLevel, newLevel, reward, totalXp: nextTotal };
+    return { xpGain: nextTotal - before.totalXp, oldLevel, newLevel, reward, totalXp: nextTotal };
   }
 
   const api = {

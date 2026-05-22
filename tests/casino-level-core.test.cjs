@@ -201,3 +201,12 @@ run('applyEntry caps at level 99 and drops excess XP', () => {
   const persisted = JSON.parse(localStorage._store['casino.level.v1']);
   assert.strictEqual(persisted.totalXp, 2_535_302);
 });
+
+run('applyEntry returns actually-applied xpGain on cap (not raw input)', () => {
+  const { Level } = makeSandbox({
+    'casino.level.v1': JSON.stringify({ totalXp: 2_535_300 }),
+  });
+  const r = Level._applyEntry({ bet: 1_000_000_000 });
+  // Only 2 XP was actually applied (2_535_302 - 2_535_300).
+  assert.strictEqual(r.xpGain, 2);
+});
