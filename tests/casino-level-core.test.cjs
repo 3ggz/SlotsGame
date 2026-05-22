@@ -210,3 +210,41 @@ run('applyEntry returns actually-applied xpGain on cap (not raw input)', () => {
   // Only 2 XP was actually applied (2_535_302 - 2_535_300).
   assert.strictEqual(r.xpGain, 2);
 });
+
+run('get() returns current persisted state derived from storage', () => {
+  const { Level } = makeSandbox({ 'casino.level.v1': JSON.stringify({ totalXp: 500 }) });
+  const s = JSON.parse(JSON.stringify(Level.get()));
+  assert.strictEqual(s.level, 3);
+  assert.strictEqual(s.totalXp, 500);
+  assert.strictEqual(s.xpInLevel, 500 - 100 - 264); // 136
+  assert.strictEqual(s.xpForNext, 466);
+});
+
+run('applyEntry credits balance on level-up when creditBalance:true', () => {
+  const { Level, localStorage } = makeSandbox({ 'casino.balance': '1000' });
+  Level._applyEntry({ bet: 150 }, { creditBalance: true });
+  assert.strictEqual(localStorage._store['casino.balance'], '1100'); // 1000 + reward 100
+});
+
+run('applyEntry does NOT credit when creditBalance is omitted (pure mode)', () => {
+  const { Level, localStorage } = makeSandbox({ 'casino.balance': '1000' });
+  Level._applyEntry({ bet: 150 });
+  assert.strictEqual(localStorage._store['casino.balance'], '1000');
+});
+
+run('applyEntry skips credit when no level-up', () => {
+  const { Level, localStorage } = makeSandbox({ 'casino.balance': '1000' });
+  Level._applyEntry({ bet: 25 }, { creditBalance: true });
+  assert.strictEqual(localStorage._store['casino.balance'], '1000');
+});
+
+run('creditBalance guards against another tab crediting first', () => {
+  // Tab A's snapshot says level=1, but storage already shows level=2 from Tab B.
+  const { Level, localStorage } = makeSandbox({
+    'casino.balance': '1000',
+    'casino.level.v1': JSON.stringify({ totalXp: 200 }), // already at L2
+  });
+  // Tab A applies a small bet that doesn't push past L3.
+  Level._applyEntry({ bet: 25 }, { creditBalance: true });
+  assert.strictEqual(localStorage._store['casino.balance'], '1000');
+});

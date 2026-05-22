@@ -21,6 +21,7 @@
   const REWARD_PER_LEVEL = 50;
   const CURVE_BASE       = 100;
   const CURVE_EXP        = 1.4;
+  const DEFAULT_BALANCE  = 1000;
 
   function loadState() {
     try {
@@ -43,6 +44,21 @@
     } catch (e) {
       // Quota errors, private mode, etc. — keep in-memory state.
     }
+  }
+
+  function loadBalance() {
+    try {
+      const raw = global.localStorage && global.localStorage.getItem(BALANCE_KEY);
+      const n = parseFloat(raw);
+      if (!isFinite(n) || n < 0) return DEFAULT_BALANCE;
+      return n;
+    } catch (e) { return DEFAULT_BALANCE; }
+  }
+
+  function persistBalance(v) {
+    try {
+      if (global.localStorage) global.localStorage.setItem(BALANCE_KEY, String(v));
+    } catch (e) {}
   }
 
   function xpForLevel(n) {
@@ -93,7 +109,8 @@
     return sum;
   }
 
-  function applyEntry(entry) {
+  function applyEntry(entry, opts) {
+    const creditBalance = !!(opts && opts.creditBalance);
     const note = entry && entry.note;
     if (note && BOT_NOTE_RE.test(String(note))) {
       const state = loadState();
@@ -107,7 +124,6 @@
     const oldLevel = levelFromTotalXp(before.totalXp);
 
     let nextTotal = before.totalXp + gain;
-    // Cap at level 99 — drop XP past that threshold.
     const cap = cumulativeXpToReach(MAX_LEVEL);
     if (nextTotal > cap) nextTotal = cap;
 
@@ -115,14 +131,25 @@
     const reward = totalRewardForJump(oldLevel, newLevel);
 
     saveState({ totalXp: nextTotal });
+
+    if (creditBalance && reward > 0) {
+      persistBalance(loadBalance() + reward);
+    }
+
     return { xpGain: nextTotal - before.totalXp, oldLevel, newLevel, reward, totalXp: nextTotal };
   }
 
   const api = {
     get() {
-      const totalXp = 0;
-      const p = progressInLevel(totalXp);
-      return { level: p.level, xp: totalXp, xpInLevel: p.xpInLevel, xpForNext: p.xpForNext, totalXp };
+      const state = loadState();
+      const p = progressInLevel(state.totalXp);
+      return {
+        level: p.level,
+        xp: state.totalXp,
+        xpInLevel: p.xpInLevel,
+        xpForNext: p.xpForNext,
+        totalXp: state.totalXp,
+      };
     },
     onChange(_fn) { /* implemented in a later task */ },
 
