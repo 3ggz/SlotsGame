@@ -49,6 +49,19 @@
     return { level: lvl, xpInLevel, xpForNext };
   }
 
+  function rewardForLevelUp(newLevel) {
+    if (newLevel < 2 || newLevel > MAX_LEVEL) return 0;
+    return newLevel * REWARD_PER_LEVEL;
+  }
+
+  function totalRewardForJump(oldLevel, newLevel) {
+    let sum = 0;
+    for (let n = Math.max(2, oldLevel + 1); n <= newLevel; n++) {
+      sum += rewardForLevelUp(n);
+    }
+    return sum;
+  }
+
   const api = {
     get() {
       const totalXp = 0;
@@ -60,6 +73,8 @@
     _xpForLevel: xpForLevel,
     _levelFromTotalXp: levelFromTotalXp,
     _progressInLevel: progressInLevel,
+    _rewardForLevelUp: rewardForLevelUp,
+    _totalRewardForJump: totalRewardForJump,
   };
 
   global.CasinoLevel = api;

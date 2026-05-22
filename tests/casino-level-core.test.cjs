@@ -76,3 +76,21 @@ run('get() returns derived state shape for the stub (totalXp=0)', () => {
   const s = JSON.parse(JSON.stringify(Level.get()));
   assert.deepStrictEqual(s, { level: 1, xp: 0, xpInLevel: 0, xpForNext: 100, totalXp: 0 });
 });
+
+run('rewardForLevelUp = newLevel * 50', () => {
+  const { Level } = makeSandbox();
+  assert.strictEqual(Level._rewardForLevelUp(2), 100);
+  assert.strictEqual(Level._rewardForLevelUp(11), 550);
+  assert.strictEqual(Level._rewardForLevelUp(51), 2550);
+});
+
+run('totalRewardForJump sums rewards across all crossed levels', () => {
+  const { Level } = makeSandbox();
+  // 1 -> 4: rewards for L2 + L3 + L4 = 100 + 150 + 200 = 450
+  assert.strictEqual(Level._totalRewardForJump(1, 4), 450);
+  // same level -> 0
+  assert.strictEqual(Level._totalRewardForJump(7, 7), 0);
+  // 1 -> 99: sum of 50*(2+3+...+99)
+  const expected = 50 * (99 * 100 / 2 - 1); // = 50 * 4949 = 247450
+  assert.strictEqual(Level._totalRewardForJump(1, 99), expected);
+});
