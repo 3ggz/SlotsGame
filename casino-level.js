@@ -403,6 +403,19 @@
     }
   });
 
+  global.addEventListener('storage', function (ev) {
+    if (!ev) return;
+    if (ev.key === STORAGE_KEY) {
+      // Another tab updated the player's XP — re-render the bar
+      // WITHOUT crediting balance again (that tab already did).
+      renderBar();
+      notifyChange();
+    } else if (ev.key === BALANCE_KEY) {
+      // Balance changed elsewhere — nothing to do for level UI,
+      // but keep this branch for parity with other shared modules.
+    }
+  });
+
   // ----- History subscription (browser only) -----
   let lastSeenTs = 0;
   function ingestNewEntries() {
