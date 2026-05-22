@@ -234,6 +234,22 @@ button, input { font: inherit; }
     inset 0 0 0 1.5px rgba(255,240,168,0.20),
     inset 0 0 60px rgba(0,0,0,0.48);
 }
+.screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(110deg, transparent 0 38%, rgba(255,255,255,0.055) 49%, transparent 60% 100%),
+    repeating-linear-gradient(180deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 5px);
+  opacity: 0.55;
+}
+.screen > * {
+  position: relative;
+  z-index: 1;
+}
 
 .status-band {
   display: grid;
@@ -322,6 +338,35 @@ button, input { font: inherit; }
     linear-gradient(180deg, #2a1050, #090414);
   box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.28), 0 14px 22px rgba(0,0,0,0.28);
 }
+.poker-card.empty::before,
+.poker-card.back::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 42%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 30% 24%, rgba(255,255,255,0.90), transparent 28%),
+    linear-gradient(135deg, var(--neon-cyan), var(--neon-pink) 54%, var(--gold-1));
+  clip-path: polygon(50% 3%, 96% 38%, 50% 97%, 4% 38%);
+  filter: drop-shadow(0 0 12px rgba(34,211,238,0.35));
+  opacity: 0.76;
+}
+.poker-card.empty::after,
+.poker-card.back::after {
+  content: 'DIAMOND';
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  font-family: 'Bungee', cursive;
+  font-size: clamp(7px, 0.9vw, 10px);
+  letter-spacing: 0.18em;
+  color: rgba(255,240,168,0.70);
+  text-shadow: 0 0 8px rgba(255,210,74,0.35);
+}
 .poker-card:not(.empty):not(.back):hover {
   filter: brightness(1.04);
   transform: translateY(-2px);
@@ -376,6 +421,22 @@ button, input { font: inherit; }
   box-shadow: 0 0 14px rgba(255,210,74,0.42);
 }
 .card-slot.held .hold-tag { display: inline-flex; }
+.card-slot.dealing .poker-card {
+  animation: cardDealSnap 0.38s cubic-bezier(.18,.92,.28,1.18) both;
+  animation-delay: var(--deal-delay, 0ms);
+}
+.card-slot.settled-win .poker-card {
+  box-shadow:
+    0 16px 24px rgba(0,0,0,0.36),
+    0 0 0 3px rgba(92,255,161,0.34),
+    0 0 22px rgba(92,255,161,0.30),
+    inset 0 0 0 1.5px rgba(0,0,0,0.14);
+}
+@keyframes cardDealSnap {
+  0% { opacity: 0; transform: translateY(-18px) rotate(-5deg) scale(0.92); filter: brightness(1.24); }
+  70% { opacity: 1; transform: translateY(3px) rotate(1deg) scale(1.015); }
+  100% { opacity: 1; transform: translateY(0) rotate(0) scale(1); filter: brightness(1); }
+}
 
 .controls {
   display: grid;
@@ -463,6 +524,35 @@ button, input { font: inherit; }
   cursor: default;
   filter: grayscale(0.25);
   transform: none;
+}
+
+.coin-burst {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+}
+.coin-burst .coin {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255,255,255,0.80), transparent 22%),
+    radial-gradient(circle, var(--gold-0) 0 31%, var(--gold-1) 33% 56%, var(--gold-2) 58% 100%);
+  box-shadow: 0 0 16px rgba(255,210,74,0.42), inset 0 0 0 2px rgba(92,61,0,0.32);
+  opacity: 0;
+  animation: coinArc 760ms cubic-bezier(.15,.82,.22,1) forwards;
+  animation-delay: var(--delay);
+}
+@keyframes coinArc {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(0.5) rotate(0deg); }
+  18% { opacity: 1; }
+  55% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), var(--dy)) scale(1) rotate(var(--rot)); }
 }
 
 .paytable {
@@ -574,6 +664,7 @@ button, input { font: inherit; }
   .bet-panel { grid-template-columns: 1fr; }
   .main-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .main-btn { min-width: 0; height: 54px; font-size: 11px; }
+  .main-btn.secondary { grid-column: 1 / -1; }
   .recent { grid-template-columns: 1fr; }
   .paytable { padding: 12px; }
   .pay-row { min-height: 28px; padding: 6px 8px; font-size: 12px; }
@@ -595,7 +686,7 @@ button, input { font: inherit; }
   <span class="value">$<span id="balance">0</span></span>
   <button class="btn-add" id="btn-add" title="Add chips">+</button>
 </div>
-<div class="level-bar-slot" style="position: fixed; top: 56px; right: 10px; z-index: 50; max-width: 220px;"></div>
+
 
 <main class="stage">
   <header class="game-header">
@@ -646,6 +737,7 @@ button, input { font: inherit; }
           </div>
         </div>
       </div>
+      <div class="coin-burst" id="coin-burst"></div>
     </div>
 
     <aside class="paytable" id="paytable">
@@ -866,6 +958,7 @@ const el = {
   drawBtn: document.getElementById('draw-btn'),
   newBtn: document.getElementById('new-btn'),
   machine: document.getElementById('machine'),
+  coinBurst: document.getElementById('coin-burst'),
   lastHand: document.getElementById('last-hand'),
   lastPay: document.getElementById('last-pay'),
   heldCount: document.getElementById('held-count'),
@@ -879,6 +972,8 @@ const State = {
   holds: [false, false, false, false, false],
   bet: 5,
   paid: 0,
+  resultWin: false,
+  animating: [],
 };
 
 function refreshBalance() {
@@ -909,18 +1004,21 @@ function suitColor(suit) {
   return suit === 'hearts' || suit === 'diamonds' ? 'red' : 'black';
 }
 function cardHtml(card, i) {
+  const isAnimating = State.animating.includes(i);
+  const slotStyle = isAnimating ? ` style="--deal-delay:${i * 46}ms"` : '';
   if (!card) {
     return `
-      <div class="card-slot">
+      <div class="card-slot${isAnimating ? ' dealing' : ''}"${slotStyle}>
         <button class="poker-card empty" data-index="${i}" aria-label="Empty card"></button>
         <span class="hold-tag">HELD</span>
       </div>`;
   }
-  const held = State.holds[i];
+  const held = State.phase === 'dealt' && State.holds[i];
+  const settledWin = State.phase === 'result' && State.resultWin;
   const suit = suitSymbol(card.suit);
   const cls = suitColor(card.suit);
   return `
-    <div class="card-slot ${held ? 'held' : ''}">
+    <div class="card-slot ${held ? 'held' : ''} ${settledWin ? 'settled-win' : ''} ${isAnimating ? 'dealing' : ''}"${slotStyle}>
       <button class="poker-card ${cls} ${held ? 'held' : ''}" data-index="${i}" aria-label="${card.rank} of ${card.suit}">
         <span class="corner"><span>${card.rank}</span><span>${suit}</span></span>
         <span class="center-suit">${suit}</span>
@@ -960,6 +1058,8 @@ function resetHand(keepMessage) {
   State.hand = [];
   State.holds = [false, false, false, false, false];
   State.paid = 0;
+  State.resultWin = false;
+  State.animating = [];
   clearPaytableHighlight();
   if (!keepMessage) setMessage('Set your bet and deal. Hold what you like, then draw.', null);
   renderCards();
@@ -973,6 +1073,33 @@ function recordHand(note, net) {
   if (window.History) {
     try { History.record('diamondpoker', State.bet, net, note); } catch (e) {}
   }
+}
+function animateCards(indexes) {
+  State.animating = indexes.slice();
+  renderCards();
+  const maxIndex = indexes.length ? Math.max(...indexes) : 0;
+  setTimeout(() => {
+    State.animating = [];
+    renderCards();
+  }, 520 + maxIndex * 46);
+}
+function spawnPayoutBurst(multiplier) {
+  if (!el.coinBurst) return;
+  el.coinBurst.innerHTML = '';
+  const count = Math.min(24, multiplier >= 25 ? 22 : 12);
+  for (let i = 0; i < count; i++) {
+    const coin = document.createElement('span');
+    coin.className = 'coin';
+    coin.style.setProperty('--x', `${40 + Math.random() * 20}%`);
+    coin.style.setProperty('--y', `${54 + Math.random() * 16}%`);
+    coin.style.setProperty('--dx', `${Math.round(-190 + Math.random() * 380)}px`);
+    coin.style.setProperty('--dy', `${Math.round(-180 - Math.random() * 170)}px`);
+    coin.style.setProperty('--rot', `${Math.round(-260 + Math.random() * 520)}deg`);
+    coin.style.setProperty('--size', `${Math.round(12 + Math.random() * 10)}px`);
+    coin.style.setProperty('--delay', `${i * 24}ms`);
+    el.coinBurst.appendChild(coin);
+  }
+  setTimeout(() => { el.coinBurst.innerHTML = ''; }, 1400);
 }
 function dealHand() {
   const bet = getBet();
@@ -991,24 +1118,29 @@ function dealHand() {
   State.holds = [false, false, false, false, false];
   State.phase = 'dealt';
   State.paid = 0;
+  State.resultWin = false;
+  State.animating = [];
   clearPaytableHighlight();
   setMessage('Tap cards to hold, then draw.', null);
   renderCards();
+  animateCards([0, 1, 2, 3, 4]);
   updateControls();
   playSfx('chipPlace', 0.75);
   for (let i = 0; i < 5; i++) setTimeout(() => dealSound(i), i * 58);
 }
 function drawHand() {
   if (State.phase !== 'dealt') return;
+  const replacedIndexes = State.holds.map((held, i) => held ? null : i).filter(i => i !== null);
   const drawn = Core.drawReplacementCards(State.hand, State.holds, State.deck);
   State.hand = drawn.hand;
   State.deck = drawn.remainingDeck;
-  State.phase = 'result';
-  renderCards();
-  for (let i = 0; i < drawn.drawn; i++) setTimeout(() => dealSound(i), i * 62);
 
   const settled = Core.settleHand(State.hand, State.bet);
   State.paid = settled.gross;
+  State.resultWin = settled.gross > 0;
+  State.phase = 'result';
+  animateCards(replacedIndexes);
+  for (let i = 0; i < drawn.drawn; i++) setTimeout(() => dealSound(i), i * 62);
   State.balance = Math.round((State.balance + settled.gross) * 100) / 100;
   persistBalance(State.balance);
   refreshBalance();
@@ -1023,6 +1155,7 @@ function drawHand() {
     el.machine.classList.add('payout-pop');
     playSfx(settled.outcome.multiplier >= 25 ? 'fanfare' : 'win', settled.outcome.multiplier >= 25 ? 0.8 : 0.7);
     setTimeout(() => playSfx('chipPayout', 0.8), 170);
+    spawnPayoutBurst(settled.outcome.multiplier);
   } else {
     setMessage('No win. New hand when ready.', 'lose');
     playSfx('lose', 0.55);

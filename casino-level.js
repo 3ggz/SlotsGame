@@ -183,6 +183,12 @@
 
   const BAR_CSS = `
 .casino-level-bar {
+  position: fixed;
+  top: 62px;
+  right: 14px;
+  z-index: 70;
+  width: 200px;
+  max-width: calc(100vw - 28px);
   display: flex; align-items: center; gap: 10px;
   padding: 6px 10px;
   border-radius: 999px;
@@ -196,6 +202,14 @@
   text-transform: uppercase;
   white-space: nowrap;
   user-select: none;
+}
+@media (max-width: 720px) {
+  .casino-level-bar {
+    top: 50px;
+    right: 8px;
+    width: 170px;
+    padding: 5px 8px;
+  }
 }
 .casino-level-bar .clb-lvl {
   font-weight: 700;
@@ -315,14 +329,13 @@
 
   function mountBar() {
     if (barEl) return;
-    const slot = document.querySelector('.level-bar-slot');
-    if (!slot) return;
+    if (!document.body) return;
     injectBarCss();
     barEl = buildBar();
     barFillEl = barEl.querySelector('.clb-fill');
     barLvlEl  = barEl.querySelector('.clb-lvl');
     barNumEl  = barEl.querySelector('.clb-num');
-    slot.appendChild(barEl);
+    document.body.appendChild(barEl);
     renderBar();
   }
 

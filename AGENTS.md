@@ -201,7 +201,7 @@ Mounts a progress bar into any element matching `.level-bar-slot` (one per page)
 
 Underscore-prefixed members (`_xpForLevel`, `_applyEntry`, etc.) are test seams — don't call from game code.
 
-**New game pages must include `<div class="level-bar-slot"></div>` in their balance chrome** so the bar mounts on `DOMContentLoaded`. Without a slot, the bar silently no-ops.
+The bar auto-mounts to `<body>` as a fixed-position element just below the `.cu-chip` (the auto-injected account avatar in the top-right). No per-page wiring needed — every game and the lobby get the bar automatically.
 
 ---
 
