@@ -139,6 +139,19 @@
     return { xpGain: nextTotal - before.totalXp, oldLevel, newLevel, reward, totalXp: nextTotal };
   }
 
+  // ----- Change subscribers (browser only — also called in tests, but harmless) -----
+  const changeListeners = [];
+  function notifyChange() {
+    const snap = api.get();
+    for (const fn of changeListeners) {
+      try { fn(snap); } catch (e) {}
+    }
+  }
+
+  function onChange(fn) {
+    if (typeof fn === 'function') changeListeners.push(fn);
+  }
+
   const api = {
     get() {
       const state = loadState();
@@ -151,7 +164,7 @@
         totalXp: state.totalXp,
       };
     },
-    onChange(_fn) { /* implemented in a later task */ },
+    onChange: onChange,
 
     _applyEntry: applyEntry,
     _cumulativeXpToReach: cumulativeXpToReach,
@@ -165,4 +178,49 @@
   };
 
   global.CasinoLevel = api;
+
+  if (typeof document === 'undefined') return;
+
+  // ----- History subscription (browser only) -----
+  let lastSeenTs = 0;
+  function ingestNewEntries() {
+    if (!global.History || typeof global.History.getAll !== 'function') return;
+    const all = global.History.getAll();
+    const fresh = [];
+    for (const e of all) {
+      if (typeof e.ts === 'number' && e.ts > lastSeenTs) fresh.push(e);
+    }
+    if (!fresh.length) return;
+    fresh.sort((a, b) => a.ts - b.ts);
+    let mutated = false;
+    for (const e of fresh) {
+      const r = applyEntry(e, { creditBalance: true });
+      lastSeenTs = e.ts;
+      if (r.xpGain > 0 || r.reward > 0) mutated = true;
+      if (r.reward > 0) {
+        try {
+          document.dispatchEvent(new CustomEvent('level-up', {
+            detail: { oldLevel: r.oldLevel, newLevel: r.newLevel, reward: r.reward },
+          }));
+        } catch (e2) {}
+      }
+    }
+    if (mutated) notifyChange();
+  }
+
+  function attachHistory() {
+    if (!global.History || typeof global.History.onChange !== 'function') return false;
+    // Seed lastSeenTs to "now" so we only react to NEW rounds, not the existing log.
+    const all = global.History.getAll ? global.History.getAll() : [];
+    for (const e of all) if (typeof e.ts === 'number' && e.ts > lastSeenTs) lastSeenTs = e.ts;
+    global.History.onChange(ingestNewEntries);
+    return true;
+  }
+
+  // Poll for History (matches the pattern in casino-jackpots.js).
+  (function pollForHistory(attempt) {
+    if (attachHistory()) return;
+    if (attempt > 60) return; // ~3s max
+    setTimeout(function () { pollForHistory(attempt + 1); }, 50);
+  })(0);
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
