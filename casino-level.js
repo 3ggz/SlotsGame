@@ -287,6 +287,30 @@
   letter-spacing: 0.04em;
   text-transform: none;
 }
+.casino-level-fireworks {
+  position: fixed;
+  z-index: 9998;
+  pointer-events: none;
+}
+.casino-level-fireworks .clf-particle {
+  position: absolute;
+  top: 0; left: 0;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  box-shadow: 0 0 6px currentColor;
+  animation: clf-burst 700ms cubic-bezier(.1, .7, .2, 1) forwards;
+}
+@keyframes clf-burst {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.4); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .casino-level-fireworks .clf-particle {
+    animation-duration: 0.01ms;
+  }
+}
 `;
 
   function injectBarCss() {
@@ -373,7 +397,7 @@
     toastHeadEl = toastEl.querySelector('.clt-head');
     toastDetailEl = toastEl.querySelector('.clt-detail');
     try {
-      toastChime = new Audio('sfx/win_chime.mp3');
+      toastChime = new Audio('sfx/blackjack_fanfare.mp3');
       toastChime.preload = 'auto';
     } catch (e) { toastChime = null; }
   }
@@ -400,6 +424,7 @@
     }
     toastDetailEl.textContent = 'LVL ' + pendingToast.newLevel + '  ·  +$' + pendingToast.reward.toLocaleString();
     toastEl.classList.add('show');
+    spawnFireworks();
     if (toastTimer) clearTimeout(toastTimer);
     playChime();
     toastTimer = setTimeout(function () {
@@ -407,6 +432,36 @@
       toastTimer = 0;
       pendingToast = null;
     }, 3000);
+  }
+
+  const FIREWORK_COLORS = ['#ffd24a', '#ff2e93', '#22d3ee', '#a855f7', '#5cffa1'];
+
+  function spawnFireworks() {
+    if (!toastEl) return;
+    const rect = toastEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.bottom;
+    const container = document.createElement('div');
+    container.className = 'casino-level-fireworks';
+    container.style.left = cx + 'px';
+    container.style.top = cy + 'px';
+    document.body.appendChild(container);
+    for (let i = 0; i < 10; i++) {
+      const p = document.createElement('span');
+      p.className = 'clf-particle';
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 80 + Math.random() * 60;
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist * 0.85; // slightly squashed vertical spread
+      p.style.setProperty('--dx', dx.toFixed(1) + 'px');
+      p.style.setProperty('--dy', dy.toFixed(1) + 'px');
+      p.style.color = FIREWORK_COLORS[i % FIREWORK_COLORS.length];
+      p.style.animationDelay = (Math.random() * 80).toFixed(0) + 'ms';
+      container.appendChild(p);
+    }
+    setTimeout(function () {
+      if (container.parentNode) container.parentNode.removeChild(container);
+    }, 1000);
   }
 
   document.addEventListener('level-up', function (ev) {

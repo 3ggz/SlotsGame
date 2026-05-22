@@ -191,7 +191,7 @@ Skips both contribution and trigger for entries with `note` containing `JACKPOT`
 
 ## `casino-level.js`
 
-Bet-based XP and player leveling. Subscribes to `History.onChange` (skips entries with notes matching `/^BOT\b/i`), persists a single `totalXp` scalar to `casino.level.v1`, and on level-up credits chips to `casino.balance` and shows a slide-down toast top-center.
+Bet-based XP and player leveling. Subscribes to `History.onChange` (skips entries with notes matching `/^BOT\b/i`), persists a single `totalXp` scalar to `casino.level.v1`, and on level-up credits chips to `casino.balance`, shows a slide-down toast top-center with a `blackjack_fanfare` SFX, and spawns a small ~700ms particle burst from the toast.
 
 - `CasinoLevel.get()` → `{ level, xp, xpInLevel, xpForNext, totalXp }`
 - `CasinoLevel.onChange(fn)` — subscribe.
