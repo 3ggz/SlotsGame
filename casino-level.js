@@ -229,6 +229,50 @@
 @media (max-width: 480px) {
   .casino-level-bar .clb-num { display: none; }
 }
+.casino-level-toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translate(-50%, -120%);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #2a1148, #150828);
+  border: 1px solid rgba(255, 210, 74, 0.55);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,210,74,0.2);
+  font-family: 'Bungee', sans-serif;
+  color: #fff0a8;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  opacity: 0;
+  transition: transform 320ms cubic-bezier(.2,.7,.2,1), opacity 320ms ease;
+  pointer-events: none;
+}
+.casino-level-toast.show {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+.casino-level-toast .clt-emblem {
+  font-size: 22px;
+  color: #ffd24a;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+}
+.casino-level-toast .clt-body {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.casino-level-toast .clt-head {
+  font-size: 11px; color: #ffd24a;
+}
+.casino-level-toast .clt-detail {
+  font-family: 'Geist Mono', monospace;
+  font-size: 13px;
+  color: #fff0a8;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
 `;
 
   function injectBarCss() {
@@ -292,6 +336,72 @@
 
   whenReady(mountBar);
   onChange(renderBar);
+
+  let toastEl = null;
+  let toastHeadEl = null;
+  let toastDetailEl = null;
+  let toastTimer = 0;
+  let toastChime = null;
+  let pendingToast = null; // { newLevel, reward } accumulated while a toast is visible
+
+  function ensureToast() {
+    if (toastEl) return;
+    injectBarCss(); // shares the same stylesheet as the bar
+    toastEl = document.createElement('div');
+    toastEl.className = 'casino-level-toast';
+    toastEl.innerHTML = `
+      <span class="clt-emblem">&#9670;</span>
+      <div class="clt-body">
+        <span class="clt-head">Level Up</span>
+        <span class="clt-detail"></span>
+      </div>
+    `;
+    document.body.appendChild(toastEl);
+    toastHeadEl = toastEl.querySelector('.clt-head');
+    toastDetailEl = toastEl.querySelector('.clt-detail');
+    try {
+      toastChime = new Audio('sfx/win_chime.mp3');
+      toastChime.preload = 'auto';
+    } catch (e) { toastChime = null; }
+  }
+
+  function playChime() {
+    if (!toastChime) return;
+    try {
+      const vol = (global.Settings && global.Settings.sfxVolume) ? global.Settings.sfxVolume() : 1;
+      if (vol <= 0) return;
+      toastChime.currentTime = 0;
+      toastChime.volume = Math.min(1, vol);
+      toastChime.play().catch(() => {});
+    } catch (e) {}
+  }
+
+  function showToast(newLevel, reward) {
+    ensureToast();
+    // Coalesce: if a toast is already showing, accumulate.
+    if (toastTimer && pendingToast) {
+      pendingToast.newLevel = Math.max(pendingToast.newLevel, newLevel);
+      pendingToast.reward += reward;
+    } else {
+      pendingToast = { newLevel, reward };
+    }
+    toastDetailEl.textContent = 'LVL ' + pendingToast.newLevel + '  ·  +$' + pendingToast.reward.toLocaleString();
+    toastEl.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    playChime();
+    toastTimer = setTimeout(function () {
+      toastEl.classList.remove('show');
+      toastTimer = 0;
+      pendingToast = null;
+    }, 3000);
+  }
+
+  document.addEventListener('level-up', function (ev) {
+    const d = (ev && ev.detail) || {};
+    if (typeof d.newLevel === 'number' && typeof d.reward === 'number') {
+      showToast(d.newLevel, d.reward);
+    }
+  });
 
   // ----- History subscription (browser only) -----
   let lastSeenTs = 0;
