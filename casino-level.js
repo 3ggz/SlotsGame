@@ -181,6 +181,118 @@
 
   if (typeof document === 'undefined') return;
 
+  const BAR_CSS = `
+.casino-level-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(21,8,40,0.85), rgba(10,4,24,0.85));
+  border: 1px solid rgba(184, 134, 11, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255,210,74,0.15), 0 4px 14px rgba(0,0,0,0.45);
+  font-family: 'Bungee', 'Outfit', sans-serif;
+  color: #fff0a8;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  user-select: none;
+}
+.casino-level-bar .clb-lvl {
+  font-weight: 700;
+  color: #ffd24a;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+}
+.casino-level-bar .clb-track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 6px;
+  min-width: 60px;
+  background: rgba(20, 8, 36, 0.9);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.5);
+}
+.casino-level-bar .clb-fill {
+  position: absolute; top: 0; left: 0; bottom: 0;
+  width: 0%;
+  background: linear-gradient(90deg, #b8860b 0%, #ffd24a 60%, #fff0a8 100%);
+  box-shadow: 0 0 6px rgba(255,210,74,0.5);
+  transition: width 250ms ease-out;
+}
+.casino-level-bar .clb-num {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: rgba(255, 240, 168, 0.85);
+  text-transform: none;
+}
+@media (max-width: 480px) {
+  .casino-level-bar .clb-num { display: none; }
+}
+`;
+
+  function injectBarCss() {
+    if (document.getElementById('casino-level-bar-css')) return;
+    const s = document.createElement('style');
+    s.id = 'casino-level-bar-css';
+    s.textContent = BAR_CSS;
+    document.head.appendChild(s);
+  }
+
+  let barEl = null;
+  let barFillEl = null;
+  let barLvlEl = null;
+  let barNumEl = null;
+
+  function buildBar() {
+    const wrap = document.createElement('div');
+    wrap.className = 'casino-level-bar';
+    wrap.innerHTML = `
+      <span class="clb-lvl"></span>
+      <div class="clb-track"><div class="clb-fill"></div></div>
+      <span class="clb-num"></span>
+    `;
+    return wrap;
+  }
+
+  function renderBar() {
+    if (!barEl) return;
+    const s = api.get();
+    barLvlEl.textContent = 'LVL ' + s.level;
+    if (s.xpForNext <= 0) {
+      barFillEl.style.width = '100%';
+      barNumEl.textContent = 'MAX';
+    } else {
+      const pct = Math.max(0, Math.min(100, (s.xpInLevel / s.xpForNext) * 100));
+      barFillEl.style.width = pct.toFixed(1) + '%';
+      barNumEl.textContent = s.xpInLevel.toLocaleString() + ' / ' + s.xpForNext.toLocaleString();
+    }
+  }
+
+  function mountBar() {
+    if (barEl) return;
+    const slot = document.querySelector('.level-bar-slot');
+    if (!slot) return;
+    injectBarCss();
+    barEl = buildBar();
+    barFillEl = barEl.querySelector('.clb-fill');
+    barLvlEl  = barEl.querySelector('.clb-lvl');
+    barNumEl  = barEl.querySelector('.clb-num');
+    slot.appendChild(barEl);
+    renderBar();
+  }
+
+  function whenReady(fn) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fn, { once: true });
+    } else {
+      fn();
+    }
+  }
+
+  whenReady(mountBar);
+  onChange(renderBar);
+
   // ----- History subscription (browser only) -----
   let lastSeenTs = 0;
   function ingestNewEntries() {
