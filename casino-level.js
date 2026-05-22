@@ -130,7 +130,7 @@
     const newLevel = levelFromTotalXp(nextTotal);
     const reward = totalRewardForJump(oldLevel, newLevel);
 
-    saveState({ totalXp: nextTotal });
+    if (nextTotal !== before.totalXp) saveState({ totalXp: nextTotal });
 
     if (creditBalance && reward > 0) {
       persistBalance(loadBalance() + reward);
