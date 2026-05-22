@@ -2013,6 +2013,118 @@ body::after {
   letter-spacing: 0.02em;
 }
 
+/* DIAMOND DRAW POKER PREVIEW - polished video poker cabinet */
+.preview.diamondpoker {
+  background:
+    radial-gradient(ellipse at 50% 4%, rgba(255,240,168,0.24), transparent 30%),
+    radial-gradient(ellipse at 18% 22%, rgba(34,211,238,0.22), transparent 45%),
+    radial-gradient(ellipse at 82% 76%, rgba(255,46,147,0.18), transparent 48%),
+    linear-gradient(180deg, #120425 0%, #220a3f 54%, #06000e 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.34), inset 0 -36px 58px rgba(0,0,0,0.42);
+  overflow: hidden;
+}
+.preview.diamondpoker::before {
+  content: '';
+  position: absolute;
+  inset: 20px 24px 26px;
+  border-radius: 18px 18px 10px 10px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(34,211,238,0.13), transparent 58%),
+    linear-gradient(180deg, #29104e, #080413 72%);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(34,211,238,0.48),
+    inset 0 0 0 8px rgba(255,210,74,0.08),
+    0 18px 34px rgba(0,0,0,0.42);
+}
+.preview.diamondpoker::after {
+  content: 'DRAW POKER';
+  position: absolute;
+  left: 50%;
+  top: 22px;
+  transform: translateX(-50%);
+  z-index: 4;
+  font-family: 'Bungee', cursive;
+  font-size: 8px;
+  letter-spacing: 0.30em;
+  color: var(--gold-0);
+  text-shadow: 0 0 12px rgba(255,210,74,0.70);
+  white-space: nowrap;
+}
+.preview.diamondpoker .dp-screen {
+  position: relative;
+  z-index: 2;
+  width: 198px;
+  height: 122px;
+  padding: 24px 13px 12px;
+  border-radius: 14px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(92,255,161,0.12), transparent 58%),
+    linear-gradient(180deg, #0f3430, #071818);
+  box-shadow: inset 0 0 0 1px rgba(255,240,168,0.28), 0 12px 22px rgba(0,0,0,0.34);
+}
+.preview.diamondpoker .dp-cards {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px;
+}
+.preview.diamondpoker .dp-card {
+  position: relative;
+  height: 54px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #fffdf1, #ded5b8);
+  color: #130417;
+  box-shadow: 0 7px 10px rgba(0,0,0,0.26), inset 0 0 0 1px rgba(0,0,0,0.12);
+  display: grid;
+  place-items: center;
+  font-family: 'Bungee', cursive;
+  font-size: 15px;
+  line-height: 1;
+}
+.preview.diamondpoker .dp-card.red { color: #d62433; }
+.preview.diamondpoker .dp-card.held {
+  transform: translateY(-8px);
+  box-shadow: 0 9px 12px rgba(0,0,0,0.30), 0 0 0 2px rgba(255,210,74,0.55), inset 0 0 0 1px rgba(0,0,0,0.12);
+}
+.preview.diamondpoker .dp-holds {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px;
+  margin-top: 8px;
+}
+.preview.diamondpoker .dp-holds span {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255,210,74,0.12);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.16);
+}
+.preview.diamondpoker .dp-holds span:nth-child(1),
+.preview.diamondpoker .dp-holds span:nth-child(2) {
+  background: linear-gradient(180deg, var(--gold-0), var(--gold-1));
+  box-shadow: 0 0 10px rgba(255,210,74,0.34);
+}
+.preview.diamondpoker .dp-pay {
+  position: absolute;
+  z-index: 4;
+  left: 28px;
+  right: 28px;
+  bottom: 17px;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+.preview.diamondpoker .dp-pay span {
+  flex: 1;
+  padding: 4px 0 3px;
+  border-radius: 999px;
+  text-align: center;
+  font-family: 'Geist Mono', monospace;
+  font-size: 8px;
+  font-weight: 800;
+  color: var(--neon-green);
+  background: rgba(0,0,0,0.44);
+  box-shadow: inset 0 0 0 1px rgba(92,255,161,0.28);
+}
+
 /* card meta */
 .game-title {
   font-family: 'Bungee Shade', 'Bungee', cursive;
@@ -2251,6 +2363,16 @@ body::after {
   .game-card[data-game="multihandblackjack"] .preview.blackjack .c1 { left: 8px; top: 32px; }
   .game-card[data-game="multihandblackjack"] .preview.blackjack .c2 { left: 58px; top: 14px; }
   .game-card[data-game="multihandblackjack"] .preview.blackjack .c3 { left: 110px; top: 32px; }
+  .preview.diamondpoker::before { inset: 12px 15px 16px; border-radius: 14px 14px 9px 9px; }
+  .preview.diamondpoker::after { top: 14px; font-size: 6px; letter-spacing: 0.24em; }
+  .preview.diamondpoker .dp-screen { width: 164px; height: 98px; padding: 20px 10px 9px; border-radius: 12px; }
+  .preview.diamondpoker .dp-cards { gap: 5px; }
+  .preview.diamondpoker .dp-card { height: 42px; border-radius: 4px; font-size: 12px; }
+  .preview.diamondpoker .dp-card.held { transform: translateY(-6px); }
+  .preview.diamondpoker .dp-holds { gap: 5px; margin-top: 6px; }
+  .preview.diamondpoker .dp-holds span { height: 8px; }
+  .preview.diamondpoker .dp-pay { left: 19px; right: 19px; bottom: 9px; }
+  .preview.diamondpoker .dp-pay span { font-size: 7px; padding: 3px 0 2px; }
   .preview.plinko::before { width: 82%; height: 84%; border-radius: 18px 18px 12px 12px; }
   .preview.plinko .pk-stage { width: 170px; height: 108px; }
   .preview.plinko .pk-peg-grid { gap: 6px; top: 12px; }
@@ -2310,6 +2432,7 @@ body::after {
 <script src="casino-audio.js"></script>
 <script type="module" src="casino-account.js"></script>
 <script src="casino-jackpots.js"></script>
+<script src="casino-level.js"></script>
 <script src="casino-bots.js"></script>
 
 <button class="btn-history" id="btn-history" title="View history">HISTORY</button>
@@ -2326,6 +2449,7 @@ body::after {
     <span class="label">BALANCE</span>
     <span class="value">$<span id="balance">1,000</span></span>
     <button class="btn-add" id="btn-add" title="Add chips">+</button>
+    <div class="level-bar-slot" style="flex-basis: 100%; margin-top: 8px;"></div>
   </div>
 
   <section class="jp-pools" id="jp-pools">
@@ -2481,6 +2605,31 @@ body::after {
       <div class="game-meta">
         <span class="meta-pill">GLOBAL</span>
         <span class="meta-pill">0 + 00</span>
+        <span class="meta-pill hot">NEW</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="diamondpoker.html" data-game="diamondpoker">
+      <div class="preview diamondpoker">
+        <div class="dp-screen">
+          <div class="dp-cards">
+            <div class="dp-card red held">J</div>
+            <div class="dp-card held">J</div>
+            <div class="dp-card red">9</div>
+            <div class="dp-card">K</div>
+            <div class="dp-card">A</div>
+          </div>
+          <div class="dp-holds"><span></span><span></span><span></span><span></span><span></span></div>
+        </div>
+        <div class="dp-pay"><span>PAIR</span><span>FULL</span><span>ROYAL</span></div>
+      </div>
+      <div class="game-title">DIAMOND DRAW POKER</div>
+      <div class="game-tagline">JACKS OR BETTER &middot; HOLD &amp; DRAW</div>
+      <div class="game-desc">A polished video poker cabinet. Deal five cards, hold the keepers, draw once, and chase the 800x royal flush.</div>
+      <div class="game-meta">
+        <span class="meta-pill">9/6 PAYTABLE</span>
+        <span class="meta-pill">800x ROYAL</span>
         <span class="meta-pill hot">NEW</span>
       </div>
       <div class="play-cta">PLAY</div>
@@ -2929,6 +3078,7 @@ function renderJackpots(list) {
     standardcraps: 'Bubble Craps',
     easycraps:     'Easy Craps',
     plinko: 'Plinko',
+    diamondpoker: 'Diamond Draw Poker',
   };
   const ago = ts => {
     if (!ts) return 'just now';
