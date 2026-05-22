@@ -184,6 +184,7 @@
   const BAR_CSS = `
 .casino-level-bar {
   position: fixed;
+  /* Default position (games) — below the chip, top-right */
   top: 62px;
   right: 14px;
   z-index: 70;
@@ -201,44 +202,44 @@
   text-transform: uppercase;
   white-space: nowrap;
   user-select: none;
-  transition: width 280ms ease, padding 280ms ease;
+  overflow: hidden;
+  transition: width 320ms cubic-bezier(.2,.7,.2,1);
 }
 
-/* Lobby — collapsed by default, just "LVL N". Tap to expand. */
+/* Lobby — positioned to the LEFT of the chip, vertically centered.
+   Collapsed by default (just "LVL N"), tap to expand the bar leftward. */
 body.cl-on-lobby .casino-level-bar {
+  top: 20px;
+  right: 62px;
+  width: 64px;
   cursor: pointer;
-  gap: 0;
-}
-body.cl-on-lobby .casino-level-bar:not(.cl-expanded) .clb-track,
-body.cl-on-lobby .casino-level-bar:not(.cl-expanded) .clb-num {
-  display: none;
 }
 body.cl-on-lobby .casino-level-bar.cl-expanded {
   width: 200px;
-  gap: 8px;
-  padding: 4px 10px;
 }
 
-/* Games — always shown, but compact (about balance-pill sized). */
+/* Games — always shown, compact (about balance-pill sized). */
 body:not(.cl-on-lobby) .casino-level-bar {
   width: 130px;
   cursor: default;
 }
 body:not(.cl-on-lobby) .casino-level-bar .clb-track {
   height: 5px;
-  min-width: 36px;
 }
 
 /* Mobile positioning */
 @media (max-width: 720px) {
-  .casino-level-bar {
-    top: 50px;
-    right: 8px;
+  body.cl-on-lobby .casino-level-bar {
+    top: 11px;
+    right: 50px;
+    width: 56px;
   }
   body.cl-on-lobby .casino-level-bar.cl-expanded {
     width: 170px;
   }
   body:not(.cl-on-lobby) .casino-level-bar {
+    top: 50px;
+    right: 8px;
     width: 110px;
     padding: 3px 8px;
   }
@@ -248,12 +249,13 @@ body:not(.cl-on-lobby) .casino-level-bar .clb-track {
   font-weight: 700;
   color: #ffd24a;
   text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+  flex: 0 0 auto;
 }
 .casino-level-bar .clb-track {
   position: relative;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   height: 6px;
-  min-width: 50px;
+  min-width: 0;
   background: rgba(20, 8, 36, 0.9);
   border-radius: 999px;
   overflow: hidden;
@@ -265,16 +267,6 @@ body:not(.cl-on-lobby) .casino-level-bar .clb-track {
   background: linear-gradient(90deg, #b8860b 0%, #ffd24a 60%, #fff0a8 100%);
   box-shadow: 0 0 6px rgba(255,210,74,0.5);
   transition: width 250ms ease-out;
-}
-.casino-level-bar .clb-num {
-  font-family: 'Geist Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 0.02em;
-  color: rgba(255, 240, 168, 0.85);
-  text-transform: none;
-}
-@media (max-width: 480px) {
-  body:not(.cl-on-lobby) .casino-level-bar .clb-num { display: none; }
 }
 .casino-level-toast {
   position: fixed;
@@ -357,7 +349,6 @@ body:not(.cl-on-lobby) .casino-level-bar .clb-track {
   let barEl = null;
   let barFillEl = null;
   let barLvlEl = null;
-  let barNumEl = null;
 
   function buildBar() {
     const wrap = document.createElement('div');
@@ -365,7 +356,6 @@ body:not(.cl-on-lobby) .casino-level-bar .clb-track {
     wrap.innerHTML = `
       <span class="clb-lvl"></span>
       <div class="clb-track"><div class="clb-fill"></div></div>
-      <span class="clb-num"></span>
     `;
     return wrap;
   }
@@ -376,11 +366,9 @@ body:not(.cl-on-lobby) .casino-level-bar .clb-track {
     barLvlEl.textContent = 'LVL ' + s.level;
     if (s.xpForNext <= 0) {
       barFillEl.style.width = '100%';
-      barNumEl.textContent = 'MAX';
     } else {
       const pct = Math.max(0, Math.min(100, (s.xpInLevel / s.xpForNext) * 100));
       barFillEl.style.width = pct.toFixed(1) + '%';
-      barNumEl.textContent = s.xpInLevel.toLocaleString() + ' / ' + s.xpForNext.toLocaleString();
     }
   }
 
@@ -402,7 +390,6 @@ body:not(.cl-on-lobby) .casino-level-bar .clb-track {
     barEl = buildBar();
     barFillEl = barEl.querySelector('.clb-fill');
     barLvlEl  = barEl.querySelector('.clb-lvl');
-    barNumEl  = barEl.querySelector('.clb-num');
     document.body.appendChild(barEl);
     if (document.body.classList.contains('cl-on-lobby')) {
       barEl.addEventListener('click', lobbyExpand);
