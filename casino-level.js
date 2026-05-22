@@ -187,38 +187,63 @@
   top: 62px;
   right: 14px;
   z-index: 70;
-  width: 200px;
   max-width: calc(100vw - 28px);
-  display: flex; align-items: center; gap: 10px;
-  padding: 6px 10px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 9px;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(21,8,40,0.85), rgba(10,4,24,0.85));
   border: 1px solid rgba(184, 134, 11, 0.45);
   box-shadow: inset 0 1px 0 rgba(255,210,74,0.15), 0 4px 14px rgba(0,0,0,0.45);
   font-family: 'Bungee', 'Outfit', sans-serif;
   color: #fff0a8;
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   white-space: nowrap;
   user-select: none;
+  transition: width 280ms ease, padding 280ms ease;
 }
+
+/* Lobby — collapsed by default, just "LVL N". Tap to expand. */
+body.cl-on-lobby .casino-level-bar {
+  cursor: pointer;
+  gap: 0;
+}
+body.cl-on-lobby .casino-level-bar:not(.cl-expanded) .clb-track,
+body.cl-on-lobby .casino-level-bar:not(.cl-expanded) .clb-num {
+  display: none;
+}
+body.cl-on-lobby .casino-level-bar.cl-expanded {
+  width: 200px;
+  gap: 8px;
+  padding: 4px 10px;
+}
+
+/* Games — always shown, but compact (about balance-pill sized). */
+body:not(.cl-on-lobby) .casino-level-bar {
+  width: 130px;
+  cursor: default;
+}
+body:not(.cl-on-lobby) .casino-level-bar .clb-track {
+  height: 5px;
+  min-width: 36px;
+}
+
+/* Mobile positioning */
 @media (max-width: 720px) {
   .casino-level-bar {
     top: 50px;
     right: 8px;
+  }
+  body.cl-on-lobby .casino-level-bar.cl-expanded {
     width: 170px;
-    padding: 5px 8px;
+  }
+  body:not(.cl-on-lobby) .casino-level-bar {
+    width: 110px;
+    padding: 3px 8px;
   }
 }
-@media (max-width: 720px) {
-  body.cl-on-lobby .casino-level-bar {
-    top: 11px;
-    right: 50px;
-    width: 150px;
-    padding: 5px 8px;
-  }
-}
+
 .casino-level-bar .clb-lvl {
   font-weight: 700;
   color: #ffd24a;
@@ -228,7 +253,7 @@
   position: relative;
   flex: 1 1 auto;
   height: 6px;
-  min-width: 60px;
+  min-width: 50px;
   background: rgba(20, 8, 36, 0.9);
   border-radius: 999px;
   overflow: hidden;
@@ -243,13 +268,13 @@
 }
 .casino-level-bar .clb-num {
   font-family: 'Geist Mono', monospace;
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.02em;
   color: rgba(255, 240, 168, 0.85);
   text-transform: none;
 }
 @media (max-width: 480px) {
-  .casino-level-bar .clb-num { display: none; }
+  body:not(.cl-on-lobby) .casino-level-bar .clb-num { display: none; }
 }
 .casino-level-toast {
   position: fixed;
@@ -359,6 +384,17 @@
     }
   }
 
+  let lobbyExpandTimer = 0;
+  function lobbyExpand() {
+    if (!barEl) return;
+    barEl.classList.add('cl-expanded');
+    if (lobbyExpandTimer) clearTimeout(lobbyExpandTimer);
+    lobbyExpandTimer = setTimeout(function () {
+      if (barEl) barEl.classList.remove('cl-expanded');
+      lobbyExpandTimer = 0;
+    }, 3500);
+  }
+
   function mountBar() {
     if (barEl) return;
     if (!document.body) return;
@@ -368,6 +404,9 @@
     barLvlEl  = barEl.querySelector('.clb-lvl');
     barNumEl  = barEl.querySelector('.clb-num');
     document.body.appendChild(barEl);
+    if (document.body.classList.contains('cl-on-lobby')) {
+      barEl.addEventListener('click', lobbyExpand);
+    }
     renderBar();
   }
 

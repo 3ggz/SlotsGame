@@ -105,7 +105,7 @@ button, input { font: inherit; }
 .balance-link {
   position: fixed;
   top: 12px;
-  right: 12px;
+  right: 64px;
   z-index: 30;
   display: inline-flex;
   align-items: center;
@@ -638,15 +638,56 @@ button, input { font: inherit; }
 }
 
 @media (max-width: 720px) {
-  .stage { padding: 62px 10px 30px; gap: 14px; }
-  .lobby-link, .history-btn { top: 8px; height: 32px; padding: 0 11px; font-size: 9px; letter-spacing: 0.14em; gap: 6px; }
+  html, body {
+    background:
+      radial-gradient(ellipse at 18% 0%, rgba(168,85,247,0.14) 0%, transparent 48%),
+      radial-gradient(ellipse at 82% 16%, rgba(34,211,238,0.10) 0%, transparent 44%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1) 58%, var(--bg-0));
+    background-attachment: scroll;
+  }
+  body::before,
+  .screen::before {
+    display: none;
+  }
+  .stage { padding: 92px 10px 30px; gap: 14px; }
+  .lobby-link, .history-btn {
+    top: 8px;
+    height: 32px;
+    padding: 0 11px;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    gap: 6px;
+  }
+  .lobby-link,
+  .history-btn,
+  .balance-link {
+    background: linear-gradient(180deg, rgba(42,18,77,0.96), rgba(15,4,30,0.96));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
   .history-btn { left: 98px; }
-  .balance-link { top: 8px; right: 8px; padding: 8px 10px 7px; gap: 7px; }
+  .balance-link { top: 8px; right: 50px; padding: 8px 10px 7px; gap: 7px; }
   .balance-link .label { display: none; }
   .balance-link .value { font-size: 13px; }
   .btn-add { width: 24px; height: 24px; border-radius: 7px; font-size: 14px; }
-  .screen { padding: 14px; min-height: 360px; }
+  .title {
+    filter: drop-shadow(0 3px 0 rgba(0,0,0,0.55));
+  }
+  .machine {
+    box-shadow:
+      0 20px 34px -16px rgba(0,0,0,0.72),
+      inset 0 0 0 1.5px rgba(255,210,74,0.22),
+      inset 0 0 0 6px rgba(0,0,0,0.20);
+  }
+  .screen {
+    padding: 14px;
+    min-height: 360px;
+    box-shadow:
+      inset 0 0 0 1.5px rgba(255,240,168,0.16),
+      inset 0 0 34px rgba(0,0,0,0.38);
+  }
   .status-band { grid-template-columns: 1fr; }
+  .message.win { box-shadow: none; }
   .meter { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .meter-item { min-width: 0; }
   .cards-row {
@@ -655,7 +696,22 @@ button, input { font: inherit; }
     min-height: 128px;
   }
   .card-slot { height: clamp(104px, 30vw, 138px); }
-  .poker-card { border-radius: 9px; }
+  .poker-card {
+    border-radius: 9px;
+    box-shadow: 0 8px 14px rgba(0,0,0,0.30), inset 0 0 0 1.5px rgba(0,0,0,0.14);
+    transition: transform 0.12s ease;
+  }
+  .poker-card.empty,
+  .poker-card.back {
+    box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.22), 0 8px 14px rgba(0,0,0,0.24);
+  }
+  .poker-card.empty::before,
+  .poker-card.back::before {
+    filter: none;
+  }
+  .poker-card.held {
+    box-shadow: 0 10px 16px rgba(0,0,0,0.34), 0 0 0 2px rgba(255,210,74,0.42), inset 0 0 0 1.5px rgba(0,0,0,0.14);
+  }
   .poker-card .corner { top: 7px; left: 7px; font-size: 14px; }
   .poker-card .corner.bottom { right: 7px; bottom: 7px; }
   .poker-card .center-suit { font-size: 42px; }
@@ -668,6 +724,16 @@ button, input { font: inherit; }
   .recent { grid-template-columns: 1fr; }
   .paytable { padding: 12px; }
   .pay-row { min-height: 28px; padding: 6px 8px; font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .coin-burst .coin { display: none; }
 }
 </style>
 </head>
@@ -1069,23 +1135,48 @@ function flashBetInput() {
   setTimeout(() => { el.betInput.style.boxShadow = ''; }, 240);
 }
 function recordHand(note, net) {
-  if (window.History) {
-    try { History.record('diamondpoker', State.bet, net, note); } catch (e) {}
-  }
+  const roundBet = State.bet;
+  const run = () => {
+    if (window.History) {
+      try { History.record('diamondpoker', roundBet, net, note); } catch (e) {}
+    }
+  };
+  const delay = leanMotionMode() ? 650 : 80;
+  setTimeout(() => {
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(run, { timeout: 1200 });
+    } else {
+      run();
+    }
+  }, delay);
+}
+function leanMotionMode() {
+  return window.matchMedia && (
+    window.matchMedia('(max-width: 720px)').matches ||
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+function reducedMotionMode() {
+  return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 function animateCards(indexes) {
   State.animating = indexes.slice();
   renderCards();
   const maxIndex = indexes.length ? Math.max(...indexes) : 0;
+  const lean = leanMotionMode();
   setTimeout(() => {
     State.animating = [];
     renderCards();
-  }, 520 + maxIndex * 46);
+  }, (lean ? 340 : 520) + maxIndex * (lean ? 28 : 46));
 }
 function spawnPayoutBurst(multiplier) {
   if (!el.coinBurst) return;
   el.coinBurst.innerHTML = '';
-  const count = Math.min(24, multiplier >= 25 ? 22 : 12);
+  if (reducedMotionMode()) return;
+  const lean = leanMotionMode();
+  const count = lean
+    ? Math.min(10, multiplier >= 25 ? 10 : 6)
+    : Math.min(24, multiplier >= 25 ? 22 : 12);
   for (let i = 0; i < count; i++) {
     const coin = document.createElement('span');
     coin.className = 'coin';
@@ -1095,10 +1186,10 @@ function spawnPayoutBurst(multiplier) {
     coin.style.setProperty('--dy', `${Math.round(-180 - Math.random() * 170)}px`);
     coin.style.setProperty('--rot', `${Math.round(-260 + Math.random() * 520)}deg`);
     coin.style.setProperty('--size', `${Math.round(12 + Math.random() * 10)}px`);
-    coin.style.setProperty('--delay', `${i * 24}ms`);
+    coin.style.setProperty('--delay', `${i * (lean ? 16 : 24)}ms`);
     el.coinBurst.appendChild(coin);
   }
-  setTimeout(() => { el.coinBurst.innerHTML = ''; }, 1400);
+  setTimeout(() => { el.coinBurst.innerHTML = ''; }, lean ? 950 : 1400);
 }
 function dealHand() {
   const bet = getBet();
