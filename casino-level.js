@@ -22,18 +22,9 @@
   const CURVE_BASE       = 100;
   const CURVE_EXP        = 1.4;
 
-  function _ls() {
-    // Resolve localStorage: prefer global.localStorage (browser window),
-    // fall back to free-variable lookup (VM sandbox where window !== globalThis).
-    try { if (global.localStorage) return global.localStorage; } catch (e) {}
-    try { if (typeof localStorage !== 'undefined') return localStorage; } catch (e) {}
-    return null;
-  }
-
   function loadState() {
     try {
-      const ls = _ls();
-      const raw = ls && ls.getItem(STORAGE_KEY);
+      const raw = global.localStorage && global.localStorage.getItem(STORAGE_KEY);
       if (!raw) return { totalXp: 0 };
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed.totalXp !== 'number' || !isFinite(parsed.totalXp)) {
@@ -48,8 +39,7 @@
   function saveState(state) {
     try {
       const safe = { totalXp: Math.max(0, Math.floor((state && state.totalXp) || 0)) };
-      const ls = _ls();
-      if (ls) ls.setItem(STORAGE_KEY, JSON.stringify(safe));
+      if (global.localStorage) global.localStorage.setItem(STORAGE_KEY, JSON.stringify(safe));
     } catch (e) {
       // Quota errors, private mode, etc. — keep in-memory state.
     }

@@ -22,8 +22,7 @@ function makeSandbox(initialStorage = {}) {
     Date,
     setTimeout: (fn) => 0,
     clearTimeout: () => {},
-    localStorage,
-    globalThis: {},
+    globalThis: { localStorage },
   };
   sandbox.window = sandbox.globalThis;
   vm.createContext(sandbox);
@@ -125,4 +124,12 @@ run('saveState clamps negative totalXp to 0', () => {
   const { Level, localStorage } = makeSandbox();
   Level._saveState({ totalXp: -50 });
   assert.strictEqual(localStorage._store['casino.level.v1'], JSON.stringify({ totalXp: 0 }));
+});
+
+run('loadState handles non-finite totalXp by returning default', () => {
+  // Infinity serializes to null inside JSON.stringify — emulate the bad-data shape directly.
+  const a = makeSandbox({ 'casino.level.v1': '{"totalXp": null}' });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(a.Level._loadState())), { totalXp: 0 });
+  const b = makeSandbox({ 'casino.level.v1': '{"totalXp": "fifty"}' });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(b.Level._loadState())), { totalXp: 0 });
 });
