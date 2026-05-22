@@ -94,3 +94,35 @@ run('totalRewardForJump sums rewards across all crossed levels', () => {
   const expected = 50 * (99 * 100 / 2 - 1); // = 50 * 4949 = 247450
   assert.strictEqual(Level._totalRewardForJump(1, 99), expected);
 });
+
+run('loadState returns 0 totalXp for missing key', () => {
+  const { Level } = makeSandbox();
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(Level._loadState())), { totalXp: 0 });
+});
+
+run('loadState reads persisted totalXp', () => {
+  const { Level } = makeSandbox({ 'casino.level.v1': JSON.stringify({ totalXp: 1234 }) });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(Level._loadState())), { totalXp: 1234 });
+});
+
+run('loadState handles malformed JSON by returning default', () => {
+  const { Level } = makeSandbox({ 'casino.level.v1': 'not json' });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(Level._loadState())), { totalXp: 0 });
+});
+
+run('loadState handles wrong shape by returning default', () => {
+  const { Level } = makeSandbox({ 'casino.level.v1': JSON.stringify({ foo: 'bar' }) });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(Level._loadState())), { totalXp: 0 });
+});
+
+run('saveState writes serialized totalXp', () => {
+  const { Level, localStorage } = makeSandbox();
+  Level._saveState({ totalXp: 500 });
+  assert.strictEqual(localStorage._store['casino.level.v1'], JSON.stringify({ totalXp: 500 }));
+});
+
+run('saveState clamps negative totalXp to 0', () => {
+  const { Level, localStorage } = makeSandbox();
+  Level._saveState({ totalXp: -50 });
+  assert.strictEqual(localStorage._store['casino.level.v1'], JSON.stringify({ totalXp: 0 }));
+});
