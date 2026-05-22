@@ -806,6 +806,7 @@
       lucky7:        'LUCKY 7 SALOON',
       craplesscraps: 'CRAPLESS CRAPS',
       plinko:        'PLINKO',
+      diamondpoker:  'DIAMOND DRAW',
       rocket:        'ROCKET',
       mines:         'MINES',
     };
@@ -816,6 +817,7 @@
       lucky7:        '7',
       craplesscraps: '🎲',
       plinko:        '▼',
+      diamondpoker:  'J',
       rocket:        '^',
       mines:         '✦',
     };

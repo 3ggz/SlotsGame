@@ -707,6 +707,7 @@ if (!CONFIGURED) {
         'standardcraps.html': 'standardcraps',
         'easycraps.html': 'easycraps',
         'craplesscraps.html': 'craplesscraps',
+        'diamondpoker.html': 'diamondpoker',
         'dragontree.html': 'dragontree',
       };
       const localPresenceId = (() => {
