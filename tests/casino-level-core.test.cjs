@@ -8,7 +8,6 @@ const SRC = fs.readFileSync(SRC_PATH, 'utf8');
 
 function makeSandbox(initialStorage = {}) {
   const store = Object.assign({}, initialStorage);
-  const listeners = [];
   const localStorage = {
     getItem(k) { return k in store ? store[k] : null; },
     setItem(k, v) { store[k] = String(v); },
@@ -70,4 +69,10 @@ run('progressInLevel at max level returns xpForNext 0', () => {
   const p = Level._progressInLevel(10_000_000);
   assert.strictEqual(p.level, 99);
   assert.strictEqual(p.xpForNext, 0);
+});
+
+run('get() returns derived state shape for the stub (totalXp=0)', () => {
+  const { Level } = makeSandbox();
+  const s = JSON.parse(JSON.stringify(Level.get()));
+  assert.deepStrictEqual(s, { level: 1, xp: 0, xpInLevel: 0, xpForNext: 100, totalXp: 0 });
 });
