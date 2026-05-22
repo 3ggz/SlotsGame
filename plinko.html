@@ -456,7 +456,6 @@ body::before {
 <div class="balance-link">
   <span class="label">BAL</span>
   <span class="value">$<span id="balance">0</span></span>
-  <button class="btn-add" id="btn-add" title="Add chips">+</button>
 </div>
 
 
@@ -549,9 +548,7 @@ window.addEventListener('focus',   () => { balance = loadBalance(); refreshBalan
 window.addEventListener('pageshow',() => { balance = loadBalance(); refreshBalance(); });
 document.addEventListener('jackpot-win', () => { balance = loadBalance(); refreshBalance(); });
 
-document.getElementById('btn-add').addEventListener('click', () => {
-  window.location.href = 'index.html';
-});
+// add-chips button removed from games — use the lobby
 document.getElementById('btn-history').addEventListener('click', () => {
   if (window.HistoryUI) HistoryUI.open({ scope: 'session', game: 'plinko' });
 });

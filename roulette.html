@@ -98,6 +98,23 @@ button { cursor: pointer; }
 .rules-btn::before { content: '?'; font-size: 13px; line-height: 1; }
 .lobby-link:hover, .rules-btn:hover { filter: brightness(1.15); }
 .lobby-link:active, .rules-btn:active { transform: translateY(2px); }
+.rules-circle {
+  display: inline-grid; place-items: center;
+  width: 28px; height: 28px;
+  margin-left: 10px;
+  vertical-align: middle;
+  border: 1px solid rgba(255, 210, 74, 0.55);
+  border-radius: 50%;
+  background: rgba(20, 8, 36, 0.8);
+  color: #ffd24a;
+  font-family: 'Bungee', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  transition: filter 0.15s, transform 0.1s;
+}
+.rules-circle:hover { filter: brightness(1.2); }
+.rules-circle:active { transform: translateY(1px); }
 
 .balance-link {
   position: fixed;
@@ -1425,11 +1442,9 @@ body[data-phase="result"] .hot-cold-bar {
 <script src="casino-chat.js"></script>
 
 <a class="lobby-link" href="index.html">LOBBY</a>
-<button class="rules-btn" id="btn-rules" type="button">RULES</button>
 <div class="balance-link">
   <span class="label">BAL</span>
   <span class="value">$<span id="balance">0</span></span>
-  <button class="btn-add" id="btn-add" title="Add chips">+</button>
 </div>
 
 
@@ -1438,6 +1453,7 @@ body[data-phase="result"] .hot-cold-bar {
     <div>
       <div class="pre">DIAMOND CASINO</div>
       <h1 class="title">ROULETTE</h1>
+      <button class="rules-circle" id="btn-rules" type="button" aria-label="Rules">?</button>
     </div>
     <div class="roll-history" aria-label="Last 20 Roulette results">
       <div class="roll-history-label">LAST 20 SPINS</div>
@@ -3027,7 +3043,7 @@ document.getElementById('btn-double').addEventListener('click', doubleBets);
 document.getElementById('btn-rules').addEventListener('click', () => rulesVeil.classList.add('show'));
 document.getElementById('rules-close').addEventListener('click', () => rulesVeil.classList.remove('show'));
 rulesVeil.addEventListener('click', e => { if (e.target === rulesVeil) rulesVeil.classList.remove('show'); });
-document.getElementById('btn-add').addEventListener('click', () => addVeil.classList.add('show'));
+// add-chips button removed from games — use the lobby
 document.getElementById('add-close').addEventListener('click', () => addVeil.classList.remove('show'));
 addVeil.addEventListener('click', e => { if (e.target === addVeil) addVeil.classList.remove('show'); });
 document.getElementById('add-confirm').addEventListener('click', () => {

@@ -1038,7 +1038,6 @@ body::before {
 <div class="balance-link">
   <span class="label">BAL</span>
   <span class="value">$<span id="balance">1,000</span></span>
-  <button class="btn-add" id="btn-add" title="Add chips">+</button>
 </div>
 
 
@@ -2618,7 +2617,7 @@ function init() {
   });
 
   // Add funds
-  document.getElementById('btn-add').addEventListener('click', openAdd);
+  // add-chips button removed from games — use the lobby
   document.getElementById('btn-cancel').addEventListener('click', closeAdd);
   document.getElementById('btn-confirm').addEventListener('click', confirmAdd);
   document.getElementById('modal-veil').addEventListener('click', e => {

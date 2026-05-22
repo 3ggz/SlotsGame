@@ -2187,7 +2187,6 @@ body::after {
         <div class="panel-label">BALANCE</div>
         <div class="balance-row">
           <div class="panel-value">$<span id="balance">1,000</span></div>
-          <button class="btn-add" id="btn-add" title="Add chips">+</button>
         </div>
       </div>
       <div class="panel">
@@ -4487,7 +4486,7 @@ function init() {
   document.getElementById('buy-modal-veil').addEventListener('click', e => {
     if (e.target.id === 'buy-modal-veil') closeBuyBonusModal();
   });
-  document.getElementById('btn-add').addEventListener('click', openAddFunds);
+  // add-chips button removed from games — use the lobby
   document.getElementById('btn-cancel').addEventListener('click', closeAddFunds);
   document.getElementById('btn-confirm').addEventListener('click', confirmAddFunds);
   document.getElementById('modal-veil').addEventListener('click', e => {

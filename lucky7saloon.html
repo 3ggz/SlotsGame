@@ -1496,7 +1496,6 @@ button { border: 0; cursor: pointer; }
         <span class="panel-label">BALANCE</span>
         <div class="balance-row">
           <span class="panel-value">$<span id="balance">1,000</span></span>
-          <button class="small-btn" id="btn-add" title="Add chips">+</button>
         </div>
       </div>
       <div class="panel">
@@ -2999,7 +2998,7 @@ button { border: 0; cursor: pointer; }
         AudioFX.click();
       }
     });
-    refs.add.addEventListener('click', openAddFunds);
+    // add-chips button removed from games — use the lobby
     refs.cancel.addEventListener('click', closeAddFunds);
     refs.confirm.addEventListener('click', confirmAddFunds);
     refs.modal.addEventListener('click', e => { if (e.target === refs.modal) closeAddFunds(); });

@@ -1501,7 +1501,6 @@ body::before {
         <div class="lbl">BALANCE</div>
         <div class="balance-row">
           <div class="val" id="balance">0</div>
-          <button class="hud-add" id="hud-add" title="Add chips" aria-label="Add chips">+</button>
         </div>
       </div>
       <div class="strike-wrap">
@@ -1888,7 +1887,6 @@ const els = {
   introVeil:      $('intro-rules-veil'),
   introClose:     $('intro-close-btn'),
   introDontShow:  $('intro-dont-show'),
-  hudAdd:         $('hud-add'),
   addVeil:        $('add-veil'),
   addAmount:      $('add-amount'),
   addCancel:      $('add-cancel'),
@@ -2102,7 +2100,7 @@ function confirmAdd() {
   setBalance(State.balance + amt);
   closeAdd();
 }
-els.hudAdd.addEventListener('click', openAdd);
+// add-chips button removed from games — use the lobby
 els.addCancel.addEventListener('click', closeAdd);
 els.addConfirm.addEventListener('click', confirmAdd);
 els.addVeil.addEventListener('click', e => { if (e.target === els.addVeil) closeAdd(); });

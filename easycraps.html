@@ -1359,7 +1359,6 @@ body.rolling .bt-section { opacity: 0.55; filter: saturate(0.7); transition: opa
 <div class="balance-link">
   <span class="label">BAL</span>
   <span class="value">$<span id="balance">0</span></span>
-  <button class="btn-add" id="btn-add" title="Add chips">+</button>
 </div>
 
 
@@ -1528,10 +1527,7 @@ function refreshBalance() {
 refreshBalance();
 document.addEventListener('jackpot-win', () => { balance = loadBalance(); refreshBalance(); });
 
-document.getElementById('btn-add').addEventListener('click', () => {
-  // Open inline add-funds modal here in a later task. For now, navigate to lobby.
-  window.location.href = 'index.html';
-});
+// add-chips button removed from games — use the lobby
 
 /* Music — initialize; will fail gracefully if the file isn't there yet */
 if (window.Music) {

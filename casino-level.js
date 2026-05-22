@@ -211,6 +211,14 @@
     padding: 5px 8px;
   }
 }
+@media (max-width: 720px) {
+  body.cl-on-lobby .casino-level-bar {
+    top: 11px;
+    right: 50px;
+    width: 150px;
+    padding: 5px 8px;
+  }
+}
 .casino-level-bar .clb-lvl {
   font-weight: 700;
   color: #ffd24a;
@@ -371,7 +379,13 @@
     }
   }
 
-  whenReady(mountBar);
+  whenReady(function () {
+    // The lobby has a centered `.balance-bar`; games never do.
+    if (document.querySelector('.balance-bar')) {
+      document.body.classList.add('cl-on-lobby');
+    }
+    mountBar();
+  });
   onChange(renderBar);
 
   let toastEl = null;

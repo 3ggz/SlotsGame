@@ -106,6 +106,23 @@ button, input { font: inherit; }
 .rules-btn::before { content: '?'; font-size: 13px; line-height: 1; }
 .lobby-link:hover, .history-btn:hover, .rules-btn:hover { filter: brightness(1.15); }
 .lobby-link:active, .history-btn:active, .rules-btn:active { transform: translateY(2px); }
+.rules-circle {
+  display: inline-grid; place-items: center;
+  width: 28px; height: 28px;
+  margin-left: 10px;
+  vertical-align: middle;
+  border: 1px solid rgba(255, 210, 74, 0.55);
+  border-radius: 50%;
+  background: rgba(20, 8, 36, 0.8);
+  color: #ffd24a;
+  font-family: 'Bungee', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  transition: filter 0.15s, transform 0.1s;
+}
+.rules-circle:hover { filter: brightness(1.2); }
+.rules-circle:active { transform: translateY(1px); }
 
 .balance-link {
   position: fixed;
@@ -1181,11 +1198,9 @@ button, input { font: inherit; }
 
 <a class="lobby-link" href="index.html">LOBBY</a>
 <button class="history-btn" id="btn-history" title="History">HISTORY</button>
-<button class="rules-btn" id="btn-rules" title="Rules">RULES</button>
 <div class="balance-link">
   <span class="label">BAL</span>
   <span class="value">$<span id="balance">0</span></span>
-  <button class="btn-add" id="btn-add" title="Add chips">+</button>
 </div>
 
 
@@ -1194,6 +1209,7 @@ button, input { font: inherit; }
     <div class="title-block">
       <div class="pre">DIAMOND CASINO</div>
       <h1 class="title">ROCKET</h1>
+      <button class="rules-circle" id="btn-rules" type="button" aria-label="Rules">?</button>
     </div>
     <div class="roll-history" aria-label="Last 20 Rocket rolls">
       <div class="roll-history-label">LAST 20 ROLLS</div>
@@ -1401,9 +1417,7 @@ window.addEventListener('focus', () => { balance = loadBalance(); refreshBalance
 window.addEventListener('pageshow', () => { balance = loadBalance(); refreshBalance(); });
 document.addEventListener('jackpot-win', () => { balance = loadBalance(); refreshBalance(); });
 
-document.getElementById('btn-add').addEventListener('click', () => {
-  window.location.href = 'index.html';
-});
+// add-chips button removed from games — use the lobby
 document.getElementById('btn-history').addEventListener('click', () => {
   if (window.HistoryUI) HistoryUI.open({ scope: 'session', game: 'rocket' });
 });
