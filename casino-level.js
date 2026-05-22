@@ -85,6 +85,39 @@
     return sum;
   }
 
+  const BOT_NOTE_RE = /^BOT\b/i;
+
+  function cumulativeXpToReach(level) {
+    let sum = 0;
+    for (let n = 1; n < level; n++) sum += xpForLevel(n);
+    return sum;
+  }
+
+  function applyEntry(entry) {
+    const note = entry && entry.note;
+    if (note && BOT_NOTE_RE.test(String(note))) {
+      const state = loadState();
+      const p = progressInLevel(state.totalXp);
+      return { xpGain: 0, oldLevel: p.level, newLevel: p.level, reward: 0, totalXp: state.totalXp };
+    }
+    const rawBet = entry ? Number(entry.bet) : 0;
+    const gain = (!isFinite(rawBet) || rawBet <= 0) ? 0 : Math.floor(rawBet);
+
+    const before = loadState();
+    const oldLevel = levelFromTotalXp(before.totalXp);
+
+    let nextTotal = before.totalXp + gain;
+    // Cap at level 99 — drop XP past that threshold.
+    const cap = cumulativeXpToReach(MAX_LEVEL);
+    if (nextTotal > cap) nextTotal = cap;
+
+    const newLevel = levelFromTotalXp(nextTotal);
+    const reward = totalRewardForJump(oldLevel, newLevel);
+
+    saveState({ totalXp: nextTotal });
+    return { xpGain: gain, oldLevel, newLevel, reward, totalXp: nextTotal };
+  }
+
   const api = {
     get() {
       const totalXp = 0;
@@ -93,6 +126,8 @@
     },
     onChange(_fn) { /* implemented in a later task */ },
 
+    _applyEntry: applyEntry,
+    _cumulativeXpToReach: cumulativeXpToReach,
     _loadState: loadState,
     _saveState: saveState,
     _xpForLevel: xpForLevel,

@@ -133,3 +133,71 @@ run('loadState handles non-finite totalXp by returning default', () => {
   const b = makeSandbox({ 'casino.level.v1': '{"totalXp": "fifty"}' });
   assert.deepStrictEqual(JSON.parse(JSON.stringify(b.Level._loadState())), { totalXp: 0 });
 });
+
+run('applyEntry awards floor(bet) XP and does not change level when below threshold', () => {
+  const { Level } = makeSandbox();
+  const r = Level._applyEntry({ bet: 25.7, win: 0, note: null, ts: 1 });
+  assert.strictEqual(r.xpGain, 25);
+  assert.strictEqual(r.oldLevel, 1);
+  assert.strictEqual(r.newLevel, 1);
+  assert.strictEqual(r.reward, 0);
+});
+
+run('applyEntry detects single level-up and returns reward', () => {
+  const { Level } = makeSandbox();
+  const r = Level._applyEntry({ bet: 150, win: 0, note: null, ts: 1 });
+  assert.strictEqual(r.xpGain, 150);
+  assert.strictEqual(r.oldLevel, 1);
+  assert.strictEqual(r.newLevel, 2);
+  assert.strictEqual(r.reward, 100);
+});
+
+run('applyEntry detects multi-level jump and sums rewards', () => {
+  const { Level } = makeSandbox();
+  const r = Level._applyEntry({ bet: 1000, win: 0, note: null, ts: 1 });
+  assert.strictEqual(r.newLevel, 4);
+  assert.strictEqual(r.reward, 450); // 100 + 150 + 200
+});
+
+run('applyEntry skips BOT entries (no XP, no reward)', () => {
+  const { Level } = makeSandbox();
+  const r = Level._applyEntry({ bet: 500, win: 0, note: 'BOT', ts: 1 });
+  assert.strictEqual(r.xpGain, 0);
+  assert.strictEqual(r.newLevel, 1);
+  assert.strictEqual(r.reward, 0);
+});
+
+run('applyEntry skips BOT-prefixed notes (case-insensitive, word boundary)', () => {
+  const { Level } = makeSandbox();
+  assert.strictEqual(Level._applyEntry({ bet: 500, note: 'bot' }).xpGain, 0);
+  assert.strictEqual(Level._applyEntry({ bet: 500, note: 'BOT chat' }).xpGain, 0);
+  // 'BOTTOM' is not a bot note (no word boundary after BOT)
+  assert.strictEqual(Level._applyEntry({ bet: 500, note: 'BOTTOM' }).xpGain, 500);
+});
+
+run('applyEntry treats 0/negative/NaN bet as 0 XP', () => {
+  const { Level } = makeSandbox();
+  assert.strictEqual(Level._applyEntry({ bet: 0 }).xpGain, 0);
+  assert.strictEqual(Level._applyEntry({ bet: -10 }).xpGain, 0);
+  assert.strictEqual(Level._applyEntry({ bet: NaN }).xpGain, 0);
+});
+
+run('applyEntry persists updated totalXp to storage', () => {
+  const { Level, localStorage } = makeSandbox();
+  Level._applyEntry({ bet: 50 });
+  assert.strictEqual(localStorage._store['casino.level.v1'], JSON.stringify({ totalXp: 50 }));
+  Level._applyEntry({ bet: 30 });
+  assert.strictEqual(localStorage._store['casino.level.v1'], JSON.stringify({ totalXp: 80 }));
+});
+
+run('applyEntry caps at level 99 and drops excess XP', () => {
+  // Set totalXp to one short of MAX cumulative; gain a huge amount.
+  const { Level, localStorage } = makeSandbox({
+    'casino.level.v1': JSON.stringify({ totalXp: 2_535_300 }),
+  });
+  const r = Level._applyEntry({ bet: 1_000_000_000 });
+  assert.strictEqual(r.newLevel, 99);
+  // Persisted totalXp must equal the threshold to reach 99 exactly (no overflow stored).
+  const persisted = JSON.parse(localStorage._store['casino.level.v1']);
+  assert.strictEqual(persisted.totalXp, 2_535_302);
+});
