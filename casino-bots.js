@@ -47,6 +47,48 @@
   if (window.CasinoBots) return;
 
   // -----------------------------------------------------------
+  // Owner-controlled global gate.
+  //   /config/global { botsEnabled } is mirrored to localStorage
+  //   by casino-account.js. We read it SYNCHRONOUSLY here so we
+  //   never start the population manager / chat engine when bots
+  //   are off. The lobby's owner-only toggle flips the flag;
+  //   casino-account.js reloads the page when the live value
+  //   diverges from the cached one used at boot.
+  // -----------------------------------------------------------
+  let botsEnabled = false;
+  try { botsEnabled = localStorage.getItem('casino.config.botsEnabled') === 'true'; }
+  catch (e) { botsEnabled = false; }
+
+  if (!botsEnabled) {
+    const noopUnsub = () => {};
+    const callEmpty = fn => { try { fn([]); } catch (e) {} };
+    const callPresence = fn => { try { fn({}); } catch (e) {} };
+    const PAGE_LOWER = (location.pathname.toLowerCase().split('/').pop() || '').replace(/\.html?$/, '');
+    const IS_LOBBY_STUB = PAGE_LOWER === '' || PAGE_LOWER === 'index' || PAGE_LOWER === 'launcher';
+    // Note: `game` is null in disabled mode. casino-chat.js polls for
+    // a truthy `CasinoBots.game` before mounting; keeping it null
+    // suppresses the slide-up chat panel on roulette/rocket. The
+    // pages' native Firestore-backed chats keep working — they go
+    // through RocketLive / RouletteLive, not CasinoBots.
+    window.CasinoBots = {
+      disabled: true,
+      game: null,
+      isLobby: IS_LOBBY_STUB,
+      bots: () => [],
+      recentWins: () => [],
+      recentChat: () => [],
+      presence: () => ({}),
+      subscribeWins: (g, fn) => { callEmpty(fn); return noopUnsub; },
+      subscribeChat: (g, fn) => { callEmpty(fn); return noopUnsub; },
+      subscribePresence: fn => { callPresence(fn); return noopUnsub; },
+      rocketRoundState: () => null,
+      sendChat: () => {},
+      _debug: { roster: () => [], real: () => ({}), leader: () => false },
+    };
+    return;
+  }
+
+  // -----------------------------------------------------------
   // Per-game profile.
   //   bet/payout shape feeds the round simulation
   //   tempo / replyRate — chat behaviour (0 = silent)

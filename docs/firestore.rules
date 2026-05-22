@@ -2,6 +2,7 @@
 // Paste into Firebase Console → Firestore Database → Rules → Publish.
 //
 // Model:
+//   /config/global           world-readable feature flags, owner-only writable
 //   /globals/stats           single doc, world-readable, world-incrementable
 //   /recentJackpots/*        world-readable, append-only (auth required)
 //   /tablePresence/*         world-readable active-table heartbeats
@@ -23,6 +24,17 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{db}/documents {
+
+    // Owner-controlled feature flags (e.g. botsEnabled). Anyone can
+    // read so every visitor sees the current state synchronously,
+    // but only the owner account can flip switches. Email-based
+    // gating works because the owner signs in with Google.
+    match /config/global {
+      allow read:  if true;
+      allow write: if request.auth != null
+        && request.auth.token.email == 'mark.hacz@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
 
     // Global counters: anyone can read, any authed visitor can bump.
     match /globals/stats {

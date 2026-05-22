@@ -544,6 +544,31 @@ window.CasinoAccount = {
   signOut:      () => Promise.resolve(),
 };
 
+/* ---------- Global config (owner-controlled flags) ----------
+   A single Firestore doc at /config/global holds boolean flags
+   the owner can flip at runtime — currently just `botsEnabled`.
+   The last-seen value is mirrored to localStorage under
+   `casino.config.botsEnabled` so casino-bots.js can read it
+   *synchronously* at boot, before Firestore round-trips.
+   Default is OFF (the published build ships without the
+   simulated crowd). */
+const OWNER_EMAIL = 'mark.hacz@gmail.com';
+const CFG_LS_KEY = 'casino.config.botsEnabled';
+
+function readCachedBotsEnabled() {
+  try { return localStorage.getItem(CFG_LS_KEY) === 'true'; }
+  catch (e) { return false; }
+}
+
+window.CasinoConfig = {
+  configured: false,
+  ownerEmail: OWNER_EMAIL,
+  isOwner: () => false,
+  botsEnabled: readCachedBotsEnabled,
+  onChange(fn) { try { fn(readCachedBotsEnabled()); } catch (e) {} return () => {}; },
+  setBotsEnabled: () => Promise.reject(new Error('Firebase not configured')),
+};
+
 if (!CONFIGURED) {
   queueMicrotask(() => {
     document.dispatchEvent(new CustomEvent('casino-account-ready'));
@@ -1203,6 +1228,63 @@ if (!CONFIGURED) {
         sendChat: sendRouletteChat,
       };
 
+      /* ---------- Global config doc ----------
+         /config/global is world-readable, owner-writable (see
+         docs/firestore.rules). We mirror the live value into
+         localStorage so casino-bots.js can decide whether to
+         boot synchronously, and we reload when the value flips
+         out from under a tab that started with the old setting. */
+      const configRef = doc(db, 'config', 'global');
+      const cfgListeners = [];
+      const startupBotsEnabled = readCachedBotsEnabled();
+      let cfgBotsEnabled = startupBotsEnabled;
+      function isOwnerUser(u) {
+        return !!(u && !u.isAnonymous && u.email && u.email.toLowerCase() === OWNER_EMAIL);
+      }
+      function applyCfg(data) {
+        const next = !!(data && data.botsEnabled);
+        cfgBotsEnabled = next;
+        try { localStorage.setItem(CFG_LS_KEY, next ? 'true' : 'false'); } catch (e) {}
+        cfgListeners.forEach(fn => { try { fn(next); } catch (e) {} });
+        // Tab booted with `startupBotsEnabled` cached in localStorage,
+        // which is what casino-bots.js read synchronously to decide
+        // whether to run. If the live value disagrees, reload so the
+        // gate re-evaluates with the corrected value.
+        if (next !== startupBotsEnabled) {
+          setTimeout(() => { try { location.reload(); } catch (e) {} }, 120);
+        }
+      }
+      safeOnSnapshot(configRef, snap => {
+        applyCfg(snap.exists() ? snap.data() : null);
+      }, null, () => {});
+
+      async function setBotsEnabled(value) {
+        if (!isOwnerUser(currentUser)) {
+          throw new Error('Owner-only');
+        }
+        await setDoc(configRef, {
+          botsEnabled: !!value,
+          updatedBy: currentUser.email,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+
+      window.CasinoConfig = {
+        configured: true,
+        ownerEmail: OWNER_EMAIL,
+        isOwner: () => isOwnerUser(currentUser),
+        botsEnabled: () => cfgBotsEnabled,
+        onChange(fn) {
+          cfgListeners.push(fn);
+          try { fn(cfgBotsEnabled); } catch (e) {}
+          return () => {
+            const i = cfgListeners.indexOf(fn);
+            if (i >= 0) cfgListeners.splice(i, 1);
+          };
+        },
+        setBotsEnabled,
+      };
+
       function subscribeUserDoc(uid, fn) {
         if (!uid) { try { fn({}); } catch (e) {} return () => {}; }
         return safeOnSnapshot(doc(db, 'users', uid), snap => {
@@ -1647,6 +1729,101 @@ if (!CONFIGURED) {
         mountAccountUI();
       }
       window.AccountUI = { open: openModal, close: closeModal };
+
+      /* ---------- Owner-only bots toggle on the lobby ----------
+         Renders a tiny pill at the bottom-left of the lobby that
+         flips /config/global.botsEnabled. The pill only ever
+         appears for the signed-in owner email — anonymous and
+         non-owner users can't even see that the control exists.
+         (Defense in depth: Firestore rules also reject writes
+         from anyone else.) */
+      const IS_LOBBY_PAGE = (() => {
+        const file = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+        return file === '' || file === 'index.html' || file === 'launcher.html';
+      })();
+      if (IS_LOBBY_PAGE) {
+        const TOGGLE_CSS = `
+          .cb-owner-toggle {
+            position: fixed; left: 14px; bottom: 14px; z-index: 90;
+            display: none; align-items: center; gap: 10px;
+            padding: 8px 12px 8px 10px; border: 0; cursor: pointer;
+            border-radius: 999px;
+            font-family: 'Bungee', cursive; font-size: 10px; letter-spacing: 0.18em;
+            color: #fff;
+            background: rgba(2,8,18,0.78);
+            box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.45), 0 6px 22px rgba(0,0,0,0.55);
+            backdrop-filter: blur(8px);
+            transition: filter 0.15s, transform 0.1s;
+          }
+          .cb-owner-toggle.visible { display: inline-flex; }
+          .cb-owner-toggle:hover { filter: brightness(1.15); }
+          .cb-owner-toggle:active { transform: translateY(2px); }
+          .cb-owner-toggle .cb-ow-tag {
+            font-size: 8px; letter-spacing: 0.28em;
+            color: rgba(255,210,74,0.7);
+          }
+          .cb-owner-toggle .cb-ow-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #ff5a7d; box-shadow: 0 0 8px rgba(255,90,125,0.7);
+          }
+          .cb-owner-toggle.on .cb-ow-dot {
+            background: #5cffa1; box-shadow: 0 0 8px rgba(92,255,161,0.7);
+          }
+          .cb-owner-toggle .cb-ow-state { min-width: 24px; text-align: left; }
+          .cb-owner-toggle[disabled] { opacity: 0.5; cursor: wait; }
+          @media (max-width: 720px) {
+            .cb-owner-toggle { left: 8px; bottom: 8px; padding: 7px 10px 7px 8px; font-size: 9px; }
+          }
+        `;
+        function mountOwnerToggle() {
+          if (document.getElementById('cb-owner-toggle')) return;
+          if (!document.getElementById('cb-owner-toggle-css')) {
+            const s = document.createElement('style');
+            s.id = 'cb-owner-toggle-css';
+            s.textContent = TOGGLE_CSS;
+            document.head.appendChild(s);
+          }
+          const btn = document.createElement('button');
+          btn.id = 'cb-owner-toggle';
+          btn.className = 'cb-owner-toggle';
+          btn.type = 'button';
+          btn.innerHTML =
+            '<span class="cb-ow-dot"></span>' +
+            '<span class="cb-ow-tag">BOTS</span>' +
+            '<span class="cb-ow-state">OFF</span>';
+          btn.addEventListener('click', async () => {
+            if (btn.disabled) return;
+            const next = !window.CasinoConfig.botsEnabled();
+            btn.disabled = true;
+            try {
+              await window.CasinoConfig.setBotsEnabled(next);
+              // Firestore listener will reload the page on apply.
+            } catch (e) {
+              btn.disabled = false;
+              console.warn('[bots toggle] write failed:', e);
+            }
+          });
+          document.body.appendChild(btn);
+          syncToggle();
+        }
+        function syncToggle() {
+          const btn = document.getElementById('cb-owner-toggle');
+          if (!btn) return;
+          const owner = isOwnerUser(currentUser);
+          btn.classList.toggle('visible', owner);
+          const on = !!cfgBotsEnabled;
+          btn.classList.toggle('on', on);
+          const state = btn.querySelector('.cb-ow-state');
+          if (state) state.textContent = on ? 'ON' : 'OFF';
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', mountOwnerToggle, { once: true });
+        } else {
+          mountOwnerToggle();
+        }
+        authListeners.push(() => syncToggle());
+        cfgListeners.push(() => syncToggle());
+      }
     } catch (e) {
       initFailed = e;
       console.warn('[casino-account] init failed; staying in offline/no-op mode:', e);

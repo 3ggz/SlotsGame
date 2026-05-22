@@ -36,6 +36,7 @@ const roster = [
 const storage = makeStorage({
   'casino.bots.v5.roster': JSON.stringify(roster),
   'casino.bots.v5.leader': JSON.stringify({ id: 'other-tab', at: 1000000 }),
+  'casino.config.botsEnabled': 'true',
 });
 const intervals = [];
 
