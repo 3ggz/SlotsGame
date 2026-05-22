@@ -1241,21 +1241,27 @@ if (!CONFIGURED) {
       function isOwnerUser(u) {
         return !!(u && !u.isAnonymous && u.email && u.email.toLowerCase() === OWNER_EMAIL);
       }
-      function applyCfg(data) {
+      function applyCfg(data, snap) {
         const next = !!(data && data.botsEnabled);
         cfgBotsEnabled = next;
         try { localStorage.setItem(CFG_LS_KEY, next ? 'true' : 'false'); } catch (e) {}
         cfgListeners.forEach(fn => { try { fn(next); } catch (e) {} });
         // Tab booted with `startupBotsEnabled` cached in localStorage,
         // which is what casino-bots.js read synchronously to decide
-        // whether to run. If the live value disagrees, reload so the
-        // gate re-evaluates with the corrected value.
-        if (next !== startupBotsEnabled) {
+        // whether to run. If the SERVER-CONFIRMED live value disagrees,
+        // reload so the gate re-evaluates with the corrected value.
+        //
+        // Skipping pending-writes snapshots avoids a flicker on the
+        // toggling tab when a write is optimistically applied locally
+        // and later rejected by rules — the toggle click handler
+        // already triggers its own reload after an awaited write.
+        const pending = !!(snap && snap.metadata && snap.metadata.hasPendingWrites);
+        if (!pending && next !== startupBotsEnabled) {
           setTimeout(() => { try { location.reload(); } catch (e) {} }, 120);
         }
       }
       safeOnSnapshot(configRef, snap => {
-        applyCfg(snap.exists() ? snap.data() : null);
+        applyCfg(snap.exists() ? snap.data() : null, snap);
       }, null, () => {});
 
       async function setBotsEnabled(value) {
@@ -1771,8 +1777,29 @@ if (!CONFIGURED) {
           }
           .cb-owner-toggle .cb-ow-state { min-width: 24px; text-align: left; }
           .cb-owner-toggle[disabled] { opacity: 0.5; cursor: wait; }
+          .cb-owner-toggle.err {
+            box-shadow: inset 0 0 0 1.5px rgba(255,90,125,0.85), 0 6px 22px rgba(255,90,125,0.35);
+            animation: cb-ow-shake 0.4s;
+          }
+          @keyframes cb-ow-shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-3px); }
+            75% { transform: translateX(3px); }
+          }
+          .cb-ow-err {
+            position: fixed; left: 14px; bottom: 60px; z-index: 91;
+            max-width: 260px; padding: 8px 12px;
+            border-radius: 10px; font-family: 'Outfit', sans-serif;
+            font-size: 12px; color: #fff;
+            background: rgba(80,8,24,0.92);
+            box-shadow: inset 0 0 0 1px rgba(255,90,125,0.5), 0 6px 22px rgba(0,0,0,0.6);
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s;
+          }
+          .cb-ow-err.show { opacity: 1; }
           @media (max-width: 720px) {
             .cb-owner-toggle { left: 8px; bottom: 8px; padding: 7px 10px 7px 8px; font-size: 9px; }
+            .cb-ow-err { left: 8px; bottom: 50px; max-width: 230px; }
           }
         `;
         function mountOwnerToggle() {
@@ -1791,19 +1818,46 @@ if (!CONFIGURED) {
             '<span class="cb-ow-dot"></span>' +
             '<span class="cb-ow-tag">BOTS</span>' +
             '<span class="cb-ow-state">OFF</span>';
+          const errBox = document.createElement('div');
+          errBox.id = 'cb-ow-err';
+          errBox.className = 'cb-ow-err';
+          let errTimer = null;
+          function showError(msg) {
+            errBox.textContent = msg;
+            errBox.classList.add('show');
+            btn.classList.add('err');
+            if (errTimer) clearTimeout(errTimer);
+            errTimer = setTimeout(() => {
+              errBox.classList.remove('show');
+              btn.classList.remove('err');
+            }, 6000);
+          }
           btn.addEventListener('click', async () => {
             if (btn.disabled) return;
             const next = !window.CasinoConfig.botsEnabled();
             btn.disabled = true;
             try {
               await window.CasinoConfig.setBotsEnabled(next);
-              // Firestore listener will reload the page on apply.
+              // Write confirmed by Firestore. Apply locally + reload
+              // deterministically — don't wait for the snapshot
+              // listener to drive the reload (it races with the
+              // optimistic-write callback and can double-fire).
+              try { localStorage.setItem(CFG_LS_KEY, next ? 'true' : 'false'); } catch (e) {}
+              location.reload();
             } catch (e) {
               btn.disabled = false;
               console.warn('[bots toggle] write failed:', e);
+              const code = String(e && e.code || '').toLowerCase();
+              const msg = String(e && e.message || e || '');
+              if (code.includes('permission-denied') || msg.toLowerCase().includes('permission')) {
+                showError('Permission denied. Paste docs/firestore.rules into Firebase console → Firestore → Rules → Publish.');
+              } else {
+                showError('Toggle failed: ' + (msg || 'unknown error'));
+              }
             }
           });
           document.body.appendChild(btn);
+          document.body.appendChild(errBox);
           syncToggle();
         }
         function syncToggle() {
