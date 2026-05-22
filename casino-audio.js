@@ -132,6 +132,27 @@
     }
   });
 
+  // Pause music when the page is hidden (tab switch, phone lock, app
+  // backgrounded). Resume on return if it was playing and isn't muted.
+  // pagehide is a belt-and-suspenders catch for mobile cases where
+  // visibilitychange doesn't fire reliably before the page is frozen.
+  let wasPlayingBeforeHide = false;
+  document.addEventListener('visibilitychange', () => {
+    if (!audioEl) return;
+    if (document.hidden) {
+      wasPlayingBeforeHide = started;
+      if (started) { audioEl.pause(); started = false; }
+    } else if (wasPlayingBeforeHide && !Settings.get().muteMusic) {
+      wasPlayingBeforeHide = false;
+      tryStart();
+    } else {
+      wasPlayingBeforeHide = false;
+    }
+  });
+  window.addEventListener('pagehide', () => {
+    if (audioEl && started) { audioEl.pause(); started = false; }
+  });
+
   /* ---------- SETTINGS UI (modal) ---------- */
   let mounted = false;
   function mount(opts = {}) {
