@@ -442,7 +442,20 @@ body:not(.cl-on-lobby) .casino-level-bar .clb-track {
     } catch (e) { toastChime = null; }
   }
 
+  function levelLowPowerMode() {
+    try {
+      return document.documentElement.classList.contains('low-power') ||
+        (global.matchMedia && (
+          global.matchMedia('(max-width: 720px)').matches ||
+          global.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ));
+    } catch (e) {
+      return false;
+    }
+  }
+
   function playChime() {
+    if (levelLowPowerMode()) return;
     if (!toastChime) return;
     try {
       const vol = (global.Settings && global.Settings.sfxVolume) ? global.Settings.sfxVolume() : 1;
@@ -464,7 +477,7 @@ body:not(.cl-on-lobby) .casino-level-bar .clb-track {
     }
     toastDetailEl.textContent = 'LVL ' + pendingToast.newLevel + '  ·  +$' + pendingToast.reward.toLocaleString();
     toastEl.classList.add('show');
-    spawnFireworks();
+    if (!levelLowPowerMode()) spawnFireworks();
     if (toastTimer) clearTimeout(toastTimer);
     playChime();
     toastTimer = setTimeout(function () {

@@ -724,6 +724,47 @@ button, input { font: inherit; }
   .recent { grid-template-columns: 1fr; }
   .paytable { padding: 12px; }
   .pay-row { min-height: 28px; padding: 6px 8px; font-size: 12px; }
+  .coin-burst { display: none; }
+  .card-slot.dealing .poker-card,
+  .machine.payout-pop {
+    animation: none;
+  }
+}
+
+html.low-power body {
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(168,85,247,0.14) 0%, transparent 48%),
+    radial-gradient(ellipse at 82% 16%, rgba(34,211,238,0.10) 0%, transparent 44%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 58%, var(--bg-0));
+  background-attachment: scroll;
+}
+html.low-power body::before,
+html.low-power .screen::before {
+  display: none;
+}
+html.low-power .lobby-link,
+html.low-power .history-btn,
+html.low-power .balance-link {
+  background: linear-gradient(180deg, rgba(42,18,77,0.96), rgba(15,4,30,0.96));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.low-power .title {
+  filter: drop-shadow(0 3px 0 rgba(0,0,0,0.55));
+}
+html.low-power .message.win {
+  box-shadow: none;
+}
+html.low-power .poker-card.empty::before,
+html.low-power .poker-card.back::before {
+  filter: none;
+}
+html.low-power .coin-burst {
+  display: none;
+}
+html.low-power .card-slot.dealing .poker-card,
+html.low-power .machine.payout-pop {
+  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -975,6 +1016,21 @@ function fmt(n) {
   return cents.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+const COMPACT_QUERY = window.matchMedia ? window.matchMedia('(max-width: 720px)') : null;
+const REDUCED_MOTION_QUERY = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+const LOW_CORE_DEVICE = !!(navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+function lowPowerMode() {
+  return LOW_CORE_DEVICE ||
+    !!(COMPACT_QUERY && COMPACT_QUERY.matches) ||
+    !!(REDUCED_MOTION_QUERY && REDUCED_MOTION_QUERY.matches);
+}
+if (lowPowerMode()) document.documentElement.classList.add('low-power');
+function reducedMotionMode() {
+  return !!(REDUCED_MOTION_QUERY && REDUCED_MOTION_QUERY.matches);
+}
+const LOW_POWER_SFX = new Set(['chipPlace', 'win', 'fanfare', 'lose']);
+let lastLowPowerSfxAt = 0;
+
 const SFX_PATHS = {
   button: 'sfx/button_soft.mp3',
   chipPlace: 'sfx/chip_place_a.mp3',
@@ -990,14 +1046,21 @@ const SFX_PATHS = {
 const sfxPool = {};
 Object.entries(SFX_PATHS).forEach(([key, src]) => {
   const pool = [];
-  for (let i = 0; i < 3; i++) {
+  const poolSize = lowPowerMode() ? 1 : 3;
+  for (let i = 0; i < poolSize; i++) {
     const audio = new Audio(src);
-    audio.preload = 'metadata';
+    audio.preload = lowPowerMode() ? 'none' : 'metadata';
     pool.push(audio);
   }
   sfxPool[key] = { pool, idx: 0 };
 });
 function playSfx(key, volMul = 1) {
+  if (lowPowerMode()) {
+    if (!LOW_POWER_SFX.has(key)) return;
+    const now = performance.now();
+    if (now - lastLowPowerSfxAt < 180) return;
+    lastLowPowerSfxAt = now;
+  }
   const entry = sfxPool[key];
   if (!entry) return;
   const audio = entry.pool[entry.idx];
@@ -1027,7 +1090,10 @@ const el = {
   lastHand: document.getElementById('last-hand'),
   lastPay: document.getElementById('last-pay'),
   heldCount: document.getElementById('held-count'),
+  miniBtns: Array.from(document.querySelectorAll('.mini-btn')),
+  payRows: Array.from(document.querySelectorAll('.pay-row')),
 };
+const payRowsByKey = new Map(el.payRows.map(row => [row.dataset.key, row]));
 
 const State = {
   phase: 'idle',
@@ -1068,42 +1134,75 @@ function suitSymbol(suit) {
 function suitColor(suit) {
   return suit === 'hearts' || suit === 'diamonds' ? 'red' : 'black';
 }
-function cardHtml(card, i) {
-  const isAnimating = State.animating.includes(i);
-  const slotStyle = isAnimating ? ` style="--deal-delay:${i * 46}ms"` : '';
-  if (!card) {
-    return `
-      <div class="card-slot${isAnimating ? ' dealing' : ''}"${slotStyle}>
-        <button class="poker-card empty" data-index="${i}" aria-label="Empty card"></button>
-        <span class="hold-tag">HELD</span>
-      </div>`;
-  }
-  const held = State.phase === 'dealt' && State.holds[i];
-  const settledWin = State.phase === 'result' && State.resultWin;
-  const suit = suitSymbol(card.suit);
-  const cls = suitColor(card.suit);
-  return `
-    <div class="card-slot ${held ? 'held' : ''} ${settledWin ? 'settled-win' : ''} ${isAnimating ? 'dealing' : ''}"${slotStyle}>
-      <button class="poker-card ${cls} ${held ? 'held' : ''}" data-index="${i}" aria-label="${card.rank} of ${card.suit}">
-        <span class="corner"><span>${card.rank}</span><span>${suit}</span></span>
-        <span class="center-suit">${suit}</span>
-        <span class="corner bottom"><span>${card.rank}</span><span>${suit}</span></span>
+const CardViews = [];
+function initCardViews() {
+  if (CardViews.length) return;
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < 5; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'card-slot';
+    slot.innerHTML = `
+      <button type="button" class="poker-card empty" data-index="${i}" aria-label="Empty card">
+        <span class="corner"><span data-rank-top></span><span data-suit-top></span></span>
+        <span class="center-suit" data-suit-center></span>
+        <span class="corner bottom"><span data-rank-bottom></span><span data-suit-bottom></span></span>
       </button>
-      <span class="hold-tag">HELD</span>
-    </div>`;
+      <span class="hold-tag">HELD</span>`;
+    frag.appendChild(slot);
+    CardViews.push({
+      slot,
+      button: slot.querySelector('.poker-card'),
+      rankTop: slot.querySelector('[data-rank-top]'),
+      rankBottom: slot.querySelector('[data-rank-bottom]'),
+      suitTop: slot.querySelector('[data-suit-top]'),
+      suitCenter: slot.querySelector('[data-suit-center]'),
+      suitBottom: slot.querySelector('[data-suit-bottom]'),
+    });
+  }
+  el.cardsRow.appendChild(frag);
 }
 function renderCards() {
-  const cards = [];
-  for (let i = 0; i < 5; i++) cards.push(cardHtml(State.hand[i], i));
-  el.cardsRow.innerHTML = cards.join('');
+  initCardViews();
+  const lean = leanMotionMode();
+  for (let i = 0; i < 5; i++) {
+    const view = CardViews[i];
+    const card = State.hand[i];
+    const isAnimating = !lean && State.animating.includes(i);
+    const held = State.phase === 'dealt' && State.holds[i];
+    const settledWin = State.phase === 'result' && State.resultWin;
+    view.slot.className = `card-slot${held ? ' held' : ''}${settledWin ? ' settled-win' : ''}${isAnimating ? ' dealing' : ''}`;
+    if (isAnimating) view.slot.style.setProperty('--deal-delay', `${i * 46}ms`);
+    else view.slot.style.removeProperty('--deal-delay');
+
+    if (!card) {
+      view.button.className = 'poker-card empty';
+      view.button.setAttribute('aria-label', 'Empty card');
+      view.rankTop.textContent = '';
+      view.rankBottom.textContent = '';
+      view.suitTop.textContent = '';
+      view.suitCenter.textContent = '';
+      view.suitBottom.textContent = '';
+      continue;
+    }
+
+    const suit = suitSymbol(card.suit);
+    const cls = suitColor(card.suit);
+    view.button.className = `poker-card ${cls}${held ? ' held' : ''}`;
+    view.button.setAttribute('aria-label', `${card.rank} of ${card.suit}`);
+    view.rankTop.textContent = card.rank;
+    view.rankBottom.textContent = card.rank;
+    view.suitTop.innerHTML = suit;
+    view.suitCenter.innerHTML = suit;
+    view.suitBottom.innerHTML = suit;
+  }
   el.heldCount.textContent = String(State.holds.filter(Boolean).length);
 }
 function clearPaytableHighlight() {
-  document.querySelectorAll('.pay-row').forEach(row => row.classList.remove('active'));
+  el.payRows.forEach(row => row.classList.remove('active'));
 }
 function highlightPaytable(key) {
   clearPaytableHighlight();
-  const row = document.querySelector(`.pay-row[data-key="${key}"]`);
+  const row = payRowsByKey.get(key);
   if (row) row.classList.add('active');
 }
 function updateControls() {
@@ -1114,7 +1213,7 @@ function updateControls() {
   el.drawBtn.disabled = !dealt;
   el.newBtn.disabled = !result;
   el.betInput.disabled = !idle;
-  document.querySelectorAll('.mini-btn').forEach(btn => { btn.disabled = !idle; });
+  el.miniBtns.forEach(btn => { btn.disabled = !idle; });
   el.paidReadout.textContent = fmt(State.paid);
 }
 function resetHand(keepMessage) {
@@ -1138,45 +1237,49 @@ function recordHand(note, net) {
   const roundBet = State.bet;
   const run = () => {
     if (window.History) {
-      try { History.record('diamondpoker', roundBet, net, note); } catch (e) {}
+      try {
+        if (leanMotionMode() && typeof History.recordLocalOnly === 'function') {
+          History.recordLocalOnly('diamondpoker', roundBet, net, note);
+        } else {
+          History.record('diamondpoker', roundBet, net, note);
+        }
+      } catch (e) {}
     }
   };
-  const delay = leanMotionMode() ? 650 : 80;
+  if (leanMotionMode()) {
+    run();
+    return;
+  }
   setTimeout(() => {
     if (window.requestIdleCallback) {
       window.requestIdleCallback(run, { timeout: 1200 });
     } else {
       run();
     }
-  }, delay);
+  }, 80);
 }
 function leanMotionMode() {
-  return window.matchMedia && (
-    window.matchMedia('(max-width: 720px)').matches ||
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
-}
-function reducedMotionMode() {
-  return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return lowPowerMode();
 }
 function animateCards(indexes) {
+  if (leanMotionMode()) {
+    State.animating = [];
+    renderCards();
+    return;
+  }
   State.animating = indexes.slice();
   renderCards();
   const maxIndex = indexes.length ? Math.max(...indexes) : 0;
-  const lean = leanMotionMode();
   setTimeout(() => {
     State.animating = [];
     renderCards();
-  }, (lean ? 340 : 520) + maxIndex * (lean ? 28 : 46));
+  }, 520 + maxIndex * 46);
 }
 function spawnPayoutBurst(multiplier) {
   if (!el.coinBurst) return;
   el.coinBurst.innerHTML = '';
-  if (reducedMotionMode()) return;
-  const lean = leanMotionMode();
-  const count = lean
-    ? Math.min(10, multiplier >= 25 ? 10 : 6)
-    : Math.min(24, multiplier >= 25 ? 22 : 12);
+  if (leanMotionMode() || reducedMotionMode()) return;
+  const count = Math.min(24, multiplier >= 25 ? 22 : 12);
   for (let i = 0; i < count; i++) {
     const coin = document.createElement('span');
     coin.className = 'coin';
@@ -1186,10 +1289,10 @@ function spawnPayoutBurst(multiplier) {
     coin.style.setProperty('--dy', `${Math.round(-180 - Math.random() * 170)}px`);
     coin.style.setProperty('--rot', `${Math.round(-260 + Math.random() * 520)}deg`);
     coin.style.setProperty('--size', `${Math.round(12 + Math.random() * 10)}px`);
-    coin.style.setProperty('--delay', `${i * (lean ? 16 : 24)}ms`);
+    coin.style.setProperty('--delay', `${i * 24}ms`);
     el.coinBurst.appendChild(coin);
   }
-  setTimeout(() => { el.coinBurst.innerHTML = ''; }, lean ? 950 : 1400);
+  setTimeout(() => { el.coinBurst.innerHTML = ''; }, 1400);
 }
 function dealHand() {
   const bet = getBet();
@@ -1216,10 +1319,13 @@ function dealHand() {
   animateCards([0, 1, 2, 3, 4]);
   updateControls();
   playSfx('chipPlace', 0.75);
-  for (let i = 0; i < 5; i++) setTimeout(() => dealSound(i), i * 58);
+  if (!leanMotionMode()) {
+    for (let i = 0; i < 5; i++) setTimeout(() => dealSound(i), i * 58);
+  }
 }
 function drawHand() {
   if (State.phase !== 'dealt') return;
+  const lean = leanMotionMode();
   const replacedIndexes = State.holds.map((held, i) => held ? null : i).filter(i => i !== null);
   const drawn = Core.drawReplacementCards(State.hand, State.holds, State.deck);
   State.hand = drawn.hand;
@@ -1230,7 +1336,9 @@ function drawHand() {
   State.resultWin = settled.gross > 0;
   State.phase = 'result';
   animateCards(replacedIndexes);
-  for (let i = 0; i < drawn.drawn; i++) setTimeout(() => dealSound(i), i * 62);
+  if (!lean) {
+    for (let i = 0; i < drawn.drawn; i++) setTimeout(() => dealSound(i), i * 62);
+  }
   State.balance = Math.round((State.balance + settled.gross) * 100) / 100;
   persistBalance(State.balance);
   refreshBalance();
@@ -1240,12 +1348,16 @@ function drawHand() {
 
   if (settled.gross > 0) {
     setMessage(`${settled.outcome.label} pays $${fmt(settled.gross)}.`, 'win');
-    el.machine.classList.remove('payout-pop');
-    void el.machine.offsetWidth;
-    el.machine.classList.add('payout-pop');
+    if (!lean) {
+      el.machine.classList.remove('payout-pop');
+      void el.machine.offsetWidth;
+      el.machine.classList.add('payout-pop');
+    }
     playSfx(settled.outcome.multiplier >= 25 ? 'fanfare' : 'win', settled.outcome.multiplier >= 25 ? 0.8 : 0.7);
-    setTimeout(() => playSfx('chipPayout', 0.8), 170);
-    spawnPayoutBurst(settled.outcome.multiplier);
+    if (!lean) {
+      setTimeout(() => playSfx('chipPayout', 0.8), 170);
+      spawnPayoutBurst(settled.outcome.multiplier);
+    }
   } else {
     setMessage('No win. New hand when ready.', 'lose');
     playSfx('lose', 0.55);
@@ -1274,7 +1386,7 @@ el.newBtn.addEventListener('click', () => {
 });
 el.betInput.addEventListener('input', () => setBet(getBet()));
 el.betInput.addEventListener('blur', () => setBet(getBet()));
-document.querySelectorAll('.mini-btn').forEach(btn => {
+el.miniBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     if (btn.dataset.action === 'max') setBet(Math.max(1, Math.floor(State.balance)));
     else setBet(Number(btn.dataset.bet));

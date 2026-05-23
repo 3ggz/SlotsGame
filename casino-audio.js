@@ -750,7 +750,8 @@
       } catch (e) {}
     }
 
-    function record(game, bet, win, note) {
+    function addEntry(game, bet, win, note, opts) {
+      opts = opts || {};
       const entry = {
         game: String(game || 'unknown'),
         bet: Number(bet) || 0,
@@ -758,19 +759,26 @@
         ts: Date.now(),
         note: note ? String(note) : null,
       };
+      if (opts.localOnly) entry.localOnly = true;
       sessionEntries.push(entry);
       allEntries.push(entry);
       persist();
       notify();
       // Fan out to the global live-stats backend (no-op if unconfigured).
       try {
-        if (global.CasinoStats && global.CasinoStats.recordRound) {
+        if (!opts.localOnly && global.CasinoStats && global.CasinoStats.recordRound) {
           global.CasinoStats.recordRound({
             game: entry.game, bet: entry.bet, win: entry.win, note: entry.note,
           });
         }
       } catch (e) {}
       return entry;
+    }
+    function record(game, bet, win, note) {
+      return addEntry(game, bet, win, note, { localOnly: false });
+    }
+    function recordLocalOnly(game, bet, win, note) {
+      return addEntry(game, bet, win, note, { localOnly: true });
     }
 
     function getAll(game) {
@@ -804,7 +812,7 @@
       notify();
     }
 
-    return { record, getAll, getSession, computeStats, onChange(fn){listeners.push(fn);}, clear, sessionStart };
+    return { record, recordLocalOnly, getAll, getSession, computeStats, onChange(fn){listeners.push(fn);}, clear, sessionStart };
   })();
 
   /* ---------- HISTORY UI (modal) ----------

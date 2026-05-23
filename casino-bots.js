@@ -906,6 +906,7 @@
         for (const e of session) {
           if (!e || !e.ts || e.ts <= lastSeenHistoryTs) continue;
           lastSeenHistoryTs = e.ts;
+          if (e.localOnly) continue;
           if (e.note && /^BOT\b/i.test(String(e.note))) continue;
           const g = String(e.game || '');
           const cfg = GAME_CONFIG[g];
