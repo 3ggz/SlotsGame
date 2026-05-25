@@ -446,9 +446,26 @@ button, input { font: inherit; }
 }
 .bet-panel {
   display: grid;
-  grid-template-columns: 100px 1fr;
+  grid-template-columns: minmax(220px, 260px) 1fr;
   gap: 10px;
   align-items: end;
+}
+.bet-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+.bet-row .bet-input {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 8px;
+  font-size: 18px;
+}
+.bet-row .bet-action {
+  flex: 0 0 auto;
+  width: 52px;
+  padding: 0;
+  font-size: 11px;
 }
 .field-label {
   display: block;
@@ -825,15 +842,19 @@ html.low-power .machine.payout-pop {
           <div class="bet-panel">
             <label>
               <span class="field-label">BET</span>
-              <input class="bet-input" id="bet-input" type="number" min="1" step="1" inputmode="numeric" value="5">
+              <div class="bet-row">
+                <input class="bet-input" id="bet-input" type="number" min="1" step="1" inputmode="numeric" value="5">
+                <button class="mini-btn bet-action" data-action="double" title="Double bet">2X</button>
+                <button class="mini-btn bet-action" data-action="max" title="Max bet">MAX</button>
+              </div>
             </label>
             <div>
               <span class="field-label">CHIPS</span>
               <div class="bet-mods">
-                <button class="mini-btn" data-bet="1">$1</button>
                 <button class="mini-btn" data-bet="5">$5</button>
                 <button class="mini-btn" data-bet="25">$25</button>
-                <button class="mini-btn" data-action="max">MAX</button>
+                <button class="mini-btn" data-bet="100">$100</button>
+                <button class="mini-btn" data-bet="1000">$1,000</button>
               </div>
             </div>
           </div>
@@ -1389,7 +1410,10 @@ el.betInput.addEventListener('input', () => setBet(getBet()));
 el.betInput.addEventListener('blur', () => setBet(getBet()));
 el.miniBtns.forEach(btn => {
   btn.addEventListener('click', () => {
-    if (btn.dataset.action === 'max') setBet(Math.max(1, Math.floor(State.balance)));
+    const action = btn.dataset.action;
+    const cap = Math.max(1, Math.floor(State.balance));
+    if (action === 'max') setBet(cap);
+    else if (action === 'double') setBet(Math.min(cap, Math.max(1, Math.floor(State.bet)) * 2));
     else setBet(Number(btn.dataset.bet));
     playSfx('button', 0.55);
   });
