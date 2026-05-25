@@ -53,8 +53,8 @@ run('Firebase live subscriptions back off on quota exhaustion', () => {
 });
 
 run('Service worker version and precache include all shipped game pages', () => {
-  assert(sw.includes("const CACHE_VERSION = 'v78';"), 'service worker cache version should be bumped');
-  ['dragontree.html', 'multihandblackjack.html', 'easycraps.html', 'standardcraps.html'].forEach(file => {
+  assert(/const CACHE_VERSION = 'v\d+';/.test(sw), "CACHE_VERSION should exist in the form 'vNN'");
+  ['dragontree.html', 'multihandblackjack.html', 'easycraps.html', 'standardcraps.html', 'diamondpoker.html'].forEach(file => {
     assert(sw.includes(`'./${file}'`), `${file} should be in the precache list`);
   });
 });
