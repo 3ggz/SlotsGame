@@ -690,6 +690,166 @@ if (!CONFIGURED) {
           localStorage.setItem(BAL_KEY, String(next));
         } catch (e) {}
       }
+
+      /* ---------- cross-device balance sync ----------
+         Real (non-anonymous) accounts: mirror `casino.balance` to
+         `users/{uid}.balance` in Firestore so a signed-in player sees
+         the same chip stack on every device. Writes go through
+         increment(delta) so two devices spinning at once compose
+         instead of clobbering — Firestore serializes the deltas.
+
+         lastSyncedBalance is the value we believe is committed to
+         remote. We compute outgoing deltas against it, and we add
+         incoming remote deltas (since lastSynced) to the live local
+         balance so an in-flight local change isn't lost to a
+         remote update.
+
+         Anonymous users skip sync — their UID is per-browser and
+         cross-device sync would be meaningless. */
+      const SYNCED_KEY_PREFIX = 'casino.balance.synced:';
+      const SYNC_DEBOUNCE_MS = 1500;
+      const BALANCE_WATCH_MS = 1000;
+      let balanceSyncUnsub = null;
+      let balanceSyncUid = null;
+      let lastSyncedBalance = null;
+      let lastLocalBalance = null;
+      let pendingSyncTimer = null;
+      let balanceWatchTimer = null;
+      let balanceSyncHandlersBound = false;
+
+      function readLiveBalance() {
+        try {
+          const v = parseFloat(localStorage.getItem(BAL_KEY));
+          return isFinite(v) && v >= 0 ? v : BAL_DEFAULT;
+        } catch (e) { return BAL_DEFAULT; }
+      }
+      function writeLiveBalance(v) {
+        try { localStorage.setItem(BAL_KEY, String(v)); } catch (e) {}
+      }
+      function readSyncedSnapshot(uid) {
+        try {
+          const v = parseFloat(localStorage.getItem(SYNCED_KEY_PREFIX + uid));
+          return isFinite(v) ? v : null;
+        } catch (e) { return null; }
+      }
+      function writeSyncedSnapshot(uid, v) {
+        try { localStorage.setItem(SYNCED_KEY_PREFIX + uid, String(v)); } catch (e) {}
+      }
+      function notifyBalanceChanged() {
+        // Games already refresh the balance pill on the storage event
+        // (set up for cross-tab sync). Dispatching one here makes
+        // in-tab remote updates repaint without a reload.
+        try {
+          window.dispatchEvent(new StorageEvent('storage', { key: BAL_KEY }));
+        } catch (e) {
+          try { document.dispatchEvent(new CustomEvent('casino-balance-synced')); } catch (_) {}
+        }
+      }
+
+      function checkLocalBalance() {
+        if (!balanceSyncUid) return;
+        const local = readLiveBalance();
+        if (local === lastLocalBalance) return;
+        lastLocalBalance = local;
+        if (pendingSyncTimer) clearTimeout(pendingSyncTimer);
+        pendingSyncTimer = setTimeout(flushBalanceSync, SYNC_DEBOUNCE_MS);
+      }
+
+      function flushBalanceSync() {
+        if (pendingSyncTimer) { clearTimeout(pendingSyncTimer); pendingSyncTimer = null; }
+        if (!balanceSyncUid || lastSyncedBalance == null) return;
+        const local = readLiveBalance();
+        const delta = Math.round((local - lastSyncedBalance) * 100) / 100;
+        if (delta === 0) return;
+        const uid = balanceSyncUid;
+        const optimisticNext = Math.round((lastSyncedBalance + delta) * 100) / 100;
+        lastSyncedBalance = optimisticNext;
+        writeSyncedSnapshot(uid, optimisticNext);
+        setDoc(doc(db, 'users', uid), {
+          balance: increment(delta),
+          balanceUpdatedAt: serverTimestamp(),
+        }, { merge: true }).catch(() => {
+          // Roll back the optimistic snapshot so the next change retries.
+          if (balanceSyncUid === uid) {
+            lastSyncedBalance = Math.round((lastSyncedBalance - delta) * 100) / 100;
+            writeSyncedSnapshot(uid, lastSyncedBalance);
+          }
+        });
+      }
+
+      function startBalanceSync(uid) {
+        if (balanceSyncUid === uid) return;
+        stopBalanceSync();
+        balanceSyncUid = uid;
+        lastSyncedBalance = readSyncedSnapshot(uid);
+        lastLocalBalance = readLiveBalance();
+
+        balanceSyncUnsub = safeOnSnapshot(doc(db, 'users', uid), snap => {
+          if (balanceSyncUid !== uid) return;
+          const data = snap.exists() ? snap.data() : {};
+          const remoteBal = (typeof data.balance === 'number' && isFinite(data.balance)) ? data.balance : null;
+
+          if (remoteBal == null) {
+            // Remote has never seen a balance for this UID. Seed it
+            // with what's live locally so we don't wipe a player's
+            // existing chips on the first cloud-sync handshake.
+            const local = readLiveBalance();
+            lastSyncedBalance = local;
+            writeSyncedSnapshot(uid, local);
+            setDoc(doc(db, 'users', uid), {
+              balance: local,
+              balanceUpdatedAt: serverTimestamp(),
+            }, { merge: true }).catch(() => {});
+            return;
+          }
+
+          if (lastSyncedBalance == null) {
+            // First sync from this device for this UID — cloud is
+            // source of truth. Mirror remote into local.
+            writeLiveBalance(remoteBal);
+            lastLocalBalance = remoteBal;
+            lastSyncedBalance = remoteBal;
+            writeSyncedSnapshot(uid, remoteBal);
+            notifyBalanceChanged();
+            return;
+          }
+
+          if (remoteBal !== lastSyncedBalance) {
+            // Another device moved the remote pool. Apply the remote
+            // delta to whatever local has now so any in-flight local
+            // change since the last sync is preserved.
+            const remoteDelta = remoteBal - lastSyncedBalance;
+            const localBal = readLiveBalance();
+            const next = Math.max(0, Math.round((localBal + remoteDelta) * 100) / 100);
+            writeLiveBalance(next);
+            lastLocalBalance = next;
+            lastSyncedBalance = remoteBal;
+            writeSyncedSnapshot(uid, remoteBal);
+            notifyBalanceChanged();
+          }
+        });
+
+        if (balanceWatchTimer) clearInterval(balanceWatchTimer);
+        balanceWatchTimer = setInterval(checkLocalBalance, BALANCE_WATCH_MS);
+
+        if (!balanceSyncHandlersBound) {
+          balanceSyncHandlersBound = true;
+          window.addEventListener('pagehide', flushBalanceSync);
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') flushBalanceSync();
+          });
+        }
+      }
+
+      function stopBalanceSync() {
+        if (balanceSyncUnsub) { try { balanceSyncUnsub(); } catch (e) {} }
+        balanceSyncUnsub = null;
+        if (balanceWatchTimer) { clearInterval(balanceWatchTimer); balanceWatchTimer = null; }
+        if (pendingSyncTimer) { clearTimeout(pendingSyncTimer); pendingSyncTimer = null; }
+        balanceSyncUid = null;
+        lastSyncedBalance = null;
+        lastLocalBalance = null;
+      }
       const PRESENCE_COLLECTION = 'tablePresence';
       const PRESENCE_STALE_MS = 60000;
       const PRESENCE_HEARTBEAT_MS = 15000;
@@ -791,6 +951,8 @@ if (!CONFIGURED) {
 
         currentUser = u;
         if (u) startPresenceHeartbeat();
+        if (u && !u.isAnonymous) startBalanceSync(u.uid);
+        else stopBalanceSync();
         if (u && !u.isAnonymous) {
           // Read first so we can backfill a default username for accounts
           // that don't have one yet (e.g. fresh Google sign-ins, legacy

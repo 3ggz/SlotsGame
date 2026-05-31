@@ -236,11 +236,15 @@ Default starting balance: **$1,000** (a fresh tab gets handed a stack). Lobby an
 
 **Other localStorage keys in active use** (don't collide with these):
 - `casino.balance` — the chip stack
+- `casino.balance:<uid>` — per-UID snapshot taken at sign-in/out so an anon stack doesn't leak into a real account when the UID flips on the same device
+- `casino.balance.synced:<uid>` — last value `casino-account.js` believes is committed to `users/{uid}.balance` in Firestore; used to compute outgoing deltas and detect remote-driven updates
 - `casino.settings` — audio prefs
 - `casino.history.v1` — recent round entries (capped, written by `History.record`)
 - `casino.bots.v5.*` — bot roster, feeds, chat, leader-election, presence heartbeats (current version is **v5**; bump when you change the bot schema)
 - `casino.presence.tab` (sessionStorage) — per-tab id for Firestore presence
 - `casino.level.v1` — player XP (single field: `{ totalXp: number }`); current level/progress derived on read
+
+**Cross-device balance sync.** For signed-in (non-anonymous) users, `casino-account.js` mirrors `casino.balance` to `users/{uid}.balance` in Firestore so the same account sees the same stack on every device. Writes go through `increment(delta)` so two devices spinning simultaneously compose instead of clobbering. The poll/debounce cadence is ~1 s watch + 1.5 s debounce, plus a flush on `pagehide`/`visibilitychange`. Anonymous users skip the sync — their UID is per-browser and a cross-device handshake would be meaningless.
 
 If you add a new key, prefix it `casino.` and keep it small — quota is shared per-origin.
 
