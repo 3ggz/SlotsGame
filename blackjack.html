@@ -340,7 +340,7 @@ body::before {
 .card:first-child { margin-left: 0; }
 .card.enter,
 .card.dealing {
-  animation: cardLand 0.42s cubic-bezier(.22,.61,.36,1);
+  animation: cardLand 0.26s cubic-bezier(.22,.61,.36,1);
 }
 @keyframes cardLand {
   0%   { opacity: 0; transform: translate(-40px, -120px) rotate(-22deg) scale(0.72); }
@@ -375,7 +375,7 @@ body::before {
   display: none;
 }
 .card.flipping {
-  animation: cardFlip 0.6s ease-in-out;
+  animation: cardFlip 0.5s ease-in-out;
 }
 @keyframes cardFlip {
   0%   { transform: rotateY(0deg) scaleX(1); }
@@ -830,6 +830,44 @@ body::before {
   100% { transform: translate(var(--tx,0), var(--ty,0)) rotate(720deg) scale(1); opacity: 0; }
 }
 
+/* FELT RESULT FLASH — gold wash for wins, quick respectful dim for losses.
+   Opacity-only animation on a pinned overlay: no layout, no paint storms. */
+.felt-flash {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 6;
+  opacity: 0;
+  will-change: opacity;
+}
+.felt-flash.gold {
+  background: radial-gradient(ellipse at 50% 38%, rgba(255,210,74,0.42), rgba(255,210,74,0.12) 55%, transparent 78%);
+}
+.felt-flash.dim { background: rgba(0,0,0,0.5); }
+.felt-flash.gold.flash { animation: feltFlashGold 0.6s ease-out; }
+.felt-flash.dim.flash  { animation: feltFlashDim 0.45s ease-out; }
+@keyframes feltFlashGold {
+  0%   { opacity: 0; }
+  18%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes feltFlashDim {
+  0%   { opacity: 0; }
+  25%  { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+/* LOW-POWER — drop blur-backed chrome + noise overlay (composite-heavy on weak GPUs) */
+html.low-power .lobby-link,
+html.low-power .history-btn,
+html.low-power .balance-link {
+  background: linear-gradient(180deg, rgba(42,18,77,0.96), rgba(15,4,30,0.96));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.low-power body::before { display: none; }
+
 /* ADD FUNDS MODAL (reused style) */
 .modal-veil {
   position: fixed;
@@ -1021,6 +1059,7 @@ body::before {
     </div>
 
     <div class="felt">
+      <div class="felt-flash" id="felt-flash"></div>
 
       <!-- DEALER -->
       <div class="area">
@@ -1247,6 +1286,11 @@ const Audio = (() => {
       else         play(pick('chip_place_a', 'chip_place_b', 'chip_place_c'), { gain: 0.95, pitchVariance: 0.06, maxMs: 220 });
     },
     chipSelect()    { play('chip_select', { gain: 0.6, pitchVariance: 0.04, maxMs: 180 }); },
+    // Instant tactile tick the moment a chip lifts off the rack — the proper
+    // clack still lands with the chip ~360ms later via chip().
+    chipPick()      { play('chip_select', { gain: 0.4, pitch: 1.08, pitchVariance: 0.05, maxMs: 150 }); },
+    // Soft attention cue for prompts sliding in (insurance, confirms).
+    prompt()        { play('button_soft', { gain: 0.5, pitch: 1.15, pitchVariance: 0.03 }); },
     chipPayout()    { play('chip_payout', { gain: 0.85, pitchVariance: 0.04 }); },
     chipClear()     { play('chip_clear', { gain: 0.75, pitchVariance: 0.04 }); },
     deal()          { play(pick('card_deal_a', 'card_deal_b', 'card_deal_c'), { gain: 0.8, pitchVariance: 0.08 }); },
@@ -1277,6 +1321,15 @@ const Audio = (() => {
 })();
 
 /* ============================================================
+   LOW-POWER DETECTION (matches plinko/slots heuristics)
+   ============================================================ */
+const LOW_POWER =
+  !!(navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+  !!(window.matchMedia && (window.matchMedia('(max-width: 720px)').matches ||
+                           window.matchMedia('(prefers-reduced-motion: reduce)').matches));
+if (LOW_POWER) document.documentElement.classList.add('low-power');
+
+/* ============================================================
    SHARED BALANCE
    ============================================================ */
 const BALANCE_KEY = 'casino.balance';
@@ -1288,6 +1341,56 @@ function persistBalance(v) {
   try { localStorage.setItem(BALANCE_KEY, String(v)); } catch (e) {}
 }
 const fmt = n => Math.round(n).toLocaleString('en-US');
+
+/* ============================================================
+   DOM CACHE — hot-path lookups resolved once. The script sits at the
+   end of <body>, so every element already exists. Deal/render/refresh
+   paths below all read from here instead of re-querying the document.
+   ============================================================ */
+const $id = id => document.getElementById(id);
+const UI = {
+  balance:      $id('balance'),
+  message:      $id('message'),
+  dealerCards:  $id('dealer-cards'),
+  playerCards:  $id('player-cards'),
+  dealerTotal:  $id('dealer-total'),
+  playerTotal:  $id('player-total'),
+  feltFlash:    $id('felt-flash'),
+  particles:    $id('particles'),
+  betActions:   $id('bet-actions'),
+  playActions:  $id('play-actions'),
+  nextActions:  $id('next-actions'),
+  btnDeal:      $id('btn-deal'),
+  btnClear:     $id('btn-clear'),
+  btnRebet:     $id('btn-rebet'),
+  btnDouble:    $id('btn-double'),
+  btnSplit:     $id('btn-split'),
+  btnRebetOnly: $id('btn-rebet-only'),
+  btnRebetDeal: $id('btn-rebet-deal'),
+  btnRebet2x:   $id('btn-rebet-2x'),
+  insurancePrompt: $id('insurance-prompt'),
+  confirmPrompt:   $id('confirm-prompt'),
+  confirmLabel:    $id('confirm-label'),
+  modalVeil:    $id('modal-veil'),
+  chipRack:     document.querySelector('.chip-rack'),
+  chips:        Array.from(document.querySelectorAll('.chip')),
+  circles:      Array.from(document.querySelectorAll('.bet-circle')),
+  chipByValue:  {},
+  circleByKey:  {},
+  amounts:      { main: $id('main-amount'), pp: $id('pp-amount'), tpt: $id('tpt-amount') },
+};
+UI.chips.forEach(c => { UI.chipByValue[c.dataset.value] = c; });
+UI.circles.forEach(c => { UI.circleByKey[c.dataset.bet] = c; });
+
+/* Gold flash on wins, quick dim on losses. One class-swap + one reflow per
+   round outcome — not a hot path. */
+function flashFelt(kind) {
+  const el = UI.feltFlash;
+  if (!el) return;
+  el.className = 'felt-flash ' + kind;
+  void el.offsetWidth; // restart the animation
+  el.classList.add('flash');
+}
 
 /* ============================================================
    CARDS & SHOE
@@ -1387,7 +1490,7 @@ const State = {
 function setBalance(n) {
   State.balance = Math.max(0, n);
   persistBalance(State.balance);
-  document.getElementById('balance').textContent = fmt(State.balance);
+  UI.balance.textContent = fmt(State.balance);
 }
 
 function maybeReshuffle() {
@@ -1431,7 +1534,7 @@ function clearEnterAfter(el) {
 /* Append exactly one new dealer card with the entry animation. Used so
    existing cards on the felt stay still when a new one arrives. */
 function appendDealerCard(idx) {
-  const row = document.getElementById('dealer-cards');
+  const row = UI.dealerCards;
   const c = State.dealer.cards[idx];
   if (!c) return;
   const faceDown = (idx === 1 && !State.dealer.holeRevealed);
@@ -1447,7 +1550,7 @@ function appendPlayerCard(handIdx, cardIdx) {
   if (!h) return;
   const c = h.cards[cardIdx];
   if (!c) return;
-  const row = document.getElementById('player-cards');
+  const row = UI.playerCards;
   let target;
   if (State.hands.length === 1) {
     target = row;
@@ -1476,7 +1579,7 @@ function appendPlayerCard(handIdx, cardIdx) {
 }
 
 function refreshDealerTotal() {
-  const el = document.getElementById('dealer-total');
+  const el = UI.dealerTotal;
   if (!State.dealer.holeRevealed) {
     const visible = State.dealer.cards.slice(0, 1);
     if (visible.length === 0) el.textContent = '—';
@@ -1492,7 +1595,7 @@ function refreshDealerTotal() {
 }
 
 function refreshPlayerTotal() {
-  const el = document.getElementById('player-total');
+  const el = UI.playerTotal;
   if (State.hands.length === 0) { el.textContent = '—'; el.className = 'hand-total'; return; }
   if (State.hands.length === 1) {
     const total = handTotal(State.hands[0].cards);
@@ -1512,7 +1615,7 @@ function refreshPlayerTotal() {
 }
 
 function renderDealer() {
-  const row = document.getElementById('dealer-cards');
+  const row = UI.dealerCards;
   row.innerHTML = '';
   State.dealer.cards.forEach((c, i) => {
     const faceDown = (i === 1 && !State.dealer.holeRevealed);
@@ -1522,7 +1625,7 @@ function renderDealer() {
 }
 
 function renderPlayer() {
-  const row = document.getElementById('player-cards');
+  const row = UI.playerCards;
   row.innerHTML = '';
   if (State.hands.length <= 1) {
     if (State.hands.length === 1) {
@@ -1560,10 +1663,10 @@ function renderPlayer() {
 
 function refreshBets() {
   for (const key of ['main', 'pp', 'tpt']) {
-    const circle = document.querySelector(`.bet-circle[data-bet="${key}"]`);
+    const circle = UI.circleByKey[key];
     // Don't overwrite a circle that's showing its post-round result.
     if (circle && circle.classList.contains('resolved')) continue;
-    const el = document.getElementById(key + '-amount');
+    const el = UI.amounts[key];
     el.textContent = '$' + fmt(State.bets[key]);
     el.classList.toggle('zero', State.bets[key] === 0);
   }
@@ -1572,7 +1675,7 @@ function refreshBets() {
 
 function renderChipStacks() {
   ['main','pp','tpt'].forEach(key => {
-    const circle = document.querySelector(`.bet-circle[data-bet="${key}"]`);
+    const circle = UI.circleByKey[key];
     // Don't redraw chips on a resolved circle — the result display owns the visual.
     if (circle.classList.contains('resolved')) return;
     circle.querySelector('.chip-stack')?.remove();
@@ -1600,22 +1703,28 @@ function renderChipStacks() {
       mc.style.bottom = (i * 4) + 'px';
       stack.appendChild(mc);
     });
+    // Attach first so --chipH (set by responsive CSS on .chip-stack) resolves,
+    // then read it ONCE per circle and cache — getComputedStyle in this loop was
+    // a forced style recalc on every chip placed. Cache clears on resize.
+    circle.appendChild(stack);
+    let chipH = circle._chipH;
+    if (chipH == null) {
+      chipH = parseFloat(getComputedStyle(stack).getPropertyValue('--chipH')) || 32;
+      circle._chipH = chipH;
+    }
     // Total label positioned just above the topmost chip.
     // Topmost chip's top edge = (chips.length - 1) * 4 + chipHeight from stack bottom.
-    const chipH = parseFloat(getComputedStyle(stack).getPropertyValue('--chipH')) || 32;
     const total = document.createElement('div');
     total.className = 'stack-total';
     total.textContent = '$' + fmt(amount);
     total.style.bottom = ((chips.length - 1) * 4 + chipH + 4) + 'px';
     stack.appendChild(total);
-    circle.appendChild(stack);
   });
 }
 
 function setMessage(text, cls = '') {
-  const el = document.getElementById('message');
-  el.textContent = text;
-  el.className = 'message-banner ' + cls;
+  UI.message.textContent = text;
+  UI.message.className = 'message-banner ' + cls;
 }
 
 /* ============================================================
@@ -1623,7 +1732,7 @@ function setMessage(text, cls = '') {
    ============================================================ */
 function selectChip(value) {
   State.selectedChipValue = value;
-  document.querySelectorAll('.chip').forEach(c => {
+  UI.chips.forEach(c => {
     c.classList.toggle('selected', parseInt(c.dataset.value, 10) === value);
   });
 }
@@ -1635,6 +1744,7 @@ function addBet(key) {
   const wasEmpty = State.bets[key] === 0;
   setBalance(State.balance - chip);
   State.bets[key] += chip;
+  Audio.chipPick(); // instant feedback at lift-off; the clack lands with the chip
   flyChipToCircle(chip, key, () => {
     refreshBets();
     Audio.chip(!wasEmpty);
@@ -1696,7 +1806,7 @@ function rebet() {
 
 /* ---------- Flying chip & bet-circle bump ---------- */
 function bumpCircle(key) {
-  const circle = document.querySelector(`.bet-circle[data-bet="${key}"]`);
+  const circle = UI.circleByKey[key];
   if (!circle) return;
   circle.classList.remove('bumping');
   void circle.offsetWidth;
@@ -1705,8 +1815,8 @@ function bumpCircle(key) {
 }
 
 function flyChipToCircle(value, key, onLand) {
-  const rackChip = document.querySelector(`.chip[data-value="${value}"]`);
-  const circle   = document.querySelector(`.bet-circle[data-bet="${key}"]`);
+  const rackChip = UI.chipByValue[value];
+  const circle   = UI.circleByKey[key];
   if (!rackChip || !circle) { onLand && onLand(); return; }
 
   // poke the source chip up
@@ -1748,21 +1858,17 @@ function flyChipToCircle(value, key, onLand) {
 }
 
 function updateActionButtons() {
-  const betActions  = document.getElementById('bet-actions');
-  const playActions = document.getElementById('play-actions');
-  const nextActions = document.getElementById('next-actions');
-
-  betActions.style.display  = State.phase === 'BETTING' ? '' : 'none';
-  playActions.style.display = State.phase === 'PLAYER' ? '' : 'none';
-  nextActions.style.display = State.phase === 'RESOLVED' ? '' : 'none';
+  UI.betActions.style.display  = State.phase === 'BETTING' ? '' : 'none';
+  UI.playActions.style.display = State.phase === 'PLAYER' ? '' : 'none';
+  UI.nextActions.style.display = State.phase === 'RESOLVED' ? '' : 'none';
 
   // Tear down any pending confirm if we leave the PLAYER phase
   if (State.phase !== 'PLAYER') hideConfirm();
 
   if (State.phase === 'BETTING') {
-    document.getElementById('btn-deal').disabled = State.bets.main < 1;
-    document.getElementById('btn-clear').disabled = (State.bets.main + State.bets.pp + State.bets.tpt) === 0;
-    document.getElementById('btn-rebet').disabled = (
+    UI.btnDeal.disabled = State.bets.main < 1;
+    UI.btnClear.disabled = (State.bets.main + State.bets.pp + State.bets.tpt) === 0;
+    UI.btnRebet.disabled = (
       State.lastBets.main + State.lastBets.pp + State.lastBets.tpt === 0
     );
   }
@@ -1770,9 +1876,9 @@ function updateActionButtons() {
   if (State.phase === 'RESOLVED') {
     const lastTotal = State.lastBets.main + State.lastBets.pp + State.lastBets.tpt;
     const hasLast = lastTotal > 0;
-    document.getElementById('btn-rebet-only').disabled = !hasLast || State.balance < lastTotal;
-    document.getElementById('btn-rebet-deal').disabled = !hasLast || State.balance < lastTotal;
-    document.getElementById('btn-rebet-2x').disabled = !hasLast || State.balance < lastTotal * 2;
+    UI.btnRebetOnly.disabled = !hasLast || State.balance < lastTotal;
+    UI.btnRebetDeal.disabled = !hasLast || State.balance < lastTotal;
+    UI.btnRebet2x.disabled = !hasLast || State.balance < lastTotal * 2;
   }
 
   if (State.phase === 'PLAYER') {
@@ -1783,13 +1889,14 @@ function updateActionButtons() {
                       !h.locked &&
                       State.balance >= h.bet &&
                       State.hands.length < 4;
-    document.getElementById('btn-double').disabled = !canDouble;
-    document.getElementById('btn-split').disabled = !canSplit;
+    UI.btnDouble.disabled = !canDouble;
+    UI.btnSplit.disabled = !canSplit;
   }
 
   // chip + circles enabled only in betting
-  document.querySelectorAll('.chip').forEach(c => c.style.pointerEvents = State.phase === 'BETTING' ? '' : 'none');
-  document.querySelectorAll('.bet-circle').forEach(c => c.classList.toggle('locked', State.phase !== 'BETTING'));
+  const betting = State.phase === 'BETTING';
+  UI.chips.forEach(c => c.style.pointerEvents = betting ? '' : 'none');
+  UI.circles.forEach(c => c.classList.toggle('locked', !betting));
 }
 
 /* ============================================================

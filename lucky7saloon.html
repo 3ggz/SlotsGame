@@ -372,7 +372,15 @@ button { border: 0; cursor: pointer; }
   text-shadow: 0 0 12px rgba(255,215,106,0.28);
 }
 
-.feature-strip.live {
+/* The live glow lives on a pseudo-element whose OPACITY pulses — box-shadow
+   itself never animates, so the whole-bonus loop stays compositor-only. */
+.feature-strip.live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255,215,106,0.52), 0 0 24px rgba(255,215,106,0.22);
   animation: highNoonRail 1.1s ease-in-out infinite alternate;
 }
 
@@ -382,8 +390,8 @@ button { border: 0; cursor: pointer; }
 }
 
 @keyframes highNoonRail {
-  from { box-shadow: inset 0 0 0 1px rgba(255,215,106,0.28), 0 8px 20px rgba(0,0,0,0.30); }
-  to { box-shadow: inset 0 0 0 1px rgba(255,215,106,0.52), 0 0 24px rgba(255,215,106,0.22); }
+  from { opacity: 0.15; }
+  to { opacity: 1; }
 }
 
 .screen-top-actions {
@@ -420,7 +428,9 @@ button { border: 0; cursor: pointer; }
   letter-spacing: 0.08em;
 }
 
+.screen-action { transition: transform 0.08s, filter 0.12s; }
 .screen-action:hover:not(:disabled) { filter: brightness(1.15); }
+.screen-action:active:not(:disabled) { transform: translateY(2px); }
 .screen-action:disabled { opacity: 0.46; cursor: not-allowed; }
 .screen-action.on {
   color: #071106;
@@ -642,7 +652,11 @@ button { border: 0; cursor: pointer; }
 }
 
 .symbol.win {
+  /* Static gold rim + glow; the pulse itself only animates transform/filter
+     so winning symbols composite on the GPU instead of repainting shadows. */
+  box-shadow: inset 0 0 0 1px #fff6, 0 0 18px rgba(255,215,106,0.62);
   animation: winPulse 0.52s ease-in-out infinite alternate;
+  will-change: transform, filter;
   z-index: 3;
 }
 
@@ -651,8 +665,8 @@ button { border: 0; cursor: pointer; }
 }
 
 @keyframes winPulse {
-  from { transform: scale(1); box-shadow: inset 0 0 0 1px #fff4, 0 0 10px rgba(255,215,106,0.45); }
-  to { transform: scale(1.06); box-shadow: inset 0 0 0 1px #fff8, 0 0 22px rgba(255,215,106,0.78); }
+  from { transform: scale(1); filter: brightness(1); }
+  to { transform: scale(1.06); filter: brightness(1.3); }
 }
 
 @keyframes symbolBurst {
@@ -960,7 +974,9 @@ button { border: 0; cursor: pointer; }
   box-shadow: 0 3px 0 #6b3b0a, inset 0 0 0 1px rgba(255,255,255,0.42);
   font-family: Bungee, cursive;
   font-size: 17px;
+  transition: transform 0.08s, box-shadow 0.08s, filter 0.12s;
 }
+.small-btn:hover:not(:disabled), .bet-btn:hover:not(:disabled) { filter: brightness(1.08); }
 
 .small-btn:active, .bet-btn:active {
   transform: translateY(2px);
@@ -1145,7 +1161,11 @@ button { border: 0; cursor: pointer; }
   background: linear-gradient(180deg, #fff0bc, #ffd76a);
   font-family: Bungee, cursive;
   font-size: 13px;
+  box-shadow: 0 3px 0 #6b3b0a;
+  transition: transform 0.08s, box-shadow 0.08s, filter 0.12s;
 }
+.quick-chip:hover, .auto-count-chip:hover { filter: brightness(1.08); }
+.quick-chip:active, .auto-count-chip:active { transform: translateY(2px); box-shadow: 0 1px 0 #6b3b0a; }
 
 .modal-actions {
   display: grid;
@@ -1160,7 +1180,10 @@ button { border: 0; cursor: pointer; }
   font-family: Bungee, cursive;
   font-size: 13px;
   letter-spacing: 0.08em;
+  transition: transform 0.08s, filter 0.12s;
 }
+.btn:hover { filter: brightness(1.1); }
+.btn:active { transform: translateY(2px); }
 
 .btn-cancel {
   color: rgba(255,255,255,0.76);

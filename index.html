@@ -159,6 +159,13 @@ body::after {
   text-shadow: 0 0 14px rgba(255,255,255,0.25);
   letter-spacing: 0.02em;
 }
+/* Brief gold pop whenever the balance value actually changes */
+.balance-bar .value.pop { animation: balPop 0.4s cubic-bezier(.2,1.4,.4,1); }
+@keyframes balPop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.14); color: var(--gold-0); text-shadow: 0 0 18px rgba(255,210,74,0.85); }
+  100% { transform: scale(1); }
+}
 .btn-add {
   width: 36px; height: 36px;
   border-radius: 10px;
@@ -547,7 +554,8 @@ body::after {
     var(--shadow-deep),
     inset 0 0 0 1.5px rgba(255,210,74,0.2);
   overflow: visible;
-  transition: transform 0.18s cubic-bezier(.2,1.4,.4,1), box-shadow 0.18s, filter 0.2s;
+  /* Snappy lift — transform answers in ~130ms, glow settles just behind it */
+  transition: transform 0.13s cubic-bezier(.2,1.4,.4,1), box-shadow 0.16s, filter 0.2s;
 }
 .game-card:hover {
   transform: translateY(-4px);
@@ -556,7 +564,7 @@ body::after {
     inset 0 0 0 1.5px rgba(255,210,74,0.4),
     0 0 36px rgba(255,210,74,0.18);
 }
-.game-card:active { transform: translateY(-1px); }
+.game-card:active { transform: translateY(-1px); transition-duration: 0.07s, 0.16s, 0.2s; }
 
 .game-card::before {
   content: '';
@@ -1921,7 +1929,7 @@ body::after {
     radial-gradient(circle at 30% 28%, rgba(255,255,255,0.85), transparent 35%),
     linear-gradient(135deg, #5cffa1, #22d3ee 55%, #a855f7);
   clip-path: polygon(50% 4%, 96% 38%, 50% 96%, 4% 38%);
-  filter: drop-shadow(0 0 4px rgba(92,255,161,0.55));
+  filter: drop-shadow(0 0 6px rgba(92,255,161,0.6));
   animation: mnGlint 3.6s ease-in-out infinite;
 }
 .preview.mines .mn-tile.diamond:nth-child(3)::before,
@@ -1932,9 +1940,11 @@ body::after {
 .preview.mines .mn-tile.diamond:nth-child(22)::before {
   animation-delay: 1.45s;
 }
+/* Glint pulses via opacity/transform (compositor-friendly) instead of
+   re-rasterising a drop-shadow on seven gem tiles every frame. */
 @keyframes mnGlint {
-  0%, 100% { filter: drop-shadow(0 0 4px rgba(92,255,161,0.55)); }
-  50%      { filter: drop-shadow(0 0 9px rgba(34,211,238,0.80)); }
+  0%, 100% { opacity: 0.72; transform: scale(0.96); }
+  50%      { opacity: 1;    transform: scale(1); }
 }
 .preview.mines .mn-tile.mine {
   background:
@@ -2226,7 +2236,8 @@ body::after {
   place-items: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s;
+  /* Crisp open/close — the veil answers immediately */
+  transition: opacity 0.16s;
 }
 .modal-veil.show { opacity: 1; pointer-events: all; }
 .modal-card {
@@ -2237,8 +2248,8 @@ body::after {
     radial-gradient(ellipse at top, rgba(168,85,247,0.25), transparent 60%),
     linear-gradient(180deg, #1c0a3a, #0a0319);
   box-shadow: var(--shadow-deep), inset 0 0 0 1.5px rgba(255,210,74,0.28);
-  transform: translateY(20px) scale(0.95);
-  transition: transform 0.3s cubic-bezier(.2,.9,.2,1.3);
+  transform: translateY(14px) scale(0.96);
+  transition: transform 0.2s cubic-bezier(.2,1.1,.3,1.15);
 }
 .modal-veil.show .modal-card { transform: translateY(0) scale(1); }
 
@@ -2425,6 +2436,56 @@ body::after {
   .play-cta { padding: 13px; font-size: 13px; }
   .game-title { font-size: 22px; }
   .modal-card { padding: 20px 18px; }
+}
+
+/* ============================================================
+   PERF — pause the always-running preview loops while a card is
+   offscreen. An IntersectionObserver in the lobby script toggles
+   .anim-idle on .game-card / .live-floor / .jp-pools; nothing
+   that shared scripts depend on is touched.
+   ============================================================ */
+.anim-idle .preview,
+.anim-idle .preview::before,
+.anim-idle .preview::after,
+.anim-idle .preview *,
+.anim-idle .preview *::before,
+.anim-idle .preview *::after,
+.live-floor.anim-idle::before,
+.live-floor.anim-idle .live-pulse,
+.jp-pools.anim-idle::before {
+  animation-play-state: paused !important;
+}
+
+/* Gentle "alive" pulses — class-toggled, transform/color only (both
+   already have transitions on the value elements). */
+.jp-tile.tick .jp-tile-amt { transform: scale(1.03); color: var(--accent); }
+.live-stat.tick .val { transform: scale(1.025); }
+
+/* ============================================================
+   LOW POWER — house heuristic (same as plinko/diamondpoker) adds
+   html.low-power. Strip the noise/blur chrome and the most
+   expensive loops (filter / box-shadow animations, multi-element
+   sweeps); keep the cheap transform-only idles so the lobby
+   still breathes.
+   ============================================================ */
+html.low-power body::before,
+html.low-power body::after { display: none; }
+html.low-power .btn-history { backdrop-filter: none; }
+html.low-power .modal-veil { backdrop-filter: none; background: rgba(5,1,15,0.9); }
+html.low-power .live-floor::before,
+html.low-power .jp-pools::before,
+html.low-power .preview.slots .reel-sym.diamond::after,
+html.low-power .preview.slots .reel-sym:not(.diamond)::before,
+html.low-power .preview.mines .mn-grid::after,
+html.low-power .preview.mines .mn-tile.diamond::before,
+html.low-power .preview.mines .mn-tile.mine,
+html.low-power .preview.dragontree .dt-ember,
+html.low-power .preview.rocket .rk-flame {
+  animation: none;
+}
+/* Mythic coin keeps its float, drops the brightness pulse */
+html.low-power .preview.dragontree .dt-coin.c2 {
+  animation: dtCoinFloatCentered 3.5s ease-in-out infinite;
 }
 </style>
 </head>
@@ -2934,6 +2995,15 @@ body::after {
 <script>
 if (window.SettingsUI) SettingsUI.mount();
 
+/* Low-power heuristic (house pattern — plinko/diamondpoker): few cores,
+   narrow screen, or reduced-motion preference. The html.low-power CSS
+   branch strips noise overlays, blur chrome, and the priciest loops. */
+const LOW_POWER =
+  !!(navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+  !!(window.matchMedia && (window.matchMedia('(max-width: 720px)').matches ||
+                           window.matchMedia('(prefers-reduced-motion: reduce)').matches));
+if (LOW_POWER) document.documentElement.classList.add('low-power');
+
 /* shared balance */
 const BALANCE_KEY = 'casino.balance';
 function loadBalance() {
@@ -2949,27 +3019,61 @@ const fmt = n => {
   return cents.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+/* ---- lobby SFX — sparse on purpose; this is the foyer.
+   Missing files must fail silently: play().catch(() => {}). ---- */
+const SFX_CACHE = {};
+function playSfx(name, vol = 1) {
+  try {
+    const v = vol * (window.Settings ? Settings.sfxVolume() : 1);
+    if (v <= 0) return;
+    let a = SFX_CACHE[name];
+    if (!a) {
+      a = new Audio('sfx/' + name + '.mp3');
+      a.preload = 'auto';
+      SFX_CACHE[name] = a;
+    }
+    a.volume = Math.max(0, Math.min(1, v));
+    a.currentTime = 0;
+    a.play().catch(() => {});
+  } catch (e) {}
+}
+
+/* Hot DOM lookups, cached once */
+const balanceEl  = document.getElementById('balance');
+const balanceVal = balanceEl.parentElement; // .balance-bar .value
+const modalVeil  = document.getElementById('modal-veil');
+const amountInput = document.getElementById('amount-input');
+
+let balancePainted = false;
 function refresh() {
-  document.getElementById('balance').textContent = fmt(loadBalance());
+  const text = fmt(loadBalance());
+  if (text === balanceEl.textContent) { balancePainted = true; return; }
+  balanceEl.textContent = text;
+  // Pop the value when it actually changes (not on first paint).
+  if (balancePainted) {
+    balanceVal.classList.remove('pop');
+    void balanceVal.offsetWidth; // restart the animation
+    balanceVal.classList.add('pop');
+  }
+  balancePainted = true;
 }
 refresh();
 
 /* ADD FUNDS modal */
 function openAdd() {
-  const v = document.getElementById('modal-veil');
-  v.classList.add('show');
-  const input = document.getElementById('amount-input');
-  input.value = '';
-  setTimeout(() => input.focus(), 100);
+  modalVeil.classList.add('show');
+  amountInput.value = '';
+  playSfx('chip_select', 0.45);
+  setTimeout(() => amountInput.focus(), 80);
 }
 function closeAdd() {
-  document.getElementById('modal-veil').classList.remove('show');
+  modalVeil.classList.remove('show');
 }
 function confirmAdd() {
-  const inp = document.getElementById('amount-input');
-  const amt = parseFloat(inp.value);
-  if (isNaN(amt) || amt <= 0) { inp.focus(); return; }
+  const amt = parseFloat(amountInput.value);
+  if (isNaN(amt) || amt <= 0) { amountInput.focus(); return; }
   persistBalance(loadBalance() + amt);
+  playSfx('chip_payout', 0.9);
   refresh();
   closeAdd();
 }
@@ -2985,13 +3089,20 @@ document.getElementById('modal-veil').addEventListener('click', e => {
 });
 document.querySelectorAll('.quick-chip').forEach(b => {
   b.addEventListener('click', () => {
-    const cur = parseFloat(document.getElementById('amount-input').value) || 0;
-    document.getElementById('amount-input').value = cur + parseInt(b.dataset.amt, 10);
+    const cur = parseFloat(amountInput.value) || 0;
+    amountInput.value = cur + parseInt(b.dataset.amt, 10);
+    playSfx('chip_select', 0.5);
   });
 });
-document.getElementById('amount-input').addEventListener('keydown', e => {
+amountInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmAdd();
   if (e.key === 'Escape') closeAdd();
+});
+
+/* Card click confirm — one delegated listener, best-effort sound
+   before navigation. Never blocks the link. */
+document.querySelector('.games').addEventListener('click', e => {
+  if (e.target.closest('.game-card')) playSfx('button_soft', 0.8);
 });
 
 /* refresh balance when returning from a game */
@@ -3015,6 +3126,9 @@ const liveFloorEl  = document.getElementById('live-floor');
 
 const animState = { totalSpins: 0, totalWagered: 0, totalWon: 0, jackpotsHit: 0 };
 const animRAF   = {};
+const STAT_CELL = {};
+STAT_KEYS.forEach(k => { STAT_CELL[k] = STAT_EL[k] ? STAT_EL[k].closest('.live-stat') : null; });
+const statLastTick = {};
 
 function fmtCount(n) {
   return Math.floor(n).toLocaleString('en-US');
@@ -3034,11 +3148,19 @@ function tweenStat(key, target) {
   const t0     = performance.now();
   const dur    = Math.min(1200, 360 + Math.log10(Math.max(1, Math.abs(delta))) * 220);
   const big    = delta > 0 && (key === 'jackpotsHit' || delta >= Math.max(50, start * 0.05));
-  const el     = STAT_EL[key];
-  if (big && el) {
-    const cell = el.closest('.live-stat');
-    cell?.classList.add('flash');
-    setTimeout(() => cell?.classList.remove('flash'), 600);
+  const cell   = STAT_CELL[key];
+  if (big && cell) {
+    cell.classList.add('flash');
+    setTimeout(() => cell.classList.remove('flash'), 600);
+  } else if (delta > 0 && cell) {
+    // Gentle pulse on smaller upticks, throttled so the panel feels
+    // alive without flickering on every bet.
+    const now = Date.now();
+    if (!statLastTick[key] || now - statLastTick[key] > 3000) {
+      statLastTick[key] = now;
+      cell.classList.add('tick');
+      setTimeout(() => cell.classList.remove('tick'), 300);
+    }
   }
   function frame(now) {
     const k = Math.min(1, (now - t0) / dur);

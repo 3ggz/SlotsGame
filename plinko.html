@@ -440,6 +440,16 @@ body::before {
   .recent-strip { height: 26px; }
   .recent-pill { font-size: 11px; padding: 4px 8px; }
 }
+
+/* LOW-POWER — drop blur-backed chrome (composite-heavy on weak GPUs) */
+html.low-power .lobby-link,
+html.low-power .history-btn,
+html.low-power .balance-link {
+  background: linear-gradient(180deg, rgba(42,18,77,0.96), rgba(15,4,30,0.96));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.low-power body::before { display: none; }
 </style>
 </head>
 <body>
@@ -526,6 +536,14 @@ if (window.SettingsUI) SettingsUI.mount();
 if (window.HistoryUI)  HistoryUI.mount();
 if (window.Music)      Music.init(encodeURI("Music/Plinko Royale.m4a"));
 
+/* Low-power heuristic (same as diamondpoker): few cores, narrow screen,
+   or reduced-motion preference. Caps canvas DPR and strips blur chrome. */
+const LOW_POWER =
+  !!(navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+  !!(window.matchMedia && (window.matchMedia('(max-width: 720px)').matches ||
+                           window.matchMedia('(prefers-reduced-motion: reduce)').matches));
+if (LOW_POWER) document.documentElement.classList.add('low-power');
+
 /* ---------- shared balance (matches other games) ---------- */
 const BALANCE_KEY = 'casino.balance';
 function loadBalance() {
@@ -550,6 +568,7 @@ document.addEventListener('jackpot-win', () => { balance = loadBalance(); refres
 
 // add-chips button removed from games — use the lobby
 document.getElementById('btn-history').addEventListener('click', () => {
+  playSfx('buttonSoft', 0.5);
   if (window.HistoryUI) HistoryUI.open({ scope: 'session', game: 'plinko' });
 });
 
@@ -673,9 +692,12 @@ function softLoss() {
 
 /* Rate-limited the same way as softLoss: on auto-drop several balls
    settle in the same 100 ms window, and the rapid stream of identical
-   descending thuds was the dominant Geiger source. */
+   descending thuds was the dominant Geiger source.
+   Weight now scales with the landed multiplier — a 0.3× cup lands with a
+   soft tap, a 50×+ edge cup lands with a chest-thump (louder, slightly
+   deeper, longer ring). Audio garnish only; payout math untouched. */
 let lastSlotThudT = 0;
-function slotThud() {
+function slotThud(mult = 1) {
   const ctx = ensureAudio();
   if (!ctx) return;
   const vol = (window.Settings ? Settings.sfxVolume() : 0.85);
@@ -683,18 +705,20 @@ function slotThud() {
   const now = ctx.currentTime;
   if (now - lastSlotThudT < 0.13) return;
   lastSlotThudT = now;
+  const w = Math.min(1, Math.log10(Math.max(0.1, mult) * 10) / 3); // 0.1×→0, 1×→~0.33, 100×→1
   const o = ctx.createOscillator();
   o.type = 'sine';
-  const f0 = 105 + Math.random() * 30;
+  const f0 = (105 + Math.random() * 30) * (1 - w * 0.18);          // big hits sit a touch deeper
   o.frequency.setValueAtTime(f0, now);
   o.frequency.exponentialRampToValueAtTime(f0 * 0.48, now + 0.18);
   const g = ctx.createGain();
+  const dur = 0.22 + w * 0.10;
   g.gain.setValueAtTime(0.0001, now);
-  g.gain.exponentialRampToValueAtTime(0.22 * vol, now + 0.005);
-  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+  g.gain.exponentialRampToValueAtTime((0.14 + w * 0.20) * vol, now + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
   o.connect(g).connect(ctx.destination);
   o.start(now);
-  o.stop(now + 0.24);
+  o.stop(now + dur + 0.02);
 }
 
 /* ---------- PAYOUT TABLES — nerfed
@@ -860,12 +884,96 @@ function layoutBoard() {
     const px = bottomStartX + k * pegSpaceX;
     slotDividers.push({ ax: px, ay: dividerTopY, bx: px, by: dividerBotY });
   }
+
+  staticLayerDirty = true;   // geometry changed — re-render the cached board layer
+}
+
+/* ---------- static board layer cache ----------
+   The funnel fill, wall outlines, pegs and slot tick marks never change
+   between layouts, but renderBoard used to rebuild them every frame —
+   ~340 radial gradients per frame at 16 rows. Render them ONCE to an
+   offscreen canvas whenever the layout changes and blit per frame. */
+const staticLayer = document.createElement('canvas');
+const staticCtx = staticLayer.getContext('2d');
+let staticLayerDirty = true;
+
+function renderStaticLayer() {
+  staticLayerDirty = false;
+  staticLayer.width  = Math.max(1, Math.round(LW * dpr));
+  staticLayer.height = Math.max(1, Math.round(LH * dpr));
+  const c = staticCtx;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, LW, LH);
+
+  // Faint funnel fill (between the angled walls)
+  const grd = c.createLinearGradient(0, 0, 0, LH);
+  grd.addColorStop(0, 'rgba(168,85,247,0.08)');
+  grd.addColorStop(1, 'rgba(34,211,238,0.05)');
+  c.fillStyle = grd;
+  c.beginPath();
+  c.moveTo(leftWall.ax,  leftWall.ay);
+  c.lineTo(rightWall.ax, rightWall.ay);
+  c.lineTo(rightWall.bx, rightWall.by);
+  c.lineTo(leftWall.bx,  leftWall.by);
+  c.closePath();
+  c.fill();
+
+  // Subtle wall outlines so the funnel reads visually
+  c.strokeStyle = 'rgba(255,210,74,0.18)';
+  c.lineWidth = 1.2;
+  c.beginPath();
+  c.moveTo(leftWall.ax,  leftWall.ay);
+  c.lineTo(leftWall.bx,  leftWall.by);
+  c.moveTo(rightWall.ax, rightWall.ay);
+  c.lineTo(rightWall.bx, rightWall.by);
+  c.stroke();
+
+  // Pegs
+  for (let i = 0; i < pegs.length; i++) {
+    const p = pegs[i];
+    // Outer glow halo
+    const g = c.createRadialGradient(p.x, p.y, p.r * 0.2, p.x, p.y, p.r * 2.4);
+    g.addColorStop(0, 'rgba(255,240,168,0.45)');
+    g.addColorStop(0.4, 'rgba(168,85,247,0.18)');
+    g.addColorStop(1, 'rgba(168,85,247,0)');
+    c.fillStyle = g;
+    c.beginPath();
+    c.arc(p.x, p.y, p.r * 2.4, 0, Math.PI * 2);
+    c.fill();
+
+    // Solid peg with 3D shading
+    const pg = c.createRadialGradient(p.x - p.r * 0.35, p.y - p.r * 0.4, p.r * 0.05, p.x, p.y, p.r);
+    pg.addColorStop(0, '#fff7d1');
+    pg.addColorStop(0.45, '#ffd24a');
+    pg.addColorStop(1, '#7a5500');
+    c.fillStyle = pg;
+    c.beginPath();
+    c.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    c.fill();
+
+    // Tiny highlight pip
+    c.fillStyle = 'rgba(255,255,255,0.55)';
+    c.beginPath();
+    c.arc(p.x - p.r * 0.32, p.y - p.r * 0.38, p.r * 0.22, 0, Math.PI * 2);
+    c.fill();
+  }
+
+  // Slot tick marks (subtle vertical dividers between cups)
+  c.strokeStyle = 'rgba(255,255,255,0.10)';
+  c.lineWidth = 1;
+  for (let i = 0; i < slotXs.length - 1; i++) {
+    const x = (slotXs[i] + slotXs[i + 1]) / 2;
+    c.beginPath();
+    c.moveTo(x, slotTopY + 4);
+    c.lineTo(x, slotTopY + 14);
+    c.stroke();
+  }
 }
 
 function resizeCanvas() {
   const rect = canvas.getBoundingClientRect();
   if (rect.width === 0 || rect.height === 0) return;
-  dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  dpr = Math.min(window.devicePixelRatio || 1, LOW_POWER ? 1.5 : 2.5);
   LW = rect.width;
   LH = rect.height;
   canvas.width  = Math.round(LW * dpr);
@@ -937,7 +1045,10 @@ function settleBall(b) {
   b.vx = 0;
   b.landed = true;
   b.landedAt = performance.now();
-  slotThud();
+  // Look up the landed multiplier (same table resolveDrop uses) so the
+  // bucket thud can scale with the win size.
+  const thudMults = MULTIPLIERS[b.rows || state.rows][b.risk || state.risk];
+  slotThud(thudMults && thudMults[idx] != null ? thudMults[idx] : 1);
   resolveDrop(idx, b.bet, b.risk, b.rows);
 }
 
@@ -1251,74 +1362,12 @@ function slotHue(idx, total) {
 function renderBoard() {
   ctx2d.clearRect(0, 0, LW, LH);
 
-  // Faint funnel fill behind everything (between the angled walls)
-  ctx2d.save();
-  const grd = ctx2d.createLinearGradient(0, 0, 0, LH);
-  grd.addColorStop(0, 'rgba(168,85,247,0.08)');
-  grd.addColorStop(1, 'rgba(34,211,238,0.05)');
-  ctx2d.fillStyle = grd;
-  ctx2d.beginPath();
-  ctx2d.moveTo(leftWall.ax,  leftWall.ay);
-  ctx2d.lineTo(rightWall.ax, rightWall.ay);
-  ctx2d.lineTo(rightWall.bx, rightWall.by);
-  ctx2d.lineTo(leftWall.bx,  leftWall.by);
-  ctx2d.closePath();
-  ctx2d.fill();
-  ctx2d.restore();
+  // Static layer (funnel + walls + pegs + slot ticks) — cached offscreen,
+  // re-rendered only when layout/geometry changes.
+  if (staticLayerDirty) renderStaticLayer();
+  ctx2d.drawImage(staticLayer, 0, 0, LW, LH);
 
-  // Subtle wall outlines so the funnel reads visually
-  ctx2d.save();
-  ctx2d.strokeStyle = 'rgba(255,210,74,0.18)';
-  ctx2d.lineWidth = 1.2;
-  ctx2d.beginPath();
-  ctx2d.moveTo(leftWall.ax,  leftWall.ay);
-  ctx2d.lineTo(leftWall.bx,  leftWall.by);
-  ctx2d.moveTo(rightWall.ax, rightWall.ay);
-  ctx2d.lineTo(rightWall.bx, rightWall.by);
-  ctx2d.stroke();
-  ctx2d.restore();
-
-  // Pegs
-  for (let i = 0; i < pegs.length; i++) {
-    const p = pegs[i];
-    // Outer glow halo
-    const g = ctx2d.createRadialGradient(p.x, p.y, p.r * 0.2, p.x, p.y, p.r * 2.4);
-    g.addColorStop(0, 'rgba(255,240,168,0.45)');
-    g.addColorStop(0.4, 'rgba(168,85,247,0.18)');
-    g.addColorStop(1, 'rgba(168,85,247,0)');
-    ctx2d.fillStyle = g;
-    ctx2d.beginPath();
-    ctx2d.arc(p.x, p.y, p.r * 2.4, 0, Math.PI * 2);
-    ctx2d.fill();
-
-    // Solid peg with 3D shading
-    const pg = ctx2d.createRadialGradient(p.x - p.r * 0.35, p.y - p.r * 0.4, p.r * 0.05, p.x, p.y, p.r);
-    pg.addColorStop(0, '#fff7d1');
-    pg.addColorStop(0.45, '#ffd24a');
-    pg.addColorStop(1, '#7a5500');
-    ctx2d.fillStyle = pg;
-    ctx2d.beginPath();
-    ctx2d.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx2d.fill();
-
-    // Tiny highlight pip
-    ctx2d.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx2d.beginPath();
-    ctx2d.arc(p.x - p.r * 0.32, p.y - p.r * 0.38, p.r * 0.22, 0, Math.PI * 2);
-    ctx2d.fill();
-  }
-
-  // Slot dividers (subtle vertical ticks between slots)
   const total = slotXs.length;
-  ctx2d.strokeStyle = 'rgba(255,255,255,0.10)';
-  ctx2d.lineWidth = 1;
-  for (let i = 0; i < total - 1; i++) {
-    const x = (slotXs[i] + slotXs[i+1]) / 2;
-    ctx2d.beginPath();
-    ctx2d.moveTo(x, slotTopY + 4);
-    ctx2d.lineTo(x, slotTopY + 14);
-    ctx2d.stroke();
-  }
 
   // Slot multiplier chips along the bottom.
   // Bigger chips + Bungee (way more condensed than Geist Mono) + dropped
@@ -1477,6 +1526,10 @@ function roundRect(c, x, y, w, h, r) {
 /* ---------- main loop ---------- */
 let lastT = performance.now();
 let lastLockState = null;
+// Hot DOM lookups cached once — updateControlLocks runs on lock-state
+// edges inside the frame loop and shouldn't re-query the document.
+const betModBtns = Array.from(document.querySelectorAll('.bet-mod'));
+const segBtns = Array.from(document.querySelectorAll('#risk-seg button, #rows-seg button, #auto-seg button'));
 function ballsInFlight() {
   for (const b of balls) if (!b.landed) return true;
   return false;
@@ -1493,9 +1546,8 @@ function updateControlLocks() {
   if (locked === lastLockState) return;   // cheap: only touch DOM on edges
   lastLockState = locked;
   betInput.disabled = locked;
-  document.querySelectorAll('.bet-mod').forEach(b => b.disabled = locked);
-  document.querySelectorAll('#risk-seg button, #rows-seg button, #auto-seg button')
-    .forEach(b => b.disabled = locked);
+  betModBtns.forEach(b => { b.disabled = locked; });
+  segBtns.forEach(b => { b.disabled = locked; });
 }
 function frame(now) {
   frameRequest = 0;

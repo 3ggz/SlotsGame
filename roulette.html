@@ -984,6 +984,7 @@ button { cursor: pointer; }
   letter-spacing: 0.06em;
 }
 .bet-zone:hover { filter: brightness(1.12); transform: translateY(-1px); }
+.bet-zone:active { filter: brightness(1.2); transform: translateY(1px) scale(0.985); }
 .bet-zone:disabled { opacity: 0.58; cursor: not-allowed; transform: none; }
 .bet-zone.red { background: linear-gradient(180deg, #da294a, #6d061a); }
 .bet-zone.black { background: linear-gradient(180deg, #2b2935, #05050a); }
@@ -1164,6 +1165,12 @@ button { cursor: pointer; }
     conic-gradient(#fff 0 8%, transparent 8% 17%, #fff 17% 25%, transparent 25% 33%, #fff 33% 42%, transparent 42% 50%, #fff 50% 58%, transparent 58% 67%, #fff 67% 75%, transparent 75% 83%, #fff 83% 92%, transparent 92% 100%),
     radial-gradient(circle, #ffd24a, #b8860b);
   box-shadow: 0 4px 0 rgba(0,0,0,0.48), inset 0 0 0 3px rgba(0,0,0,0.18);
+  transition: transform 0.1s, box-shadow 0.12s, filter 0.12s;
+}
+.chip:hover { filter: brightness(1.1); }
+.chip:active {
+  transform: translateY(2px) scale(0.96);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.48), inset 0 0 0 3px rgba(0,0,0,0.18);
 }
 .chip[data-chip="5"] { background-color: #ef4452; }
 .chip[data-chip="25"] { background-color: #2cba63; }
@@ -1429,7 +1436,7 @@ body[data-phase="result"] .hot-cold-bar {
   .outside-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .roulette-wheel, .ball, .bet-zone { transition: none; animation: none !important; }
+  .roulette-wheel, .ball, .bet-zone, .chip { transition: none; animation: none !important; }
 }
 </style>
 </head>
@@ -1991,6 +1998,7 @@ const State = {
   unsubscribeWins: null,
   winsRoundId: null,
   lastRenderSecond: -1,
+  renderedPhaseKey: '',
   chatStarted: false,
   presenceStarted: false,
   focusedPhase: null,
@@ -2013,6 +2021,7 @@ const resultCaptionEl = document.getElementById('result-caption');
 const statusTextEl = document.getElementById('status-text');
 const statusDotEl = document.getElementById('status-dot');
 const phaseTimerEl = document.getElementById('phase-timer');
+const phaseTimerRowEl = phaseTimerEl.closest('.meter-row');
 const feltTimerEl = document.getElementById('felt-timer');
 const feltTimerLabelEl = document.getElementById('felt-timer-label');
 const feltTimerValueEl = document.getElementById('felt-timer-value');
@@ -2041,6 +2050,8 @@ const addVeil = document.getElementById('add-veil');
 const SFX = {
   chipSelect: 'sfx/chip_select.mp3',
   chipPlace: 'sfx/chip_place_a.mp3',
+  chipPlaceB: 'sfx/chip_place_b.mp3',
+  chipPlaceC: 'sfx/chip_place_c.mp3',
   chipClear: 'sfx/chip_clear.mp3',
   chipPayout: 'sfx/chip_payout.mp3',
   button: 'sfx/button_soft.mp3',
@@ -2068,6 +2079,10 @@ function playSfx(name, vol = 1) {
     a.volume = clamp((window.Settings ? Settings.sfxVolume() : 0.8) * vol, 0, 1);
     a.play().catch(() => {});
   } catch (e) {}
+}
+const CHIP_PLACE_KEYS = ['chipPlace', 'chipPlaceB', 'chipPlaceC'];
+function playChipPlace(vol) {
+  playSfx(CHIP_PLACE_KEYS[Math.floor(Math.random() * CHIP_PLACE_KEYS.length)], vol);
 }
 
 function refreshBalance() { balEl.textContent = fmt(balance); }
@@ -2212,7 +2227,7 @@ function placeBetGroup(bets, label) {
   clean.forEach(mergeBet);
   State.undoStack.push({ type: 'place', bets: cloneBets(clean) });
   clearEditSelection();
-  playSfx('chipPlace', 0.72);
+  playChipPlace(0.72);
   if (window.Music) Music.start();
   showToast(label || ('BET ' + money(cost)), 'win');
   renderBets();
@@ -2314,7 +2329,7 @@ function moveSelectedBet(targetBet) {
     to: [cloneBet(targetBet, moved.amount)],
   });
   clearEditSelection();
-  playSfx('chipPlace', 0.68);
+  playChipPlace(0.68);
   showToast('MOVED ' + money(moved.amount), 'win');
   renderBets();
   return true;
@@ -2811,42 +2826,53 @@ function syncRound(round) {
     playSfx('wheelSpin', 0.92);
   }
 
-  if (round.phase === 'betting') {
-    resultNumberEl.textContent = '--';
-    resultNumberEl.className = 'result-number';
-    resultCaptionEl.textContent = 'PLACE BETS';
-    statusTextEl.textContent = 'BETTING';
-    statusDotEl.style.background = 'var(--neon-cyan)';
-    boardLockEl.textContent = 'BETS OPEN';
-  } else if (round.phase === 'spinning') {
-    resultNumberEl.textContent = 'SPIN';
-    resultNumberEl.className = 'result-number';
-    resultCaptionEl.textContent = 'BETS LOCKED';
-    statusTextEl.textContent = 'SPINNING';
-    statusDotEl.style.background = 'var(--gold-1)';
-    boardLockEl.textContent = 'BETS LOCKED';
-  } else {
-    resultNumberEl.textContent = round.outcome;
-    resultNumberEl.className = 'result-number ' + round.color;
-    resultCaptionEl.textContent = round.color.toUpperCase() + ' WINS';
-    statusTextEl.textContent = 'RESULT';
-    statusDotEl.style.background = round.color === 'green' ? 'var(--neon-green)' : round.color === 'red' ? 'var(--neon-pink)' : 'var(--neon-violet)';
-    boardLockEl.textContent = 'NEXT ROUND SOON';
-    statLastEl.textContent = round.outcome;
+  const phaseKey = round.roundId + ':' + round.phase;
+  if (State.renderedPhaseKey !== phaseKey) {
+    State.renderedPhaseKey = phaseKey;
+    if (round.phase === 'betting') {
+      resultNumberEl.textContent = '--';
+      resultNumberEl.className = 'result-number';
+      resultCaptionEl.textContent = 'PLACE BETS';
+      statusTextEl.textContent = 'BETTING';
+      statusDotEl.style.background = 'var(--neon-cyan)';
+      boardLockEl.textContent = 'BETS OPEN';
+    } else if (round.phase === 'spinning') {
+      resultNumberEl.textContent = 'SPIN';
+      resultNumberEl.className = 'result-number';
+      resultCaptionEl.textContent = 'BETS LOCKED';
+      statusTextEl.textContent = 'SPINNING';
+      statusDotEl.style.background = 'var(--gold-1)';
+      boardLockEl.textContent = 'BETS LOCKED';
+    } else {
+      resultNumberEl.textContent = round.outcome;
+      resultNumberEl.className = 'result-number ' + round.color;
+      resultCaptionEl.textContent = round.color.toUpperCase() + ' WINS';
+      statusTextEl.textContent = 'RESULT';
+      statusDotEl.style.background = round.color === 'green' ? 'var(--neon-green)' : round.color === 'red' ? 'var(--neon-pink)' : 'var(--neon-violet)';
+      boardLockEl.textContent = 'NEXT ROUND SOON';
+      statLastEl.textContent = round.outcome;
+    }
+  }
+  if (round.phase === 'result') {
     resolveCurrentBets(round);
     renderRecentWins();
   }
 
   const seconds = Math.ceil(round.phaseRemaining / 1000);
-  phaseTimerEl.textContent = seconds + 's';
-  feltTimerLabelEl.textContent = round.phase === 'betting'
-    ? 'BETS CLOSE'
-    : round.phase === 'spinning'
-      ? 'BETS LOCKED'
-      : 'NEXT SPIN';
-  feltTimerValueEl.textContent = seconds + 's';
-  feltTimerEl.classList.toggle('urgent', round.phase === 'betting' && seconds <= 5);
-  phaseTimerEl.closest('.meter-row').classList.toggle('urgent', round.phase === 'betting' && seconds <= 5);
+  const secondKey = round.phase + ':' + seconds;
+  if (State.lastRenderSecond !== secondKey) {
+    State.lastRenderSecond = secondKey;
+    const urgent = round.phase === 'betting' && seconds <= 5;
+    phaseTimerEl.textContent = seconds + 's';
+    feltTimerLabelEl.textContent = round.phase === 'betting'
+      ? 'BETS CLOSE'
+      : round.phase === 'spinning'
+        ? 'BETS LOCKED'
+        : 'NEXT SPIN';
+    feltTimerValueEl.textContent = seconds + 's';
+    feltTimerEl.classList.toggle('urgent', urgent);
+    phaseTimerRowEl.classList.toggle('urgent', urgent);
+  }
   updateWheel(round);
   renderSpinBetMap();
   renderBets();
@@ -2978,6 +3004,7 @@ function startChat() {
 function sendChatMessage() {
   const msg = chatInputEl.value.trim();
   if (!msg) return;
+  playSfx('button', 0.42);
   chatInputEl.value = '';
   try {
     if (window.RouletteLive && typeof RouletteLive.sendChat === 'function') RouletteLive.sendChat(msg);
@@ -3024,7 +3051,10 @@ document.querySelectorAll('.chip').forEach(btn => {
     playSfx('chipSelect', 0.55);
   });
 });
-document.querySelectorAll('.mode-btn').forEach(btn => btn.addEventListener('click', () => setMode(btn.dataset.mode)));
+document.querySelectorAll('.mode-btn').forEach(btn => btn.addEventListener('click', () => {
+  playSfx('button', 0.5);
+  setMode(btn.dataset.mode);
+}));
 document.getElementById('btn-neighbors').addEventListener('click', () => {
   const center = document.getElementById('neighbors-center').value;
   const bets = Core.createNeighborsBets(center, getBetAmount(), 2);
@@ -3040,8 +3070,14 @@ document.getElementById('btn-undo').addEventListener('click', undoLast);
 removeBetBtn.addEventListener('click', removeSelectedBet);
 document.getElementById('btn-rebet').addEventListener('click', rebet);
 document.getElementById('btn-double').addEventListener('click', doubleBets);
-document.getElementById('btn-rules').addEventListener('click', () => rulesVeil.classList.add('show'));
-document.getElementById('rules-close').addEventListener('click', () => rulesVeil.classList.remove('show'));
+document.getElementById('btn-rules').addEventListener('click', () => {
+  playSfx('button', 0.5);
+  rulesVeil.classList.add('show');
+});
+document.getElementById('rules-close').addEventListener('click', () => {
+  playSfx('button', 0.5);
+  rulesVeil.classList.remove('show');
+});
 rulesVeil.addEventListener('click', e => { if (e.target === rulesVeil) rulesVeil.classList.remove('show'); });
 // add-chips button removed from games — use the lobby
 document.getElementById('add-close').addEventListener('click', () => addVeil.classList.remove('show'));

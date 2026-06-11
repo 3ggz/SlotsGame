@@ -1578,6 +1578,17 @@ body.is-spinning .symbol::before { animation-play-state: paused !important; }
   100% { transform: translateX(100%); }
 }
 
+/* ---------- WIN SETTLE (tiny one-shot dip on any line win) ----------
+   Transform-only, ~260 ms — a physical "the cabinet felt that" nudge
+   for ordinary wins that don't earn the full win-shake. */
+.cabinet.win-settle { animation: winSettle 0.26s ease-out; }
+@keyframes winSettle {
+  0%   { transform: translate3d(0,0,0); }
+  40%  { transform: translate3d(0,2px,0); }
+  100% { transform: translate3d(0,0,0); }
+}
+html.low-power .cabinet.win-settle { animation: none; }
+
 /* ---------- BIGWIN SHAKE (lighter than .shake-strong) ---------- */
 .cabinet.win-shake { animation: winShake 0.5s ease-out; }
 @keyframes winShake {
@@ -2831,6 +2842,9 @@ const Audio = (() => {
     betDown()         { play('bet_down', { gain: 0.70, maxMs: 350 }); },
     coin()            { play('coin_drop',    { gain: 0.55, pitch: 0.95, pitchVariance: 0.18, maxMs: 350 }); },
     cellTick()        { play('cell_tick',    { gain: 0.65, pitchVariance: 0.12, maxMs: 200 }); },
+    /* Soft tick that accompanies win count-ups; pitch rises with
+       progress (0..1) so the rollup audibly "climbs". */
+    countTick(p = 0)  { play('cell_tick',    { gain: 0.32, pitch: 0.9 + 0.45 * Math.max(0, Math.min(1, p)), pitchVariance: 0.03, maxMs: 160 }); },
     cellSpinStart()   { play('cell_spin_start', { gain: 0.80 }); },
     respinReset()     { play('respin_reset', { gain: 0.85 }); },
     anticipation()    { play('anticipation_build', { gain: 0.90 }); },
@@ -2983,6 +2997,13 @@ const getBuyBonusCost = () => State.bet * BUY_BONUS_COST_MULT;
 /* ============================================================
    FORMAT HELPERS
    ============================================================ */
+/* Cached getElementById — these run in hot paths (every spin, every
+   respin, every balance tick), so memoize the lookups once. */
+const $id = (() => {
+  const cache = Object.create(null);
+  return id => cache[id] || (cache[id] = document.getElementById(id));
+})();
+
 /* Round to cents, then show 2 decimals only when there's a fractional component
    so $1,000 stays clean while $7.50 reads as $7.50, never $8. */
 const fmt = n => {
@@ -2993,12 +3014,12 @@ const fmt = n => {
 function setBalance(n) {
   State.balance = Math.max(0, n);
   persistBalance(State.balance);
-  document.getElementById('balance').textContent = fmt(State.balance);
+  $id('balance').textContent = fmt(State.balance);
   updateBuyBonusButton();
 }
 function setWin(n, opts = {}) {
   State.lastWin = n;
-  const el = document.getElementById('win');
+  const el = $id('win');
   el.textContent = '$' + fmt(n);
   if (opts.glow) {
     el.parentElement.classList.remove('glow');
@@ -3008,7 +3029,7 @@ function setWin(n, opts = {}) {
 }
 function setBet(n) {
   State.bet = n;
-  document.getElementById('bet').textContent = fmt(State.bet);
+  $id('bet').textContent = fmt(State.bet);
   updateJackpotDisplay();
   updateBuyBonusDisplay();
   updateBuyBonusButton();
@@ -3016,7 +3037,7 @@ function setBet(n) {
 }
 
 function updateBuyBonusDisplay() {
-  const el = document.getElementById('buy-bonus-display');
+  const el = $id('buy-bonus-display');
   if (el) el.textContent = '$' + fmt(getBuyBonusCost());
 }
 function updateJackpotDisplay() {
@@ -3026,8 +3047,8 @@ function updateJackpotDisplay() {
   const tiers = { mini: 'MINI', minor: 'MINOR', major: 'MAJOR', grand: 'GRAND' };
   Object.entries(tiers).forEach(([key, t]) => {
     const v = '$' + fmt(bet * JACKPOT_MULTS[t]);
-    const top = document.getElementById('jp-' + key);
-    const bonus = document.getElementById('bonus-jp-' + key);
+    const top = $id('jp-' + key);
+    const bonus = $id('bonus-jp-' + key);
     if (top) top.textContent = v;
     if (bonus) bonus.textContent = v;
   });
@@ -3040,6 +3061,10 @@ const REEL_COUNT = 5;
 const ROW_COUNT = 3;
 const STRIP_LEN = 14; // logical symbols per reel strip — kept small so off-screen symbols aren't a paint cost
 const reelSpinJobs = new Map();
+/* Cached reel/strip elements — populated once in buildReels so the
+   spin loop and win-highlight passes never re-query the DOM. */
+const reelEls = [];
+const stripEls = [];
 
 function pickSymbol(extraDiamondBoost = 0) {
   const totalW = SYMBOLS.reduce((s, x) => s + x.weight + (x.bonus ? extraDiamondBoost : 0), 0);
@@ -3069,8 +3094,10 @@ function symbolEl(sym) {
 }
 
 function buildReels() {
-  const reelsEl = document.getElementById('reels');
+  const reelsEl = $id('reels');
   reelsEl.innerHTML = '';
+  reelEls.length = 0;
+  stripEls.length = 0;
   for (let r = 0; r < REEL_COUNT; r++) {
     const reelEl = document.createElement('div');
     reelEl.className = 'reel';
@@ -3082,6 +3109,8 @@ function buildReels() {
     for (let i = 0; i < STRIP_LEN; i++) strip.appendChild(symbolEl(pickSymbol()));
     reelEl.appendChild(strip);
     reelsEl.appendChild(reelEl);
+    reelEls.push(reelEl);
+    stripEls.push(strip);
   }
 }
 
@@ -3094,8 +3123,8 @@ function buildReels() {
    cause of the "the SPIN button feels sluggish on mobile" lag. */
 function spinReel(reelIndex, finalTriple, duration, onStop) {
   return new Promise(resolve => {
-    const reel = document.querySelector(`.reel[data-reel="${reelIndex}"]`);
-    const strip = reel.querySelector('.strip');
+    const reel = reelEls[reelIndex];
+    const strip = stripEls[reelIndex];
     const prior = reelSpinJobs.get(reelIndex);
     if (prior && prior.timers) prior.timers.forEach(id => clearTimeout(id));
     const job = { token: Symbol('spin'), timers: [] };
@@ -3168,20 +3197,19 @@ function spinReel(reelIndex, finalTriple, duration, onStop) {
 
 /* get the final triple (the 3 visible rows) of a reel after spin */
 function getReelVisible(reelIndex) {
-  const reel = document.querySelector(`.reel[data-reel="${reelIndex}"]`);
-  const symbols = reel.querySelectorAll('.symbol');
   // first 3 children correspond to top/mid/bottom visible (spin DOWN)
-  const first3 = Array.from(symbols).slice(0, 3);
-  return first3.map(el => SYMBOLS.find(s => s.id === el.dataset.symbol));
+  const kids = stripEls[reelIndex].children;
+  const out = [];
+  for (let i = 0; i < 3; i++) out.push(SYMBOLS.find(s => s.id === kids[i].dataset.symbol));
+  return out;
 }
 
 /* clear win highlights */
 function clearWinHighlights() {
-  document.querySelectorAll('.symbol').forEach(s => {
-    s.classList.remove('win', 'dim');
-  });
-  const svg = document.getElementById('paylines');
-  svg.innerHTML = '';
+  for (const strip of stripEls) {
+    for (const s of strip.children) s.classList.remove('win', 'dim');
+  }
+  $id('paylines').innerHTML = '';
 }
 
 /* evaluate paylines after spin, return total win + list of winning lines */
@@ -3213,28 +3241,39 @@ function evaluateWin(grid) {
   return { wins, diamondCount };
 }
 
-/* draw payline through actual symbol DOM centers — pixel-accurate, no stretching distortion */
-function drawPayline(line, color, count) {
-  const svg = document.getElementById('paylines');
-  if (!svg) return;
+/* Batch-read all win-overlay geometry in one pass (svg rect + the 15
+   visible symbol centers, in viewport coords) BEFORE any DOM writes.
+   drawPayline / confetti then consume the snapshot — no interleaved
+   read→write→read layout thrash when several paylines hit at once. */
+function readWinGeometry() {
+  const svg = $id('paylines');
+  if (!svg) return null;
   const svgRect = svg.getBoundingClientRect();
-  if (svgRect.width === 0 || svgRect.height === 0) return;
+  if (svgRect.width === 0 || svgRect.height === 0) return null;
+  const centers = [];
+  for (let r = 0; r < REEL_COUNT; r++) {
+    const kids = stripEls[r].children;
+    const col = [];
+    for (let row = 0; row < ROW_COUNT; row++) {
+      const rect = kids[row].getBoundingClientRect();
+      col.push({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    }
+    centers.push(col);
+  }
+  return { svg, svgRect, centers };
+}
 
+/* draw payline through pre-read symbol centers — pixel-accurate, write-only */
+function drawPayline(line, color, count, geom) {
+  if (!geom) return;
+  const { svg, svgRect, centers } = geom;
   // Lock SVG coordinate system to actual pixel dimensions so polyline points map 1:1
   svg.setAttribute('viewBox', `0 0 ${svgRect.width.toFixed(0)} ${svgRect.height.toFixed(0)}`);
-
   const pts = [];
   for (let r = 0; r < count; r++) {
-    const reel = document.querySelector(`.reel[data-reel="${r}"]`);
-    if (!reel) continue;
-    const symbols = reel.querySelectorAll('.symbol');
-    const visible = Array.from(symbols).slice(0, 3);
-    const targetSym = visible[line[r]];
-    if (!targetSym) continue;
-    const symRect = targetSym.getBoundingClientRect();
-    const cx = symRect.left + symRect.width / 2 - svgRect.left;
-    const cy = symRect.top + symRect.height / 2 - svgRect.top;
-    pts.push(`${cx.toFixed(1)},${cy.toFixed(1)}`);
+    const c = centers[r][line[r]];
+    if (!c) continue;
+    pts.push(`${(c.x - svgRect.left).toFixed(1)},${(c.y - svgRect.top).toFixed(1)}`);
   }
   if (pts.length < 2) return;
 
@@ -3248,26 +3287,22 @@ function drawPayline(line, color, count) {
 
 function highlightWinSymbols(line, count) {
   for (let r = 0; r < count; r++) {
-    const reel = document.querySelector(`.reel[data-reel="${r}"]`);
-    const syms = reel.querySelectorAll('.symbol');
-    const visible = Array.from(syms).slice(0, 3);
-    visible[line[r]].classList.add('win');
+    stripEls[r].children[line[r]].classList.add('win');
   }
 }
 
-function dimNonWinning(allWinningCells) {
-  document.querySelectorAll('.reel').forEach(reel => {
-    const syms = reel.querySelectorAll('.symbol');
-    const visible = Array.from(syms).slice(0, 3);
-    visible.forEach(sym => {
-      if (!sym.classList.contains('win')) sym.classList.add('dim');
-    });
-  });
+function dimNonWinning() {
+  for (const strip of stripEls) {
+    const kids = strip.children;
+    for (let i = 0; i < ROW_COUNT; i++) {
+      if (!kids[i].classList.contains('win')) kids[i].classList.add('dim');
+    }
+  }
 }
 
 /* trigger a one-shot light-sweep across the reels area */
 function fireWinSweep() {
-  const screen = document.getElementById('screen');
+  const screen = $id('screen');
   if (!screen) return;
   screen.classList.remove('win-sweep');
   void screen.offsetWidth;
@@ -3277,7 +3312,7 @@ function fireWinSweep() {
 
 /* impact pulse: a quick burst at the cabinet — for landing wins/feature triggers */
 function fireCabinetImpact() {
-  const cab = document.getElementById('cabinet');
+  const cab = $id('cabinet');
   if (!cab) return;
   cab.classList.remove('win-shake');
   void cab.offsetWidth;
@@ -3285,11 +3320,21 @@ function fireCabinetImpact() {
   setTimeout(() => cab.classList.remove('win-shake'), 520);
 }
 
+/* gentle one-shot settle for ordinary wins (transform-only) */
+function fireCabinetSettle() {
+  const cab = $id('cabinet');
+  if (!cab) return;
+  cab.classList.remove('win-settle');
+  void cab.offsetWidth;
+  cab.classList.add('win-settle');
+  setTimeout(() => cab.classList.remove('win-settle'), 300);
+}
+
 /* ============================================================
    PARTICLES
    ============================================================ */
 function spawnConfetti(x, y, count = 30) {
-  const layer = document.getElementById('particles');
+  const layer = $id('particles');
   const colors = ['#ff2e93','#22d3ee','#a855f7','#ffd24a','#5cffa1','#ffffff'];
   // Mobile: halve particle count — each particle is a DOM node with an
   // animation, and the GPU thrashes once you have ~50+ in flight.
@@ -3315,7 +3360,7 @@ function spawnConfetti(x, y, count = 30) {
 
 function spawnCoinShower(originEl, count = 40) {
   const rect = originEl.getBoundingClientRect();
-  const layer = document.getElementById('particles');
+  const layer = $id('particles');
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
   if (window.innerWidth < 720) count = Math.max(6, Math.ceil(count / 2));
@@ -3353,20 +3398,33 @@ function countUp(from, to, duration, onUpdate, onDone) {
   requestAnimationFrame(tick);
 }
 
+/* Throttled SFX tick to accompany a countUp — call with progress 0..1
+   each frame; it fires Audio.countTick at most every `intervalMs`. */
+function makeCountTicker(intervalMs = 90) {
+  let last = 0;
+  return progress => {
+    const now = performance.now();
+    if (now - last >= intervalMs) {
+      last = now;
+      Audio.countTick(progress);
+    }
+  };
+}
+
 /* ============================================================
    BIG WIN OVERLAY
    ============================================================ */
 function showBigWin(amount, tier) {
-  const overlay = document.getElementById('bigwin');
-  const textEl = document.getElementById('bigwin-text');
-  const amtEl = document.getElementById('bigwin-amount');
+  const overlay = $id('bigwin');
+  const textEl = $id('bigwin-text');
+  const amtEl = $id('bigwin-amount');
   const labels = { big: 'BIG WIN!', huge: 'HUGE WIN!', mega: 'MEGA WIN!', epic: 'EPIC WIN!' };
   textEl.textContent = labels[tier] || 'BIG WIN!';
   amtEl.textContent = '$0';
   overlay.classList.add('show');
   State.bigWinShowing = true;
   // Block spin spamming while the overlay is up
-  const spinBtn = document.getElementById('spin-btn');
+  const spinBtn = $id('spin-btn');
   if (spinBtn) spinBtn.disabled = true;
   // Audio: the new lineWin(3, 'big'|'huge') chain already plays the
   // appropriate fanfare immediately after the line-win sting, so we
@@ -3383,13 +3441,20 @@ function showBigWin(amount, tier) {
     setTimeout(() => spawnCoinShower(overlay, 50), 200);
   }
 
-  countUp(0, amount, 1400, v => { amtEl.textContent = '$' + fmt(v); }, () => {
+  // Snappier celebration: 1.1 s rollup + 1.1 s hold instead of the old
+  // 1.4 s + 1.6 s — still a moment, never a wait. Ticks accompany the
+  // count so it audibly climbs.
+  const ticker = makeCountTicker(80);
+  countUp(0, amount, 1100, v => {
+    amtEl.textContent = '$' + fmt(v);
+    ticker(amount > 0 ? v / amount : 1);
+  }, () => {
     setTimeout(() => {
       overlay.classList.remove('show');
       State.bigWinShowing = false;
       if (spinBtn) spinBtn.disabled = false;
       tryAutoSpin();
-    }, 1600);
+    }, 1100);
   });
 }
 
@@ -3400,7 +3465,7 @@ function maybeAnticipation(scatterSoFar) {
   // scatterSoFar = how many diamonds in already-stopped reels
   // Trigger anticipation if we have 2+ diamonds after reel 2 stops (3 needed total)
   if (scatterSoFar >= 2) {
-    document.getElementById('anticipation').classList.add('on');
+    $id('anticipation').classList.add('on');
     Audio.anticipation();
     return true;
   }
@@ -3420,14 +3485,15 @@ async function doSpin(opts = {}) {
 
   State.spinning = true;
   document.body.classList.add('is-spinning');
-  document.getElementById('spin-btn').classList.add('spinning');
-  document.getElementById('spin-btn').disabled = true;
+  const spinBtn = $id('spin-btn');
+  spinBtn.classList.add('spinning');
+  spinBtn.disabled = true;
   updateBuyBonusButton();
   updateBoostUI();
   clearWinHighlights();
   setWin(0);
-  document.getElementById('anticipation').classList.remove('on');
-  document.getElementById('screen').classList.remove('antic-pulse');
+  $id('anticipation').classList.remove('on');
+  $id('screen').classList.remove('antic-pulse');
 
   if (!opts.boughtBonus) setBalance(State.balance - getEffectiveBet());
 
@@ -3498,8 +3564,8 @@ async function doSpin(opts = {}) {
   if (anticipate4and5) {
     setTimeout(() => {
       if (State.spinning) {
-        document.getElementById('anticipation').classList.add('on');
-        document.getElementById('screen').classList.add('antic-pulse');
+        $id('anticipation').classList.add('on');
+        $id('screen').classList.add('antic-pulse');
         Audio.anticipation();
       }
     }, baseDur[2] + 40);
@@ -3508,8 +3574,8 @@ async function doSpin(opts = {}) {
   if (anticipate5) {
     setTimeout(() => {
       if (State.spinning) {
-        document.getElementById('anticipation').classList.add('on');
-        document.getElementById('screen').classList.add('antic-pulse');
+        $id('anticipation').classList.add('on');
+        $id('screen').classList.add('antic-pulse');
         Audio.anticipationHigh();
       }
     }, dur[3] + 60);
@@ -3528,19 +3594,36 @@ async function doSpin(opts = {}) {
   }
 
   if (wins.length > 0) {
+    // One geometry read (svg + 15 symbol centers), then write-only:
+    // paylines, highlights, dims, confetti all consume the snapshot.
+    const geom = readWinGeometry();
     wins.forEach(w => {
-      drawPayline(w.line, PAYLINE_COLORS[w.lineIdx], w.count);
+      drawPayline(w.line, PAYLINE_COLORS[w.lineIdx], w.count, geom);
       highlightWinSymbols(w.line, w.count);
     });
     dimNonWinning();
     fireWinSweep();
-    // confetti burst at each winning symbol
-    document.querySelectorAll('.symbol.win').forEach((sym, i) => {
-      const r = sym.getBoundingClientRect();
-      setTimeout(() => spawnConfetti(r.left + r.width/2, r.top + r.height/2, 10), i * 35);
+    // confetti burst at each winning symbol (deduped across overlapping lines)
+    if (geom) {
+      const seen = new Set();
+      let burstIdx = 0;
+      wins.forEach(w => {
+        for (let r = 0; r < w.count; r++) {
+          const key = r + ',' + w.line[r];
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const c = geom.centers[r][w.line[r]];
+          setTimeout(() => spawnConfetti(c.x, c.y, 10), burstIdx * 35);
+          burstIdx++;
+        }
+      });
+    }
+    // counter rollup with rising audio ticks
+    const winTicker = makeCountTicker(90);
+    countUp(0, totalWin, 900, v => {
+      $id('win').textContent = '$' + fmt(v);
+      winTicker(totalWin > 0 ? v / totalWin : 1);
     });
-    // counter rollup
-    countUp(0, totalWin, 900, v => { document.getElementById('win').textContent = '$' + fmt(v); });
     setBalance(State.balance + totalWin);
     setWin(totalWin, { glow: true });
 
@@ -3559,16 +3642,17 @@ async function doSpin(opts = {}) {
     else if (ratio >= 80) { fireCabinetImpact(); showBigWin(totalWin, 'mega'); }
     else if (ratio >= 30) { fireCabinetImpact(); showBigWin(totalWin, 'huge'); }
     else if (ratio >= 15) showBigWin(totalWin, 'big');
+    else fireCabinetSettle(); // ordinary wins still get a physical nudge
 
     // Particles from screen center if big enough
     if (ratio >= 10) {
-      spawnCoinShower(document.getElementById('screen'), 30);
+      spawnCoinShower($id('screen'), 30);
     }
   }
 
   // Bonus trigger — 5 diamonds anywhere
-  document.getElementById('anticipation').classList.remove('on');
-  document.getElementById('screen').classList.remove('antic-pulse');
+  $id('anticipation').classList.remove('on');
+  $id('screen').classList.remove('antic-pulse');
   State.spinLineWin = totalWin;
   if (dc >= 5) {
     // Defer history record until the bonus is collected so we log ONE
@@ -3585,9 +3669,9 @@ async function doSpin(opts = {}) {
 
   State.spinning = false;
   document.body.classList.remove('is-spinning');
-  document.getElementById('spin-btn').classList.remove('spinning');
+  spinBtn.classList.remove('spinning');
   // Leave the button disabled if a Big Win overlay is up — it'll re-enable itself when it closes.
-  if (!State.bigWinShowing) document.getElementById('spin-btn').disabled = false;
+  if (!State.bigWinShowing) spinBtn.disabled = false;
   updateBuyBonusButton();
   updateBoostUI();
 
@@ -3739,6 +3823,11 @@ const BonusState = {
   active: false,
 };
 
+/* Cached bonus-board cell elements — rebuilt once per feature in
+   startBonus; every respin/upgrade/reveal then indexes the array
+   instead of re-querying `.cell[data-idx=…]` dozens of times. */
+let bonusCellEls = [];
+
 const DIAMOND_COLORS = [
   '#ff6ec7', // pink
   '#4cc9ff', // blue
@@ -3868,7 +3957,8 @@ function updateBuyBonusButton() {
 function toggleBoost() {
   if (State.spinning || State.inBonus) return;
   State.boost = !State.boost;
-  Audio.click();
+  // Directional cue: rising tick on, falling tick off
+  if (State.boost) Audio.betUp(); else Audio.betDown();
   updateBoostUI();
   updateJackpotDisplay();
   updateBuyBonusDisplay();
@@ -3903,23 +3993,25 @@ async function startBonus() {
   updateJackpotDisplay();
 
   // Build the empty board
-  const board = document.getElementById('bonus-board');
+  const board = $id('bonus-board');
   board.innerHTML = '';
+  bonusCellEls = [];
   for (let i = 0; i < BONUS_TOTAL; i++) {
     const cell = document.createElement('div');
     cell.className = 'cell';
     cell.dataset.idx = i;
     board.appendChild(cell);
+    bonusCellEls.push(cell);
   }
 
-  document.getElementById('respins-value').textContent = BonusState.respins;
-  document.getElementById('diamonds-count').textContent = `0 / ${BONUS_TOTAL}`;
+  $id('respins-value').textContent = BonusState.respins;
+  $id('diamonds-count').textContent = `0 / ${BONUS_TOTAL}`;
   // Hide the live total during the feature — revealed during finishBonus
   // Suspense placeholder while values are hidden — the `$` lives
   // inside this span now so we don't render the cluttered "$???".
-  document.getElementById('bonus-total').textContent = '???';
-  document.getElementById('bonus-final').classList.remove('show');
-  document.getElementById('bonus-stage').classList.add('show');
+  $id('bonus-total').textContent = '???';
+  $id('bonus-final').classList.remove('show');
+  $id('bonus-stage').classList.add('show');
   setAutoStatus('SEEDING');
 
   await sleep(500);
@@ -3944,13 +4036,12 @@ async function placeSeedDiamonds(count) {
     BonusState.cells[idx] = { locked: true, gem: { ...gem, color } };
     renderCell(idx);
     Audio.diamondLand();
-    const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
-    const r = cellEl.getBoundingClientRect();
+    const r = bonusCellEls[idx].getBoundingClientRect();
     spawnConfetti(r.left + r.width/2, r.top + r.height/2, 14);
     await sleep(220);
   }
   recalcBonusTotal();
-  document.getElementById('diamonds-count').textContent = `${count} / ${BONUS_TOTAL}`;
+  $id('diamonds-count').textContent = `${count} / ${BONUS_TOTAL}`;
 }
 
 async function runBonusLoop() {
@@ -3978,7 +4069,7 @@ async function runBonusLoop() {
 }
 
 function setAutoStatus(text) {
-  const el = document.getElementById('auto-status');
+  const el = $id('auto-status');
   if (el) el.textContent = text;
 }
 
@@ -4040,8 +4131,7 @@ async function doBonusRespin() {
         Audio.diamondLand();
       }
       eventsThisSpin++;
-      const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
-      const r = cellEl.getBoundingClientRect();
+      const r = bonusCellEls[idx].getBoundingClientRect();
       spawnConfetti(r.left + r.width/2, r.top + r.height/2, 12);
       await sleep(110);
     } else {
@@ -4051,7 +4141,7 @@ async function doBonusRespin() {
 
   recalcBonusTotal();
   const filledCount = BonusState.cells.filter(c => c.locked).length;
-  document.getElementById('diamonds-count').textContent = `${filledCount} / ${BONUS_TOTAL}`;
+  $id('diamonds-count').textContent = `${filledCount} / ${BONUS_TOTAL}`;
 
   // Respin rule — any event resets to 3, otherwise -1
   if (eventsThisSpin >= 1) {
@@ -4061,14 +4151,14 @@ async function doBonusRespin() {
     BonusState.respins--;
   }
 
-  const rv = document.getElementById('respins-value');
+  const rv = $id('respins-value');
   rv.classList.remove('flash'); void rv.offsetWidth; rv.classList.add('flash');
   rv.textContent = BonusState.respins;
 }
 
 /* ---------- Cell spinner helpers ---------- */
 function startCellSpinner(idx) {
-  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const cellEl = bonusCellEls[idx];
   if (!cellEl || cellEl.querySelector('.cell-spinner')) return;
 
   const spinner = document.createElement('div');
@@ -4105,7 +4195,7 @@ function startCellSpinner(idx) {
 }
 
 function stopCellSpinner(idx) {
-  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const cellEl = bonusCellEls[idx];
   const spinner = cellEl && cellEl.querySelector('.cell-spinner');
   if (spinner) {
     spinner.classList.add('stopping');
@@ -4114,12 +4204,12 @@ function stopCellSpinner(idx) {
 }
 
 function startUpgradeSpinner(idx) {
-  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const cellEl = bonusCellEls[idx];
   if (cellEl) cellEl.classList.add('upgrade-spinning');
 }
 
 function stopUpgradeSpinner(idx) {
-  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const cellEl = bonusCellEls[idx];
   if (cellEl) cellEl.classList.remove('upgrade-spinning');
 }
 
@@ -4130,7 +4220,7 @@ function applyUpgrade(idx) {
   data.gem.level++;
   data.gem.value = Math.round(data.gem.baseValue * UPGRADE_MULTS[data.gem.level] * 100) / 100;
 
-  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const cellEl = bonusCellEls[idx];
   const gem = cellEl.querySelector('.gem');
   if (!gem) return true;
 
@@ -4165,7 +4255,7 @@ function applyUpgrade(idx) {
 
 
 function renderCell(idx) {
-  const el = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const el = bonusCellEls[idx];
   const data = BonusState.cells[idx];
   el.classList.add('locked');
   el.innerHTML = '';
@@ -4201,7 +4291,7 @@ function renderCell(idx) {
 function recalcBonusTotal() {
   BonusState.total = BonusState.cells.reduce((s, c) => s + (c.gem ? c.gem.value : 0), 0);
   if (!BonusState.hideValues) {
-    document.getElementById('bonus-total').textContent = '$' + fmt(BonusState.total);
+    $id('bonus-total').textContent = '$' + fmt(BonusState.total);
   }
 }
 
@@ -4229,9 +4319,9 @@ async function finishBonus(isGrand) {
 
   setAutoStatus(isGrand ? 'GRAND!' : 'BONUS COMPLETE');
   // animate final total counter
-  const fin = document.getElementById('bonus-final');
+  const fin = $id('bonus-final');
   fin.classList.add('show');
-  const finalEl = document.getElementById('final-amount');
+  const finalEl = $id('final-amount');
   finalEl.textContent = '0';
   countUp(0, BonusState.total, 1800, v => {
     finalEl.textContent = fmt(v);
@@ -4256,7 +4346,7 @@ async function finishBonus(isGrand) {
    updating the running TOTAL HUD as we go. Returns once all are revealed. */
 async function revealAllGemValues() {
   BonusState.hideValues = false;
-  const totalEl = document.getElementById('bonus-total');
+  const totalEl = $id('bonus-total');
   totalEl.textContent = '$0';
 
   // Walk cells in DOM order (top-left → bottom-right) so the wave is visible
@@ -4264,7 +4354,7 @@ async function revealAllGemValues() {
   for (let idx = 0; idx < BonusState.cells.length; idx++) {
     const data = BonusState.cells[idx];
     if (!data || !data.gem) continue;
-    const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+    const cellEl = bonusCellEls[idx];
     if (!cellEl) continue;
     const valEl = cellEl.querySelector('.gem-value');
     if (!valEl) continue;
@@ -4307,7 +4397,7 @@ function collectBonus() {
     History.record('slots', State.spinBet, net, note);
     State.spinBet = 0; State.spinLineWin = 0; State.spinNote = '';
   }
-  document.getElementById('bonus-stage').classList.remove('show');
+  $id('bonus-stage').classList.remove('show');
   State.inBonus = false;
   updateJackpotDisplay();
   updateBuyBonusButton();

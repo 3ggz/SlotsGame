@@ -286,6 +286,21 @@ button, input { font: inherit; }
     inset 0 0 54px rgba(0,0,0,0.48),
     var(--shadow-deep);
 }
+.flight-card.cash-flash { animation: cashoutPulse 0.55s ease-out; }
+@keyframes cashoutPulse {
+  0% {
+    box-shadow:
+      inset 0 0 0 3px rgba(92,255,161,0.85),
+      inset 0 0 90px rgba(92,255,161,0.26),
+      var(--shadow-deep);
+  }
+  100% {
+    box-shadow:
+      inset 0 0 0 1.5px rgba(255,210,74,0.32),
+      inset 0 0 54px rgba(0,0,0,0.48),
+      var(--shadow-deep);
+  }
+}
 .flight-card::before {
   content: '';
   position: absolute;
@@ -1182,7 +1197,8 @@ button, input { font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .rocket-wrap.running,
   .rocket-wrap.running .flame,
-  .launch-btn::after {
+  .launch-btn::after,
+  .flight-card.cash-flash {
     animation: none;
   }
 }
@@ -1419,6 +1435,7 @@ document.addEventListener('jackpot-win', () => { balance = loadBalance(); refres
 
 // add-chips button removed from games — use the lobby
 document.getElementById('btn-history').addEventListener('click', () => {
+  playSfx('buttonSoft', 0.45);
   if (window.HistoryUI) HistoryUI.open({ scope: 'session', game: 'rocket' });
 });
 
@@ -1695,7 +1712,10 @@ const SFX_PATHS = {
   buttonSoft: 'sfx/button_soft.mp3',
   chipSelect: 'sfx/chip_select.mp3',
   chipPlace: 'sfx/chip_place_a.mp3',
+  chipPlaceB: 'sfx/chip_place_b.mp3',
+  chipPlaceC: 'sfx/chip_place_c.mp3',
   chipPayout: 'sfx/chip_payout.mp3',
+  winChime: 'sfx/win_chime.mp3',
   winSmall: 'sfx/slots/win_small.mp3',
   winMedium: 'sfx/slots/win_medium.mp3',
   winBig: 'sfx/slots/win_big.mp3',
@@ -1726,6 +1746,10 @@ function playSfx(key, volMul = 1) {
     a.volume = (window.Settings ? Settings.sfxVolume() : 0.85) * volMul;
     a.play().catch(() => {});
   } catch (e) {}
+}
+const CHIP_PLACE_KEYS = ['chipPlace', 'chipPlaceB', 'chipPlaceC'];
+function playChipPlace(volMul) {
+  playSfx(CHIP_PLACE_KEYS[Math.floor(Math.random() * CHIP_PLACE_KEYS.length)], volMul);
 }
 
 /* ---------- WebAudio thrust and pings ---------- */
@@ -2401,6 +2425,8 @@ Object.assign(State, {
   entryRoundId: null,
   heldCashouts: [],
   recentRenderKey: '',
+  rollHistoryRenderKey: null,
+  hudRenderKey: '',
   unsubscribeCashouts: null,
   unsubscribeEntries: null,
   lastCrashRoundId: null,
@@ -2886,6 +2912,8 @@ function rollClass(v) {
 
 function renderRollHistory(round) {
   if (!rollHistoryListEl || !round) return;
+  if (State.rollHistoryRenderKey === round.index) return;
+  State.rollHistoryRenderKey = round.index;
   const last = round.index - 1;
   const items = [];
   for (let i = last; i > last - 20 && i >= 0; i--) {
@@ -3175,10 +3203,12 @@ function syncControls() {
 function startRound() {
   const round = State.activeRound || getGlobalRound(casinoNow());
   if (round.phase !== 'betting') {
+    playSfx('buttonSoft', 0.35);
     showToast('NEXT ROUND OPENS SOON', '');
     return;
   }
   if (betSafetyLocked()) {
+    playSfx('buttonSoft', 0.35);
     showToast('BUST SETTLING - ONE SEC', '');
     return;
   }
@@ -3199,7 +3229,7 @@ function startRound() {
   balance = Math.round((balance - bet) * 100) / 100;
   persistBalance(balance);
   refreshBalance();
-  playSfx('chipPlace', 0.72);
+  playChipPlace(0.72);
   showToast('BET LOCKED FOR GLOBAL LAUNCH', 'win');
   sendEntryToLive({ roundId: round.roundId, bet });
   renderActiveCount(round);
@@ -3263,7 +3293,11 @@ function cashOut(auto) {
   pushSessionBet({ type: 'win', multiplier: paidMult });
   pushLocalCashout(State.localCashout);
   sendCashoutToLive(State.localCashout);
+  flightCard.classList.remove('cash-flash');
+  void flightCard.offsetWidth;
+  flightCard.classList.add('cash-flash');
   playSfx(paidMult >= 20 ? 'fanfare' : paidMult >= 5 ? 'winBig' : paidMult >= 2 ? 'winMedium' : 'winSmall', paidMult >= 10 ? 0.82 : 0.68);
+  playSfx('winChime', 0.45);
   playSfx('chipPayout', 0.65);
   showToast((auto ? 'AUTO BANKED ' : 'BANKED ') + money(payout) + ' @ ' + multText(paidMult), 'win');
   renderActiveCount(round);
@@ -3447,31 +3481,43 @@ function frame(now) {
 
   if (round.phase === 'betting') {
     const seconds = Math.ceil(round.timeToLaunch / 1000);
-    if (impactActive) {
-      readoutEl.className = 'multiplier-readout crash';
-      multiplierEl.textContent = multText(State.crashHold.multiplier);
-      captionEl.textContent = 'BURNOUT';
-    } else {
-      readoutEl.className = 'multiplier-readout timer';
-      multiplierEl.textContent = seconds + 's';
-      captionEl.textContent = 'PLACE BETS';
+    const readoutClass = impactActive ? 'multiplier-readout crash' : 'multiplier-readout timer';
+    const valueText = impactActive ? multText(State.crashHold.multiplier) : seconds + 's';
+    const captionText = impactActive ? 'BURNOUT' : 'PLACE BETS';
+    const statusText = 'BETTING ' + seconds + 'S';
+    if (readoutEl.className !== readoutClass) readoutEl.className = readoutClass;
+    const hudKey = ['b', readoutClass, valueText, captionText, statusText].join('|');
+    if (State.hudRenderKey !== hudKey) {
+      State.hudRenderKey = hudKey;
+      multiplierEl.textContent = valueText;
+      captionEl.textContent = captionText;
+      statusEl.textContent = statusText;
+      countdownEl.classList.remove('show');
     }
-    statusEl.textContent = 'BETTING ' + seconds + 'S';
-    countdownEl.classList.remove('show');
   } else if (round.phase === 'running') {
-    countdownEl.classList.remove('show');
     multiplierEl.textContent = multText(State.multiplier);
-    captionEl.textContent = State.localCashed ? 'BANKED' : (State.multiplier >= 10 ? 'SKY HIGH' : State.multiplier >= 4 ? 'RISING FAST' : 'GLOBAL FLIGHT');
-    statusEl.textContent = 'CLIMBING';
-    statusDot.style.background = 'var(--neon-cyan)';
-    if (!State.localCashed) readoutEl.className = 'multiplier-readout';
+    const captionText = State.localCashed ? 'BANKED' : (State.multiplier >= 10 ? 'SKY HIGH' : State.multiplier >= 4 ? 'RISING FAST' : 'GLOBAL FLIGHT');
+    const hudKey = ['r', captionText].join('|');
+    if (State.hudRenderKey !== hudKey) {
+      State.hudRenderKey = hudKey;
+      countdownEl.classList.remove('show');
+      captionEl.textContent = captionText;
+      statusEl.textContent = 'CLIMBING';
+      statusDot.style.background = 'var(--neon-cyan)';
+    }
+    if (!State.localCashed && readoutEl.className !== 'multiplier-readout') readoutEl.className = 'multiplier-readout';
   } else {
-    countdownEl.classList.remove('show');
-    multiplierEl.textContent = multText(State.multiplier);
-    captionEl.textContent = 'ROUND ENDED';
-    statusEl.textContent = 'CRASHED';
-    statusDot.style.background = 'var(--danger)';
-    readoutEl.className = 'multiplier-readout crash';
+    const valueText = multText(State.multiplier);
+    const hudKey = ['e', valueText].join('|');
+    if (State.hudRenderKey !== hudKey) {
+      State.hudRenderKey = hudKey;
+      countdownEl.classList.remove('show');
+      multiplierEl.textContent = valueText;
+      captionEl.textContent = 'ROUND ENDED';
+      statusEl.textContent = 'CRASHED';
+      statusDot.style.background = 'var(--danger)';
+      readoutEl.className = 'multiplier-readout crash';
+    }
   }
 
   syncControls();
@@ -3558,12 +3604,16 @@ function showIntroRules() {
   introRulesVeil.classList.add('show');
 }
 function closeIntroRules() {
+  playSfx('buttonSoft', 0.45);
   if (introDontShow.checked) {
     try { localStorage.setItem(RULES_INTRO_KEY, '1'); } catch (e) {}
   }
   introRulesVeil.classList.remove('show');
 }
-rulesBtn.addEventListener('click', showIntroRules);
+rulesBtn.addEventListener('click', () => {
+  playSfx('buttonSoft', 0.45);
+  showIntroRules();
+});
 introPlayBtn.addEventListener('click', closeIntroRules);
 introRulesVeil.addEventListener('click', e => {
   if (e.target === introRulesVeil) closeIntroRules();

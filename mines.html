@@ -474,10 +474,21 @@ button, input { font: inherit; }
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
-  transition: transform 0.42s cubic-bezier(.2,.8,.2,1.05);
+  /* Crisp reveal: ~180ms flip with a touch of overshoot. The old 420ms
+     flip read as sluggish when you're chaining picks. */
+  transition: transform 0.18s cubic-bezier(.25,.9,.3,1.08);
 }
 .tile.revealed .tile-inner {
   transform: rotateY(180deg);
+}
+/* Slight pop on the tile shell as it reveals — transform only, cheap. */
+.tile.revealed {
+  animation: tilePop 0.2s cubic-bezier(.2,1.5,.4,1);
+}
+@keyframes tilePop {
+  0%   { transform: scale(0.97); }
+  55%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 .face {
   position: absolute;
@@ -559,7 +570,7 @@ button, input { font: inherit; }
   width: 64%;
   height: 64%;
   filter: drop-shadow(0 0 10px rgba(92,255,161,0.55)) drop-shadow(0 0 22px rgba(34,211,238,0.4));
-  animation: diamondAppear 0.5s cubic-bezier(.2,1.4,.4,1) both;
+  animation: diamondAppear 0.38s cubic-bezier(.2,1.4,.4,1) both;
 }
 .tile.fade .diamond-svg {
   filter: drop-shadow(0 0 4px rgba(255,255,255,0.20));
@@ -571,7 +582,7 @@ button, input { font: inherit; }
   to   { transform: scale(1) rotate(0); opacity: 1; }
 }
 .tile.revealed.safe .diamond-svg {
-  animation: diamondAppear 0.5s cubic-bezier(.2,1.4,.4,1) both, diamondIdle 4s ease-in-out 0.6s infinite;
+  animation: diamondAppear 0.38s cubic-bezier(.2,1.4,.4,1) both, diamondIdle 4s ease-in-out 0.6s infinite;
 }
 @keyframes diamondIdle {
   0%, 100% { transform: rotate(0); }
@@ -1060,8 +1071,30 @@ button, input { font: inherit; }
   .multiplier-panel::before,
   .diamond-svg,
   .action-btn::after,
+  .tile.revealed,
   .tile.shimmer .face-front::after { animation: none !important; }
 }
+
+/* LOW-POWER — kill the always-running compositor work (hue-rotating
+   border, button sheen, idle diamond sway) and blur-backed chrome. */
+html.low-power .multiplier-panel::before,
+html.low-power .action-btn::after,
+html.low-power .tile.shimmer .face-front::after { animation: none !important; }
+/* keep the appear pop, drop only the infinite idle sway */
+html.low-power .tile.revealed.safe .diamond-svg {
+  animation: diamondAppear 0.38s cubic-bezier(.2,1.4,.4,1) both;
+}
+html.low-power .lobby-link,
+html.low-power .history-btn,
+html.low-power .rules-btn,
+html.low-power .balance-link {
+  background: linear-gradient(180deg, rgba(42,18,77,0.96), rgba(15,4,30,0.96));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.low-power body::before { display: none; }
+html.low-power .diamond-svg,
+html.low-power .mine-svg { filter: none; }
 </style>
 </head>
 <body>
@@ -1196,6 +1229,14 @@ if (window.SettingsUI) SettingsUI.mount();
 if (window.HistoryUI) HistoryUI.mount();
 if (window.Music) Music.init(encodeURI('Music/Velvet Pitfall.wav'));
 
+/* Low-power heuristic (same as diamondpoker): few cores, narrow screen,
+   or reduced-motion. Strips the always-running compositor animations. */
+const LOW_POWER =
+  !!(navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+  !!(window.matchMedia && (window.matchMedia('(max-width: 720px)').matches ||
+                           window.matchMedia('(prefers-reduced-motion: reduce)').matches));
+if (LOW_POWER) document.documentElement.classList.add('low-power');
+
 /* ---------- shared balance ---------- */
 const BALANCE_KEY = 'casino.balance';
 function loadBalance() {
@@ -1224,13 +1265,14 @@ document.addEventListener('jackpot-win', () => { balance = loadBalance(); refres
 
 // add-chips button removed from games — use the lobby
 document.getElementById('btn-history').addEventListener('click', () => {
+  playSfx('buttonSoft', 0.5);
   if (window.HistoryUI) HistoryUI.open({ scope: 'session', game: 'mines' });
 });
 
 /* ---------- rules modal ---------- */
 const rulesVeil = document.getElementById('rules-veil');
-document.getElementById('btn-rules').addEventListener('click', () => rulesVeil.classList.add('show'));
-document.getElementById('btn-rules-close').addEventListener('click', () => rulesVeil.classList.remove('show'));
+document.getElementById('btn-rules').addEventListener('click', () => { playSfx('buttonSoft', 0.5); rulesVeil.classList.add('show'); });
+document.getElementById('btn-rules-close').addEventListener('click', () => { playSfx('buttonSoft', 0.5); rulesVeil.classList.remove('show'); });
 rulesVeil.addEventListener('click', (e) => { if (e.target === rulesVeil) rulesVeil.classList.remove('show'); });
 
 /* ---------- SFX (file pool) ---------- */
@@ -1661,6 +1703,9 @@ const actionBtn = document.getElementById('action-btn');
 const actionMain = document.getElementById('action-main');
 const actionSub = document.getElementById('action-sub');
 const toastEl = document.getElementById('toast');
+// Cached once — setMines/syncControls run per pick and shouldn't re-query.
+const minesQuickBtns = Array.from(document.querySelectorAll('.mines-quick button'));
+const betQuickBtns = Array.from(document.querySelectorAll('.mini-btn[data-bet]'));
 
 /* ---------- SVG factories ---------- */
 function diamondSVG() {
@@ -1797,7 +1842,7 @@ function setMines(v) {
   const nextGridN = gridSizeFor(v);
   minesSlider.value = String(v);
   minesDisplayEl.textContent = String(v);
-  document.querySelectorAll('.mines-quick button').forEach(b => {
+  minesQuickBtns.forEach(b => {
     b.classList.toggle('active', parseInt(b.dataset.mines, 10) === v);
   });
   if (State.mode === 'idle' || State.mode === 'over') {
@@ -1820,7 +1865,7 @@ minesSlider.addEventListener('input', () => {
   setMines(getMines());
   playSfx('buttonSoft', 0.35);
 });
-document.querySelectorAll('.mines-quick button').forEach(b => {
+minesQuickBtns.forEach(b => {
   b.addEventListener('click', () => {
     if (!isBettable()) return;
     setMines(parseInt(b.dataset.mines, 10));
@@ -1828,7 +1873,7 @@ document.querySelectorAll('.mines-quick button').forEach(b => {
     playSfx('chipSelect', 0.5);
   });
 });
-document.querySelectorAll('.mini-btn[data-bet]').forEach(b => {
+betQuickBtns.forEach(b => {
   b.addEventListener('click', () => {
     if (!isBettable()) return;
     const v = b.dataset.bet;
@@ -1877,7 +1922,8 @@ function syncControls() {
   const playing = State.mode === 'playing';
   betInput.disabled = playing;
   minesSlider.disabled = playing;
-  document.querySelectorAll('.mines-quick button, .mini-btn[data-bet]').forEach(b => { b.disabled = playing; });
+  minesQuickBtns.forEach(b => { b.disabled = playing; });
+  betQuickBtns.forEach(b => { b.disabled = playing; });
   betHint.textContent = playing ? 'LOCKED' : 'LOCKED ON START';
   State.tiles.forEach(t => {
     if (!t.revealed) t.el.classList.toggle('disabled', !playing);

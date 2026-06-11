@@ -606,6 +606,28 @@ button, input { font: inherit; }
   color: #08160d;
   background: linear-gradient(180deg, #c4ffd9, #5cffa1);
   box-shadow: 0 0 16px rgba(92,255,161,0.24);
+  animation: payRowFlash 0.85s ease-out;
+}
+/* Gold flash that settles into the green active state */
+@keyframes payRowFlash {
+  0% {
+    background: linear-gradient(180deg, #fff7d1, #ffd24a);
+    color: #120704;
+    box-shadow: 0 0 26px rgba(255,210,74,0.65), inset 0 0 0 1.5px rgba(255,240,168,0.9);
+    transform: scale(1.03);
+  }
+  45% {
+    background: linear-gradient(180deg, #fff0a8, #ffd24a);
+    color: #120704;
+    box-shadow: 0 0 20px rgba(255,210,74,0.45);
+    transform: scale(1.01);
+  }
+  100% {
+    background: linear-gradient(180deg, #c4ffd9, #5cffa1);
+    color: #08160d;
+    box-shadow: 0 0 16px rgba(92,255,161,0.24);
+    transform: scale(1);
+  }
 }
 .pay-row .mult {
   font-family: 'Geist Mono', monospace;
@@ -743,7 +765,8 @@ button, input { font: inherit; }
   .pay-row { min-height: 28px; padding: 6px 8px; font-size: 12px; }
   .coin-burst { display: none; }
   .card-slot.dealing .poker-card,
-  .machine.payout-pop {
+  .machine.payout-pop,
+  .pay-row.active {
     animation: none;
   }
 }
@@ -780,7 +803,8 @@ html.low-power .coin-burst {
   display: none;
 }
 html.low-power .card-slot.dealing .poker-card,
-html.low-power .machine.payout-pop {
+html.low-power .machine.payout-pop,
+html.low-power .pay-row.active {
   animation: none;
 }
 
@@ -1193,7 +1217,9 @@ function renderCards() {
     const held = State.phase === 'dealt' && State.holds[i];
     const settledWin = State.phase === 'result' && State.resultWin;
     view.slot.className = `card-slot${held ? ' held' : ''}${settledWin ? ' settled-win' : ''}${isAnimating ? ' dealing' : ''}`;
-    if (isAnimating) view.slot.style.setProperty('--deal-delay', `${i * 46}ms`);
+    // Stagger by position WITHIN the animating set (not slot index) so a
+    // draw that only replaces slots 3+4 starts moving immediately.
+    if (isAnimating) view.slot.style.setProperty('--deal-delay', `${State.animating.indexOf(i) * DEAL_STAGGER_MS}ms`);
     else view.slot.style.removeProperty('--deal-delay');
 
     if (!card) {
@@ -1225,7 +1251,31 @@ function clearPaytableHighlight() {
 function highlightPaytable(key) {
   clearPaytableHighlight();
   const row = payRowsByKey.get(key);
-  if (row) row.classList.add('active');
+  if (!row) return;
+  // One reflow (outside any loop) so the gold flash restarts even when
+  // the same hand wins twice in a row.
+  void row.offsetWidth;
+  row.classList.add('active');
+}
+
+/* PAID meter count-up — ticks from 0 to the gross payout so the win
+   "lands" instead of teleporting. rAF-driven, text writes only. */
+let paidCountRaf = 0;
+function cancelPaidCount() {
+  if (paidCountRaf) { cancelAnimationFrame(paidCountRaf); paidCountRaf = 0; }
+}
+function animatePaidCount(target) {
+  cancelPaidCount();
+  const dur = Math.min(900, 380 + target * 0.4);
+  const t0 = performance.now();
+  const tick = now => {
+    const t = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.paidReadout.textContent = fmt(Math.round(target * eased * 100) / 100);
+    paidCountRaf = t < 1 ? requestAnimationFrame(tick) : 0;
+  };
+  el.paidReadout.textContent = '0';
+  paidCountRaf = requestAnimationFrame(tick);
 }
 function updateControls() {
   const dealt = State.phase === 'dealt';
@@ -1239,6 +1289,7 @@ function updateControls() {
   el.paidReadout.textContent = fmt(State.paid);
 }
 function resetHand(keepMessage) {
+  cancelPaidCount();
   State.phase = 'idle';
   State.deck = [];
   State.hand = [];
@@ -1283,6 +1334,9 @@ function recordHand(note, net) {
 function leanMotionMode() {
   return lowPowerMode();
 }
+/* Deal cadence — one tight beat per card. Audio is scheduled on the same
+   clock as the CSS --deal-delay so the snap you hear is the card you see. */
+const DEAL_STAGGER_MS = 90;
 function animateCards(indexes) {
   if (leanMotionMode()) {
     State.animating = [];
@@ -1291,11 +1345,11 @@ function animateCards(indexes) {
   }
   State.animating = indexes.slice();
   renderCards();
-  const maxIndex = indexes.length ? Math.max(...indexes) : 0;
+  const lastDelay = indexes.length ? (indexes.length - 1) * DEAL_STAGGER_MS : 0;
   setTimeout(() => {
     State.animating = [];
     renderCards();
-  }, 520 + maxIndex * 46);
+  }, 420 + lastDelay);
 }
 function spawnPayoutBurst(multiplier) {
   if (!el.coinBurst) return;
@@ -1324,6 +1378,7 @@ function dealHand() {
     playSfx('lose', 0.7);
     return;
   }
+  cancelPaidCount();
   State.bet = bet;
   State.balance = Math.round((State.balance - bet) * 100) / 100;
   persistBalance(State.balance);
@@ -1342,7 +1397,7 @@ function dealHand() {
   updateControls();
   playSfx('chipPlace', 0.75);
   if (!leanMotionMode()) {
-    for (let i = 0; i < 5; i++) setTimeout(() => dealSound(i), i * 58);
+    for (let i = 0; i < 5; i++) setTimeout(() => dealSound(i), i * DEAL_STAGGER_MS);
   }
 }
 function drawHand() {
@@ -1359,7 +1414,7 @@ function drawHand() {
   State.phase = 'result';
   animateCards(replacedIndexes);
   if (!lean) {
-    for (let i = 0; i < drawn.drawn; i++) setTimeout(() => dealSound(i), i * 62);
+    for (let i = 0; i < drawn.drawn; i++) setTimeout(() => dealSound(i), i * DEAL_STAGGER_MS);
   }
   State.balance = Math.round((State.balance + settled.gross) * 100) / 100;
   persistBalance(State.balance);
@@ -1375,7 +1430,13 @@ function drawHand() {
       void el.machine.offsetWidth;
       el.machine.classList.add('payout-pop');
     }
-    playSfx(settled.outcome.multiplier >= 25 ? 'fanfare' : 'win', settled.outcome.multiplier >= 25 ? 0.8 : 0.7);
+    if (settled.outcome.key === 'royal_flush') {
+      // The 800× hand — full fanfare plus a chime tail on top.
+      playSfx('fanfare', 0.95);
+      setTimeout(() => playSfx('win', 0.8), 420);
+    } else {
+      playSfx(settled.outcome.multiplier >= 25 ? 'fanfare' : 'win', settled.outcome.multiplier >= 25 ? 0.8 : 0.7);
+    }
     if (!lean) {
       setTimeout(() => playSfx('chipPayout', 0.8), 170);
       spawnPayoutBurst(settled.outcome.multiplier);
@@ -1387,6 +1448,7 @@ function drawHand() {
   const note = settled.outcome.multiplier > 0 ? settled.outcome.label : 'No Win';
   recordHand(note, settled.net);
   updateControls();
+  if (settled.gross > 0 && !lean) animatePaidCount(settled.gross);
 }
 function toggleHold(index) {
   if (State.phase !== 'dealt') return;
@@ -1420,6 +1482,7 @@ el.miniBtns.forEach(btn => {
 });
 // add-chips button removed from games — use the lobby
 document.getElementById('btn-history').addEventListener('click', () => {
+  playSfx('button', 0.5);
   if (window.HistoryUI) HistoryUI.open({ scope: 'session', game: 'diamondpoker' });
 });
 document.addEventListener('keydown', e => {

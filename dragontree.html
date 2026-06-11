@@ -1188,6 +1188,33 @@ body::before {
 }
 
 /* ============================================================
+   LOW-POWER + HIDDEN-TAB BRANCHES
+   ============================================================ */
+html.low-power body::before { display: none; }
+html.low-power .cabinet {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.low-power .ground-glow { animation: none; opacity: 0.85; }
+html.low-power .lantern .bulb::after,
+html.low-power .lantern.legendary .bulb::after,
+html.low-power .lantern.mythic .bulb::after { animation: none; opacity: 0.7; }
+html.low-power .bonus-seal::after { animation: none; }
+/* Sleep every looping animation while the tab is hidden. */
+.scene-wrap.fx-paused .ember,
+.scene-wrap.fx-paused .lantern,
+.scene-wrap.fx-paused .lantern .bulb::after,
+.scene-wrap.fx-paused .ground-glow { animation-play-state: paused; }
+
+/* balance pops when chips land */
+.hud-cell.balance .val.bump { animation: bal-bump 0.45s cubic-bezier(.34,1.6,.64,1); }
+@keyframes bal-bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.14); filter: brightness(1.3); }
+  100% { transform: scale(1); }
+}
+
+/* ============================================================
    MODALS (intro rules + paytable) — mirror slots styling
    ============================================================ */
 .modal-veil {
@@ -1772,11 +1799,17 @@ const State = {
 const HIT_PACE = 0.7;
 const paced = ms => Math.round(ms * HIT_PACE);
 const MOBILE_EFFECT_SCALE = matchMedia('(max-width: 760px), (pointer: coarse)').matches ? 0.58 : 1;
+/* Weak devices (few cores) or reduced-motion users get the html.low-power CSS
+   branch (static glows, no noise overlay, no backdrop blur) + fewer particles. */
+const LOW_POWER = !!((navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+  matchMedia('(prefers-reduced-motion: reduce)').matches);
+if (LOW_POWER) document.documentElement.classList.add('low-power');
 const transientTimers = new Set();
 const activeLeafAnimations = new Set();
 
 function scaledEffectCount(count, min = 1) {
-  return Math.max(min, Math.round(count * MOBILE_EFFECT_SCALE));
+  const scale = LOW_POWER ? Math.min(MOBILE_EFFECT_SCALE, 0.5) : MOBILE_EFFECT_SCALE;
+  return Math.max(min, Math.round(count * scale));
 }
 
 function trackTimer(fn, ms) {
@@ -2057,10 +2090,10 @@ function renderPaytable() {
 }
 renderPaytable();
 
-function openPaytable() { els.paytableVeil.classList.add('show'); }
+function openPaytable() { AudioFX.play('soft', 0.5); els.paytableVeil.classList.add('show'); }
 function closePaytable() { els.paytableVeil.classList.remove('show'); }
 els.paytableBtn.addEventListener('click', openPaytable);
-els.paytableClose.addEventListener('click', closePaytable);
+els.paytableClose.addEventListener('click', () => { AudioFX.play('soft', 0.4); closePaytable(); });
 els.paytableVeil.addEventListener('click', e => { if (e.target === els.paytableVeil) closePaytable(); });
 
 /* ============================================================
@@ -2073,6 +2106,7 @@ const setFlag = k => { try { localStorage.setItem(k, '1'); } catch (e) {} };
 function showIntroRules() { els.introVeil.classList.add('show'); }
 function closeIntroRules() {
   if (els.introDontShow.checked) setFlag(RULES_KEY);
+  AudioFX.play('soft', 0.45);
   els.introVeil.classList.remove('show');
 }
 els.introClose.addEventListener('click', closeIntroRules);
@@ -2101,7 +2135,7 @@ function confirmAdd() {
   closeAdd();
 }
 // add-chips button removed from games — use the lobby
-els.addCancel.addEventListener('click', closeAdd);
+els.addCancel.addEventListener('click', () => { AudioFX.play('soft', 0.4); closeAdd(); });
 els.addConfirm.addEventListener('click', confirmAdd);
 els.addVeil.addEventListener('click', e => { if (e.target === els.addVeil) closeAdd(); });
 els.addAmount.addEventListener('keydown', e => {
@@ -2293,7 +2327,7 @@ async function runBonus() {
   for (let i = 0; i < revealCount; i++) {
     const card = cards[i].querySelector('.reveal-card');
     card.classList.add('flipped');
-    AudioFX.play('lantern', 0.46);
+    AudioFX.play('lantern', 0.42 + i * 0.05); // each flip rings a touch louder
     const shine = document.createElement('div');
     shine.className = 'coin-shine';
     cards[i].querySelector('.reveal-front').appendChild(shine);
@@ -2343,11 +2377,16 @@ async function runBonus() {
   AudioFX.play('finalWin', topTier.tier === 'legendary' || topTier.tier === 'mythic' ? 0.86 : 0.72);
   trackTimer(() => { if (grand) grand.classList.remove('shimmy'); }, 720);
 
-  // 9. Credit balance with count-up
+  // 9. Credit balance with count-up + a chip clack and a gold bump as it lands
   const startBal = State.balance;
+  AudioFX.play('payout', 0.5);
   await animateCount(startBal, startBal + payout, 900, v => {
     els.balance.textContent = fmt(v);
   });
+  els.balance.classList.remove('bump');
+  void els.balance.offsetWidth;
+  els.balance.classList.add('bump');
+  trackTimer(() => els.balance.classList.remove('bump'), 500);
   State.balance = startBal + payout;
   persistBalance(State.balance);
   State.totalWon += payout;
@@ -2385,12 +2424,12 @@ async function runBonus() {
 /* ----- Bonus overlay: reset child animations + spawn gold spark stream ----- */
 function playBonusOverlay() {
   els.bonusOv.classList.add('show');
-  // Reset every child's animation so it replays
-  [...els.bonusOv.children].forEach(c => {
-    c.style.animation = 'none';
-    void c.offsetWidth;
-    c.style.animation = '';
-  });
+  // Reset every child's animation so it replays — batch the writes around a
+  // single forced reflow instead of thrashing layout once per child.
+  const ovKids = [...els.bonusOv.children];
+  ovKids.forEach(c => { c.style.animation = 'none'; });
+  void els.bonusOv.offsetWidth;
+  ovKids.forEach(c => { c.style.animation = ''; });
   // Spawn gold sparks rising from the bottom edge. Mobile gets fewer particles.
   for (let i = 0; i < scaledEffectCount(14, 8); i++) {
     const sp = document.createElement('div');
@@ -2503,10 +2542,10 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// Pause embers when tab hidden (perf)
+// Sleep every looping scene animation (embers, lantern sway/glow, ground glow)
+// while the tab is hidden — one class toggle instead of a per-ember style loop.
 document.addEventListener('visibilitychange', () => {
-  const playState = document.hidden ? 'paused' : 'running';
-  els.emberLayer.querySelectorAll('.ember').forEach(e => { e.style.animationPlayState = playState; });
+  els.sceneWrap.classList.toggle('fx-paused', document.hidden);
 });
 </script>
 </body>

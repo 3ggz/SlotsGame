@@ -499,6 +499,21 @@ body::after {
 
 .symbol.dim { filter: brightness(0.3) saturate(0.3) blur(0.7px); }
 
+/* Off-screen strip rows (filler past the 3 visible) skip idle animation
+   cost — the kraken-eye pulse and anchor swing on hidden rows otherwise
+   keep the GPU compositing layers it never shows. Same guard slots.html
+   uses. During the spin they fly past too fast to notice. */
+.strip .symbol:nth-child(n+4),
+.strip .symbol:nth-child(n+4)::before { animation: none !important; }
+/* While reels are in motion, pause the visible idle animations too —
+   frees the GPU for the strip's translate transform. */
+body.is-spinning .symbol::before { animation-play-state: paused !important; }
+@media (max-width: 720px) {
+  /* Promote each reel to its own compositor layer so a strip transform
+     never repaints sibling reels. */
+  .reel, .strip { transform: translateZ(0); }
+}
+
 /* trigger pulse on Kraken's Eye when bonus is detected */
 .symbol.trigger {
   animation: krakenTriggerPulse 0.5s ease-in-out infinite alternate;
@@ -1141,6 +1156,20 @@ body::after {
   60% { transform: translate3d(-2px, 2px, 0); }
   80% { transform: translate3d(2px, -2px, 0); }
 }
+
+/* tiny one-shot settle on ordinary wins — transform-only, ~260 ms */
+.cabinet.win-settle { animation: winSettle 0.26s ease-out; }
+@keyframes winSettle {
+  0%   { transform: translate3d(0,0,0); }
+  40%  { transform: translate3d(0,2px,0); }
+  100% { transform: translate3d(0,0,0); }
+}
+
+/* low-power mode: drop the always-running ambient effects + the new
+   one-shot settle so weak devices spend nothing on atmosphere */
+html.low-power body::before { animation: none; opacity: 0.15; }
+html.low-power .bubbles { display: none; }
+html.low-power .cabinet.win-settle { animation: none; }
 
 .cabinet.buy-flash {
   animation: buyFlash 0.7s ease-out;
@@ -2762,6 +2791,29 @@ const Audio = (() => {
       setTimeout(()=>tone(f*1.5, 0.05, 'sine', 0.06, 0.002, 0.06, 0.3), 22);
     },
     click() { tone(1100, 0.025, 'square', 0.07, 0.001, 0.03, 0.06); },
+    /* Directional bet-adjust cues — short two-note brass ticks. */
+    betUp() {
+      tone(740, 0.05, 'triangle', 0.11, 0.002, 0.04, 0.10);
+      setTimeout(()=>tone(988, 0.07, 'triangle', 0.11, 0.002, 0.05, 0.14), 45);
+    },
+    betDown() {
+      tone(740, 0.05, 'triangle', 0.11, 0.002, 0.04, 0.10);
+      setTimeout(()=>tone(554, 0.07, 'triangle', 0.11, 0.002, 0.05, 0.14), 45);
+    },
+    /* Boost toggle: rising surge on, falling sigh off. */
+    boostOn()  { slide(440, 880, 0.18, 'triangle', 0.12, 0.2); tone(1320, 0.06, 'sine', 0.07, 0.002, 0.05, 0.3); },
+    boostOff() { slide(660, 330, 0.16, 'triangle', 0.10, 0.15); },
+    /* Mid-tier line win — between smallWin's chime and bigWin's fanfare. */
+    mediumWin() {
+      [659, 880, 1175, 1480].forEach((f, i) => setTimeout(()=>tone(f, 0.16, 'triangle', 0.20, 0.004, 0.1, 0.35), i * 70));
+      setTimeout(()=>chord([880, 1175, 1760], 0.6, 'sine', 0.10, 0.4), 300);
+      thud(0.55);
+    },
+    /* Soft tick accompanying win count-ups; pitch climbs with progress 0..1. */
+    countTick(p = 0) {
+      const prog = Math.max(0, Math.min(1, p));
+      tone(840 + 660 * prog, 0.03, 'square', 0.055, 0.001, 0.025, 0.05);
+    },
     addCash() {
       [659, 784, 988, 1175, 1318].forEach((f,i)=>setTimeout(()=>tone(f, 0.11, 'triangle', 0.16, 0.003, 0.08, 0.3), i*55));
     },
@@ -2840,6 +2892,13 @@ const getBuyBonusCost = () => State.bet * BUY_BONUS_COST_MULT;
 /* ============================================================
    FORMAT HELPERS
    ============================================================ */
+/* Cached getElementById — these run in hot paths (every spin, every
+   respin, every balance tick), so memoize the lookups once. */
+const $id = (() => {
+  const cache = Object.create(null);
+  return id => cache[id] || (cache[id] = document.getElementById(id));
+})();
+
 const fmt = n => {
   const cents = Math.round(n * 100) / 100;
   if (Number.isInteger(cents)) return cents.toLocaleString('en-US');
@@ -2848,12 +2907,12 @@ const fmt = n => {
 function setBalance(n) {
   State.balance = Math.max(0, n);
   persistBalance(State.balance);
-  document.getElementById('balance').textContent = fmt(State.balance);
+  $id('balance').textContent = fmt(State.balance);
   updateBuyBonusButton();
 }
 function setWin(n, opts = {}) {
   State.lastWin = n;
-  const el = document.getElementById('win');
+  const el = $id('win');
   el.textContent = '$' + fmt(n);
   if (opts.glow) {
     el.parentElement.classList.remove('glow');
@@ -2863,14 +2922,14 @@ function setWin(n, opts = {}) {
 }
 function setBet(n) {
   State.bet = n;
-  document.getElementById('bet').textContent = fmt(State.bet);
+  $id('bet').textContent = fmt(State.bet);
   updateJackpotDisplay();
   updateBuyBonusDisplay();
   updateBuyBonusButton();
   updateBoostUI();
 }
 function updateBuyBonusDisplay() {
-  const el = document.getElementById('buy-bonus-display');
+  const el = $id('buy-bonus-display');
   if (el) el.textContent = '$' + fmt(getBuyBonusCost());
 }
 function updateJackpotDisplay() {
@@ -2879,8 +2938,8 @@ function updateJackpotDisplay() {
   const tiers = { depth: 'DEPTH', tide: 'TIDE', storm: 'STORM', kraken: 'KRAKEN' };
   Object.entries(tiers).forEach(([key, t]) => {
     const v = '$' + fmt(bet * JACKPOT_MULTS[t]);
-    const top = document.getElementById('jp-' + key);
-    const bonus = document.getElementById('bonus-jp-' + key);
+    const top = $id('jp-' + key);
+    const bonus = $id('bonus-jp-' + key);
     if (top) top.textContent = v;
     if (bonus) bonus.textContent = v;
   });
@@ -2893,7 +2952,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
    ============================================================ */
 const REEL_COUNT = 5;
 const ROW_COUNT = 3;
-const STRIP_LEN = 30;
+/* Kept small (matches slots.html) so off-screen rows aren't a paint/
+   animation cost — was 30, which meant 150 fresh DOM nodes per spin. */
+const STRIP_LEN = 14;
+/* Cached reel/strip elements — populated once in buildReels so the
+   spin loop and win-highlight passes never re-query the DOM. */
+const reelEls = [];
+const stripEls = [];
 
 function pickSymbol(extraAnchorBoost = 0) {
   const totalW = SYMBOLS.reduce((s, x) => s + x.weight + (x.bonus ? extraAnchorBoost : 0), 0);
@@ -2921,31 +2986,47 @@ function symbolEl(sym) {
 }
 
 function buildReels() {
-  const reelsEl = document.getElementById('reels');
+  const reelsEl = $id('reels');
   reelsEl.innerHTML = '';
+  reelEls.length = 0;
+  stripEls.length = 0;
   for (let r = 0; r < REEL_COUNT; r++) {
     const reelEl = document.createElement('div');
     reelEl.className = 'reel';
     reelEl.dataset.reel = r;
     const strip = document.createElement('div');
     strip.className = 'strip';
-    for (let i = 0; i < 3; i++) strip.appendChild(symbolEl(pickSymbol()));
+    // Pre-allocate STRIP_LEN symbol nodes so the spin loop can reuse
+    // them without ever inserting or removing children — avoids the
+    // per-spin layout cost of building 14×5 fresh elements.
+    for (let i = 0; i < STRIP_LEN; i++) strip.appendChild(symbolEl(pickSymbol()));
     reelEl.appendChild(strip);
     reelsEl.appendChild(reelEl);
+    reelEls.push(reelEl);
+    stripEls.push(strip);
   }
 }
 
 function spinReel(reelIndex, finalTriple, duration) {
   return new Promise(resolve => {
-    const reel = document.querySelector(`.reel[data-reel="${reelIndex}"]`);
-    const oldStrip = reel.querySelector('.strip');
-    const strip = document.createElement('div');
-    strip.className = 'strip';
+    const reel = reelEls[reelIndex];
+    const strip = stripEls[reelIndex];
 
     const symbolH = reel.clientHeight / 3;
     const items = makeStrip(finalTriple);
-    items.forEach(s => strip.appendChild(symbolEl(s)));
-    reel.replaceChild(strip, oldStrip);
+
+    // Reuse existing symbol nodes — re-skin in place, no tree churn.
+    const existing = strip.children;
+    while (existing.length < items.length) strip.appendChild(symbolEl(items[existing.length]));
+    while (existing.length > items.length) strip.removeChild(strip.lastChild);
+    for (let i = 0; i < items.length; i++) {
+      const sym = items[i];
+      const node = existing[i];
+      node.className = 'symbol ' + sym.cls;
+      node.dataset.symbol = sym.id;
+      const glyph = (sym.id === 'kraken' || sym.id === 'anchor') ? '' : sym.glyph;
+      if (node.textContent !== glyph) node.textContent = glyph;
+    }
 
     const startY = -(symbolH * (items.length - 3));
     strip.style.transition = 'none';
@@ -2976,8 +3057,10 @@ function spinReel(reelIndex, finalTriple, duration) {
 }
 
 function clearWinHighlights() {
-  document.querySelectorAll('.symbol').forEach(s => { s.classList.remove('win', 'dim'); });
-  document.getElementById('paylines').innerHTML = '';
+  for (const strip of stripEls) {
+    for (const s of strip.children) s.classList.remove('win', 'dim');
+  }
+  $id('paylines').innerHTML = '';
 }
 
 function evaluateWin(grid) {
@@ -3006,24 +3089,37 @@ function evaluateWin(grid) {
   return { wins, bonusCount };
 }
 
-function drawPayline(line, color, count) {
-  const svg = document.getElementById('paylines');
-  if (!svg) return;
+/* Batch-read all win-overlay geometry in one pass (svg rect + the 15
+   visible symbol centers, in viewport coords) BEFORE any DOM writes.
+   drawPayline / confetti then consume the snapshot — no interleaved
+   read→write→read layout thrash when several paylines hit at once. */
+function readWinGeometry() {
+  const svg = $id('paylines');
+  if (!svg) return null;
   const svgRect = svg.getBoundingClientRect();
-  if (svgRect.width === 0 || svgRect.height === 0) return;
+  if (svgRect.width === 0 || svgRect.height === 0) return null;
+  const centers = [];
+  for (let r = 0; r < REEL_COUNT; r++) {
+    const kids = stripEls[r].children;
+    const col = [];
+    for (let row = 0; row < ROW_COUNT; row++) {
+      const rect = kids[row].getBoundingClientRect();
+      col.push({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    }
+    centers.push(col);
+  }
+  return { svg, svgRect, centers };
+}
+
+function drawPayline(line, color, count, geom) {
+  if (!geom) return;
+  const { svg, svgRect, centers } = geom;
   svg.setAttribute('viewBox', `0 0 ${svgRect.width.toFixed(0)} ${svgRect.height.toFixed(0)}`);
   const pts = [];
   for (let r = 0; r < count; r++) {
-    const reel = document.querySelector(`.reel[data-reel="${r}"]`);
-    if (!reel) continue;
-    const symbols = reel.querySelectorAll('.symbol');
-    const visible = Array.from(symbols).slice(0, 3);
-    const targetSym = visible[line[r]];
-    if (!targetSym) continue;
-    const symRect = targetSym.getBoundingClientRect();
-    const cx = symRect.left + symRect.width / 2 - svgRect.left;
-    const cy = symRect.top + symRect.height / 2 - svgRect.top;
-    pts.push(`${cx.toFixed(1)},${cy.toFixed(1)}`);
+    const c = centers[r][line[r]];
+    if (!c) continue;
+    pts.push(`${(c.x - svgRect.left).toFixed(1)},${(c.y - svgRect.top).toFixed(1)}`);
   }
   if (pts.length < 2) return;
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
@@ -3036,25 +3132,23 @@ function drawPayline(line, color, count) {
 
 function highlightWinSymbols(line, count) {
   for (let r = 0; r < count; r++) {
-    const reel = document.querySelector(`.reel[data-reel="${r}"]`);
-    const syms = reel.querySelectorAll('.symbol');
-    const visible = Array.from(syms).slice(0, 3);
-    visible[line[r]].classList.add('win');
+    stripEls[r].children[line[r]].classList.add('win');
   }
 }
 function dimNonWinning() {
-  document.querySelectorAll('.reel').forEach(reel => {
-    const syms = reel.querySelectorAll('.symbol');
-    const visible = Array.from(syms).slice(0, 3);
-    visible.forEach(sym => { if (!sym.classList.contains('win')) sym.classList.add('dim'); });
-  });
+  for (const strip of stripEls) {
+    const kids = strip.children;
+    for (let i = 0; i < ROW_COUNT; i++) {
+      if (!kids[i].classList.contains('win')) kids[i].classList.add('dim');
+    }
+  }
 }
 
 /* ============================================================
    PARTICLES
    ============================================================ */
 function fireWinSweep() {
-  const screen = document.getElementById('screen');
+  const screen = $id('screen');
   if (!screen) return;
   screen.classList.remove('win-sweep');
   void screen.offsetWidth;
@@ -3062,16 +3156,28 @@ function fireWinSweep() {
   setTimeout(() => screen.classList.remove('win-sweep'), 950);
 }
 function fireCabinetImpact() {
-  const cab = document.getElementById('cabinet');
+  const cab = $id('cabinet');
   if (!cab) return;
   cab.classList.remove('win-shake');
   void cab.offsetWidth;
   cab.classList.add('win-shake');
   setTimeout(() => cab.classList.remove('win-shake'), 520);
 }
+/* gentle one-shot settle for ordinary wins (transform-only) */
+function fireCabinetSettle() {
+  const cab = $id('cabinet');
+  if (!cab) return;
+  cab.classList.remove('win-settle');
+  void cab.offsetWidth;
+  cab.classList.add('win-settle');
+  setTimeout(() => cab.classList.remove('win-settle'), 300);
+}
 function spawnConfetti(x, y, count = 30) {
-  const layer = document.getElementById('particles');
+  const layer = $id('particles');
   const colors = ['#4dffe2','#ff3c5f','#b388ff','#ffd24a','#5cffa1','#ffffff','#22d3ee'];
+  // Mobile: halve particle count — each is an animated DOM node and the
+  // GPU thrashes with ~50+ in flight.
+  if (window.innerWidth < 720) count = Math.max(3, Math.ceil(count / 2));
   for (let i = 0; i < count; i++) {
     const p = document.createElement('div');
     p.className = 'particle';
@@ -3091,7 +3197,8 @@ function spawnConfetti(x, y, count = 30) {
   }
 }
 function spawnBubbles(x, y, count = 14) {
-  const layer = document.getElementById('particles');
+  const layer = $id('particles');
+  if (window.innerWidth < 720) count = Math.max(3, Math.ceil(count / 2));
   for (let i = 0; i < count; i++) {
     const b = document.createElement('div');
     b.className = 'bubble';
@@ -3107,9 +3214,10 @@ function spawnBubbles(x, y, count = 14) {
 }
 function spawnCoinShower(originEl, count = 40) {
   const rect = originEl.getBoundingClientRect();
-  const layer = document.getElementById('particles');
+  const layer = $id('particles');
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
+  if (window.innerWidth < 720) count = Math.max(6, Math.ceil(count / 2));
   for (let i = 0; i < count; i++) {
     const c = document.createElement('div');
     c.className = 'coin';
@@ -3164,17 +3272,31 @@ function countUp(from, to, duration, onUpdate, onDone) {
   }
   requestAnimationFrame(tick);
 }
+
+/* Throttled SFX tick to accompany a countUp — call with progress 0..1
+   each frame; it fires Audio.countTick at most every `intervalMs`. */
+function makeCountTicker(intervalMs = 90) {
+  let last = 0;
+  return progress => {
+    const now = performance.now();
+    if (now - last >= intervalMs) {
+      last = now;
+      Audio.countTick(progress);
+    }
+  };
+}
+
 function showBigWin(amount, tier) {
-  const overlay = document.getElementById('bigwin');
-  const textEl = document.getElementById('bigwin-text');
-  const amtEl = document.getElementById('bigwin-amount');
+  const overlay = $id('bigwin');
+  const textEl = $id('bigwin-text');
+  const amtEl = $id('bigwin-amount');
   const labels = { big: 'BIG WIN!', huge: 'HUGE WIN!', mega: 'MEGA WIN!', epic: 'EPIC WIN!' };
   textEl.textContent = labels[tier] || 'BIG WIN!';
   amtEl.textContent = '$0';
   overlay.classList.add('show');
   State.bigWinShowing = true;
   // Block spin spamming while the overlay is up
-  const spinBtn = document.getElementById('spin-btn');
+  const spinBtn = $id('spin-btn');
   if (spinBtn) spinBtn.disabled = true;
   Audio.bigWin();
   const tierCounts = { big: 6, huge: 10, mega: 16, epic: 24 };
@@ -3185,13 +3307,19 @@ function showBigWin(amount, tier) {
   if (tier === 'mega' || tier === 'epic') {
     setTimeout(() => spawnCoinShower(overlay, 50), 200);
   }
-  countUp(0, amount, 1400, v => { amtEl.textContent = '$' + fmt(v); }, () => {
+  // Snappier celebration: 1.1 s rollup + 1.1 s hold instead of the old
+  // 1.4 s + 1.6 s — still a moment, never a wait. Ticks climb with it.
+  const ticker = makeCountTicker(80);
+  countUp(0, amount, 1100, v => {
+    amtEl.textContent = '$' + fmt(v);
+    ticker(amount > 0 ? v / amount : 1);
+  }, () => {
     setTimeout(() => {
       overlay.classList.remove('show');
       State.bigWinShowing = false;
       if (spinBtn) spinBtn.disabled = false;
       tryAutoSpin();
-    }, 1600);
+    }, 1100);
   });
 }
 
@@ -3207,14 +3335,16 @@ async function doSpin(opts = {}) {
   }
 
   State.spinning = true;
-  document.getElementById('spin-btn').classList.add('spinning');
-  document.getElementById('spin-btn').disabled = true;
+  document.body.classList.add('is-spinning');
+  const spinBtn = $id('spin-btn');
+  spinBtn.classList.add('spinning');
+  spinBtn.disabled = true;
   updateBuyBonusButton();
   updateBoostUI();
   clearWinHighlights();
   setWin(0);
-  document.getElementById('anticipation').classList.remove('on');
-  document.getElementById('screen').classList.remove('antic-pulse');
+  $id('anticipation').classList.remove('on');
+  $id('screen').classList.remove('antic-pulse');
 
   if (!opts.boughtBonus) setBalance(State.balance - getEffectiveBet());
 
@@ -3257,8 +3387,8 @@ async function doSpin(opts = {}) {
   if (anticipate4and5) {
     setTimeout(() => {
       if (State.spinning) {
-        document.getElementById('anticipation').classList.add('on');
-        document.getElementById('screen').classList.add('antic-pulse');
+        $id('anticipation').classList.add('on');
+        $id('screen').classList.add('antic-pulse');
         Audio.anticipation();
       }
     }, baseDur[2] + 40);
@@ -3266,8 +3396,8 @@ async function doSpin(opts = {}) {
   if (anticipate5) {
     setTimeout(() => {
       if (State.spinning) {
-        document.getElementById('anticipation').classList.add('on');
-        document.getElementById('screen').classList.add('antic-pulse');
+        $id('anticipation').classList.add('on');
+        $id('screen').classList.add('antic-pulse');
         Audio.anticipationHigh();
       }
     }, dur[3] + 60);
@@ -3281,32 +3411,53 @@ async function doSpin(opts = {}) {
   for (let i = 0; i < wins.length; i++) totalWin += wins[i].amount;
 
   if (wins.length > 0) {
+    // One geometry read (svg + 15 symbol centers), then write-only:
+    // paylines, highlights, dims, confetti all consume the snapshot.
+    const geom = readWinGeometry();
+    const ratio = totalWin / getEffectiveBet();
     wins.forEach(w => {
-      drawPayline(w.line, PAYLINE_COLORS[w.lineIdx], w.count);
+      drawPayline(w.line, PAYLINE_COLORS[w.lineIdx], w.count, geom);
       highlightWinSymbols(w.line, w.count);
     });
     dimNonWinning();
-    Audio.smallWin();
+    // Tiered line-win audio: mid wins get a fuller fanfare than the chime.
+    if (ratio >= 5) Audio.mediumWin(); else Audio.smallWin();
     fireWinSweep();
-    document.querySelectorAll('.symbol.win').forEach((sym, i) => {
-      const r = sym.getBoundingClientRect();
-      setTimeout(() => spawnConfetti(r.left + r.width/2, r.top + r.height/2, 10), i * 35);
+    // confetti at each winning symbol (deduped across overlapping lines)
+    if (geom) {
+      const seen = new Set();
+      let burstIdx = 0;
+      wins.forEach(w => {
+        for (let r = 0; r < w.count; r++) {
+          const key = r + ',' + w.line[r];
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const c = geom.centers[r][w.line[r]];
+          setTimeout(() => spawnConfetti(c.x, c.y, 10), burstIdx * 35);
+          burstIdx++;
+        }
+      });
+    }
+    // counter rollup with rising audio ticks
+    const winTicker = makeCountTicker(90);
+    countUp(0, totalWin, 900, v => {
+      $id('win').textContent = '$' + fmt(v);
+      winTicker(totalWin > 0 ? v / totalWin : 1);
     });
-    countUp(0, totalWin, 900, v => { document.getElementById('win').textContent = '$' + fmt(v); });
     setBalance(State.balance + totalWin);
     setWin(totalWin, { glow: true });
 
-    const ratio = totalWin / getEffectiveBet();
     if (ratio >= 200) { fireCabinetImpact(); showBigWin(totalWin, 'epic'); }
     else if (ratio >= 80) { fireCabinetImpact(); showBigWin(totalWin, 'mega'); }
     else if (ratio >= 30) { fireCabinetImpact(); showBigWin(totalWin, 'huge'); }
     else if (ratio >= 15) showBigWin(totalWin, 'big');
+    else fireCabinetSettle(); // ordinary wins still get a physical nudge
 
-    if (ratio >= 10) spawnCoinShower(document.getElementById('screen'), 30);
+    if (ratio >= 10) spawnCoinShower($id('screen'), 30);
   }
 
-  document.getElementById('anticipation').classList.remove('on');
-  document.getElementById('screen').classList.remove('antic-pulse');
+  $id('anticipation').classList.remove('on');
+  $id('screen').classList.remove('antic-pulse');
   State.spinLineWin = totalWin;
   if (dc >= 5) {
     triggerBonusReveal(!!opts.boughtBonus);
@@ -3320,9 +3471,10 @@ async function doSpin(opts = {}) {
   }
 
   State.spinning = false;
-  document.getElementById('spin-btn').classList.remove('spinning');
+  document.body.classList.remove('is-spinning');
+  spinBtn.classList.remove('spinning');
   // Leave disabled if a Big Win overlay is up — it'll re-enable itself when it closes.
-  if (!State.bigWinShowing) document.getElementById('spin-btn').disabled = false;
+  if (!State.bigWinShowing) spinBtn.disabled = false;
   updateBuyBonusButton();
   updateBoostUI();
   tryAutoSpin();
@@ -3474,7 +3626,8 @@ function updateBuyBonusButton() {
 function toggleBoost() {
   if (State.spinning || State.inBonus) return;
   State.boost = !State.boost;
-  Audio.click();
+  // Directional cue: rising surge on, falling sigh off
+  if (State.boost) Audio.boostOn(); else Audio.boostOff();
   updateBoostUI();
   updateJackpotDisplay();
   updateBuyBonusDisplay();
@@ -3510,6 +3663,11 @@ const BonusState = {
   revealing: false,
   bet: 5,
 };
+
+/* Cached bonus-board cell elements — rebuilt once per feature in
+   startBonus; every respin/upgrade/beam/reveal then indexes the array
+   instead of re-querying `.cell[data-idx=…]` dozens of times. */
+let bonusCellEls = [];
 
 const SHIP_TIERS = {
   1: { name: 'SKIFF',   icon: 'skiff',   color: '#c5a577', mult: 1 },
@@ -3689,7 +3847,7 @@ function rollShipValue(level = 1) {
 function round2(n) { return Math.round(n * 100) / 100; }
 
 function renderCell(idx) {
-  const el = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const el = bonusCellEls[idx];
   if (!el) return;
   const data = BonusState.cells[idx];
   el.innerHTML = '';
@@ -3748,13 +3906,13 @@ function applyShipUpgrade(idx) {
   data.ship.value = round2(data.ship.baseValue * SHIP_TIERS[data.ship.level].mult);
   renderCell(idx);
   // re-trigger upgrade animation
-  const ship = document.querySelector(`.cell[data-idx="${idx}"] .ship`);
+  const ship = bonusCellEls[idx] && bonusCellEls[idx].querySelector('.ship');
   if (ship) {
     ship.classList.add('upgrading');
     setTimeout(() => ship.classList.remove('upgrading'), 600);
   }
   Audio.shipUpgrade();
-  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const cellEl = bonusCellEls[idx];
   if (cellEl) {
     const r = cellEl.getBoundingClientRect();
     spawnBubbles(r.left + r.width/2, r.top + r.height/2, 10);
@@ -3768,7 +3926,7 @@ function placeNewShip(idx, level = 1) {
   BonusState.cells[idx] = { ship };
   renderCell(idx);
   Audio.shipDrop();
-  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const cellEl = bonusCellEls[idx];
   if (cellEl) {
     const r = cellEl.getBoundingClientRect();
     spawnBubbles(r.left + r.width/2, r.top + r.height/2, 12);
@@ -3833,7 +3991,7 @@ async function fireHarpoon() {
       data.ship.baseValue = round2(data.ship.baseValue * boost);
       data.ship.value = round2(data.ship.baseValue * SHIP_TIERS[data.ship.level].mult);
       renderCell(idx);
-      const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+      const cellEl = bonusCellEls[idx];
       if (cellEl) {
         const burst = document.createElement('div');
         burst.className = 'impact-burst';
@@ -3849,7 +4007,7 @@ async function fireHarpoon() {
 
 /* Single laser beam from outside the board to a target cell. Used for ×2 Spyglass. */
 async function fireMultBeam(targetIdx) {
-  const cellEl = document.querySelector(`.cell[data-idx="${targetIdx}"]`);
+  const cellEl = bonusCellEls[targetIdx];
   const board = document.getElementById('bonus-board');
   if (!cellEl || !board) return;
   const boardRect = board.getBoundingClientRect();
@@ -3891,7 +4049,7 @@ async function fireCannon() {
   }
   for (let k = 0; k < targets.length; k++) {
     const idx = targets[k];
-    const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+    const cellEl = bonusCellEls[idx];
     if (!cellEl) continue;
     const cannon = document.createElement('div');
     cannon.className = 'cannonball';
@@ -3936,7 +4094,7 @@ function boostAllShipsByBet(perShipMult) {
   return true;
 }
 function flashBoosted(idx) {
-  const ship = document.querySelector(`.cell[data-idx="${idx}"] .ship`);
+  const ship = bonusCellEls[idx] && bonusCellEls[idx].querySelector('.ship');
   if (!ship) return;
   ship.classList.remove('boosted');
   void ship.offsetWidth;
@@ -4112,7 +4270,7 @@ async function placeSeedShips(count) {
   for (const idx of positions) {
     placeNewShip(idx, 1);
     Audio.anchorLand();
-    const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+    const cellEl = bonusCellEls[idx];
     const r = cellEl.getBoundingClientRect();
     spawnConfetti(r.left + r.width/2, r.top + r.height/2, 14);
     await sleep(240);
@@ -4165,7 +4323,7 @@ async function processWheelTokens() {
 
   for (const { idx, type } of tokens) {
     if (!BonusState.active) return;
-    const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+    const cellEl = bonusCellEls[idx];
     if (cellEl) {
       cellEl.classList.add('token-firing');
       setTimeout(() => cellEl.classList.remove('token-firing'), 600);
@@ -4240,7 +4398,7 @@ async function doBonusRespin() {
       placeWheelToken(idx, type);
     }
     events++;
-    const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+    const cellEl = bonusCellEls[idx];
     if (cellEl) {
       const r = cellEl.getBoundingClientRect();
       spawnConfetti(r.left + r.width/2, r.top + r.height/2, 12);
@@ -4257,7 +4415,7 @@ function placeWheelToken(idx, type) {
 }
 
 function startCellSpinner(idx) {
-  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const cellEl = bonusCellEls[idx];
   if (!cellEl || cellEl.querySelector('.cell-spinner')) return;
   const spinner = document.createElement('div');
   spinner.className = 'cell-spinner';
@@ -4290,7 +4448,7 @@ function startCellSpinner(idx) {
   cellEl.appendChild(spinner);
 }
 function stopCellSpinner(idx) {
-  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const cellEl = bonusCellEls[idx];
   const spinner = cellEl && cellEl.querySelector('.cell-spinner');
   if (spinner) {
     spinner.classList.add('stopping');
@@ -4298,11 +4456,11 @@ function stopCellSpinner(idx) {
   }
 }
 function startUpgradeSpinner(idx) {
-  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const cellEl = bonusCellEls[idx];
   if (cellEl) cellEl.classList.add('upgrade-spinning');
 }
 function stopUpgradeSpinner(idx) {
-  const cellEl = document.querySelector(`.cell[data-idx="${idx}"]`);
+  const cellEl = bonusCellEls[idx];
   if (cellEl) cellEl.classList.remove('upgrade-spinning');
 }
 
@@ -4333,7 +4491,7 @@ async function finishBonus(isGrand) {
   // Re-render so ship-value nodes exist (they were skipped during play? — actually they're rendered, just hidden via CSS)
   // Trigger the reveal animation with stagger
   shipIdxs.forEach((idx, k) => {
-    const valEl = document.querySelector(`.cell[data-idx="${idx}"] .ship-value`);
+    const valEl = bonusCellEls[idx] && bonusCellEls[idx].querySelector('.ship-value');
     if (valEl) {
       valEl.style.animationDelay = (k * 0.07) + 's';
       valEl.classList.add('revealing');
@@ -4460,11 +4618,11 @@ function init() {
   document.getElementById('spin-btn').addEventListener('click', () => { Audio.click(); doSpin(); });
   document.getElementById('bet-up').addEventListener('click', () => {
     const i = State.betSteps.indexOf(State.bet);
-    if (i < State.betSteps.length - 1) { setBet(State.betSteps[i+1]); Audio.click(); }
+    if (i < State.betSteps.length - 1) { setBet(State.betSteps[i+1]); Audio.betUp(); }
   });
   document.getElementById('bet-down').addEventListener('click', () => {
     const i = State.betSteps.indexOf(State.bet);
-    if (i > 0) { setBet(State.betSteps[i-1]); Audio.click(); }
+    if (i > 0) { setBet(State.betSteps[i-1]); Audio.betDown(); }
   });
   document.getElementById('btn-history').addEventListener('click', () => {
     Audio.click();
