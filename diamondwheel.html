@@ -325,7 +325,7 @@ button, input { font: inherit; }
 }
 .chip:active { transform: translateY(-2px); }
 
-.actions { display: flex; gap: 10px; }
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .act {
   border: 0;
   cursor: pointer;
@@ -356,6 +356,14 @@ button, input { font: inherit; }
   background: linear-gradient(180deg, #4d1d8a, #1d0a3a);
   box-shadow: 0 5px 0 rgba(0,0,0,0.54), inset 0 0 0 1.5px rgba(168,85,247,0.4);
 }
+.act.rebet-spin {
+  min-width: 160px;
+  color: #ffe4f4;
+  background: linear-gradient(180deg, #b8275f, #4d0a26);
+  box-shadow: 0 5px 0 rgba(58,0,18,0.65), inset 0 0 0 1.5px rgba(255,46,147,0.45);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+}
+.act.rebet-spin:disabled { box-shadow: 0 5px 0 rgba(0,0,0,0.54), inset 0 0 0 1.5px rgba(255,46,147,0.18); }
 
 /* ---------- RESULT TOAST ---------- */
 .result-toast {
@@ -478,6 +486,7 @@ html.low-power .balance-link {
     <div class="actions">
       <button class="act clear" id="btn-clear">CLEAR</button>
       <button class="act rebet" id="btn-rebet" disabled>REBET</button>
+      <button class="act rebet-spin" id="btn-rebet-spin" disabled>REBET&nbsp;&amp;&nbsp;SPIN</button>
       <button class="act spin" id="btn-spin" disabled>SPIN</button>
     </div>
   </div>
@@ -683,23 +692,29 @@ const AudioFX = (function () {
     const baseAmp = 0.10 + 0.20 * (1 - norm) + 0.05 * norm;  // meatier when slow, still audible when fast
     const t = ctx.currentTime;
 
-    // BODY: woody transient (filtered noise burst)
-    const body = noiseSource(0.05, 600, 3200);
+    // BODY: woody transient — band-limited noise. Lowpass dropped
+    // 3200 -> 2000 Hz so the clack is rounder, less zippery.
+    const body = noiseSource(0.05, 500, 2000);
     const bg = ctx.createGain();
     bg.gain.setValueAtTime(0.0001, t);
     bg.gain.exponentialRampToValueAtTime(baseAmp * 0.95, t + 0.0015);
     bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.045 + 0.02 * (1 - norm));
     body.connect(bg).connect(master);
 
-    // CLICK: bright tick at the front (higher with speed)
+    // CLICK: bright tick at the front (pitch lowered ~600 Hz overall,
+    // and run through a lowpass so it doesn't sting at high speed).
     const click = ctx.createOscillator();
     click.type = 'square';
-    click.frequency.value = 1700 + 900 * norm + Math.random() * 150;
+    click.frequency.value = 1100 + 700 * norm + Math.random() * 120;
+    const clp = ctx.createBiquadFilter();
+    clp.type = 'lowpass';
+    clp.frequency.value = 2600;
+    clp.Q.value = 0.4;
     const cg = ctx.createGain();
     cg.gain.setValueAtTime(0.0001, t);
-    cg.gain.exponentialRampToValueAtTime(baseAmp * 0.45, t + 0.001);
+    cg.gain.exponentialRampToValueAtTime(baseAmp * 0.40, t + 0.001);
     cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.014);
-    click.connect(cg).connect(master);
+    click.connect(clp).connect(cg).connect(master);
     click.start(t);
     click.stop(t + 0.020);
 
@@ -819,22 +834,24 @@ function paintFace(size, withPegs) {
     }
   }
 
-  // separators
-  ctx.strokeStyle = 'rgba(255,210,74,0.75)';
+  // separators — stop just shy of the rim so they don't fight the gold
+  ctx.strokeStyle = 'rgba(255,210,74,0.78)';
   ctx.lineWidth = Math.max(1.5, size * 0.0022);
   for (let i = 0; i < 54; i++) {
     const a = -Math.PI / 2 + (i - 0.5) * SEG;
     ctx.beginPath();
     ctx.moveTo(Math.cos(a) * R * 0.32, Math.sin(a) * R * 0.32);
-    ctx.lineTo(Math.cos(a) * R * 0.955, Math.sin(a) * R * 0.955);
+    ctx.lineTo(Math.cos(a) * R * 0.92, Math.sin(a) * R * 0.92);
     ctx.stroke();
   }
 
-  // outer gold band — the only ring; inner ring removed for clarity
-  ring(ctx, R * 0.90, R * 0.955, '#8a6508', '#ffd24a', '#5c3d00');
+  // Outer dark ring at 0.92-0.94 — a quiet bezel between segments
+  // and the gold rim drawn in screen space; thinner than before so
+  // the rim itself reads as the wheel's edge.
+  ring(ctx, R * 0.92, R * 0.94, 'rgba(20,8,40,0)', 'rgba(20,8,40,0.55)', 'rgba(20,8,40,0)');
 
-  // Labels — pushed out near the rim (where a real big-six wheel
-  // puts them). One element per segment, plain and readable.
+  // Labels — readable, near (but not crashing into) the rim. Geist Mono
+  // for digits to stay crisp at any rotation; clean Outfit for glyphs.
   for (let i = 0; i < 54; i++) {
     const sym = Core.SEGMENTS[i];
     const lk = LOOK[sym];
@@ -845,15 +862,14 @@ function paintFace(size, withPegs) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     if (lk.glyph) {
-      // JOKER / DIAMOND: single bold glyph at the rim
       ctx.shadowColor = lk.accent;
-      ctx.shadowBlur = size * 0.014;
-      ctx.font = `${Math.round(size * 0.040)}px Outfit, sans-serif`;
-      ctx.fillText(lk.glyph, 0, -R * 0.82);
+      ctx.shadowBlur = size * 0.016;
+      ctx.font = `${Math.round(size * 0.046)}px Outfit, sans-serif`;
+      ctx.fillText(lk.glyph, 0, -R * 0.78);
       ctx.shadowBlur = 0;
     } else {
-      ctx.font = `800 ${Math.round(size * 0.032)}px Geist Mono, monospace`;
-      ctx.fillText(lk.label, 0, -R * 0.82);
+      ctx.font = `800 ${Math.round(size * 0.034)}px Geist Mono, monospace`;
+      ctx.fillText(lk.label, 0, -R * 0.78);
     }
     ctx.restore();
   }
@@ -946,12 +962,13 @@ const house = document.getElementById('wheelhouse');
 function makeFallback2D() {
   const canvas = document.createElement('canvas');
   house.appendChild(canvas);
-  // A bigger, peg-less face: pegs render as real shaded discs in the
-  // overlay pass so they sit ON TOP of the wheel art and read clearly.
-  let face = paintFace(LOW_POWER ? 1024 : 1536, false);
+  // High-res face — pegs are NOT painted here; they render as real
+  // shaded discs in the overlay pass so they sit ON TOP of the art.
+  const FACE_PX = LOW_POWER ? 1280 : 2048;
+  let face = paintFace(FACE_PX, false);
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(() => {
-      try { face = paintFace(LOW_POWER ? 1024 : 1536, false); renderOnce(); } catch (e) {}
+      try { face = paintFace(FACE_PX, false); renderOnce(); } catch (e) {}
     });
   }
   let rho = 0, flap = 0, W = 0, H = 0;
@@ -963,73 +980,75 @@ function makeFallback2D() {
   }
   function render() {
     const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.clearRect(0, 0, W, H);
     const C = Math.min(W, H) / 2;
-    const R = C * 0.92;
+    const R = C * 0.94;
     const cx = W / 2;
-    const cy = H / 2 + C * 0.04;
+    const cy = H / 2;  // centered — the prior +C*0.04 offset read as off-balance
 
-    // ground halo so the wheel reads as floating off the felt
-    const halo = ctx.createRadialGradient(cx, cy + R * 0.06, R * 0.4, cx, cy + R * 0.06, R * 1.4);
+    // ground halo (floor shadow under the wheel)
+    const halo = ctx.createRadialGradient(cx, cy + R * 0.08, R * 0.5, cx, cy + R * 0.08, R * 1.45);
     halo.addColorStop(0, 'rgba(0,0,0,0.55)');
     halo.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = halo;
     ctx.beginPath();
-    ctx.arc(cx, cy + R * 0.06, R * 1.4, 0, TWO_PI);
+    ctx.arc(cx, cy + R * 0.08, R * 1.45, 0, TWO_PI);
     ctx.fill();
 
-    // ===== WHEEL (slightly squashed vertically to fake forward tilt) =====
+    // ===== WHEEL (face-on — no fake vertical squash, that was the
+    //              "off balance" feel; the rim highlights below sell the depth) =====
     ctx.save();
     ctx.translate(cx, cy);
     ctx.save();
-    ctx.scale(1, 0.94);            // perspective squash
-    ctx.rotate(rho);               // <-- the wheel actually rotates
-
-    // painted face
+    ctx.rotate(rho);
     ctx.drawImage(face, -R, -R, R * 2, R * 2);
-
-    ctx.restore();
     ctx.restore();
 
-    // ===== GOLD RIM (drawn in screen space so the highlights track the camera, not the wheel) =====
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(1, 0.94);
-    // outer brushed ring
-    const rimW = C * 0.048;
+    // ===== GOLD RIM (screen-space — highlights track the viewer, not the wheel) =====
+    const rimW = C * 0.054;
     const rim = ctx.createLinearGradient(0, -R - rimW, 0, R + rimW);
-    rim.addColorStop(0,   '#fff7d1');
-    rim.addColorStop(0.30,'#ffd24a');
-    rim.addColorStop(0.55,'#8a6508');
-    rim.addColorStop(0.80,'#ffd24a');
-    rim.addColorStop(1,   '#5c3d00');
+    rim.addColorStop(0,    '#fff7d1');
+    rim.addColorStop(0.22, '#ffd24a');
+    rim.addColorStop(0.50, '#8a6508');
+    rim.addColorStop(0.78, '#ffd24a');
+    rim.addColorStop(1,    '#5c3d00');
     ctx.lineWidth = rimW;
     ctx.strokeStyle = rim;
     ctx.beginPath();
-    ctx.arc(0, 0, R * 1.005, 0, TWO_PI);
+    ctx.arc(0, 0, R * 1.000, 0, TWO_PI);
     ctx.stroke();
-    // thin gold piping on the inner edge of the rim
-    ctx.lineWidth = C * 0.006;
-    ctx.strokeStyle = 'rgba(255,247,209,0.85)';
+    // bright inner edge of the rim
+    ctx.lineWidth = C * 0.005;
+    ctx.strokeStyle = 'rgba(255,247,209,0.95)';
     ctx.beginPath();
-    ctx.arc(0, 0, R * 0.972, 0, TWO_PI);
+    ctx.arc(0, 0, R * 0.965, 0, TWO_PI);
     ctx.stroke();
-    ctx.lineWidth = C * 0.004;
-    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    // crisp outer dark edge
+    ctx.lineWidth = C * 0.003;
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
     ctx.beginPath();
     ctx.arc(0, 0, R * 1.030, 0, TWO_PI);
     ctx.stroke();
 
-    // ===== PEGS (rotate with the wheel — proves it's spinning) =====
-    const pegR = C * 0.013;
+    // ===== PEGS — rotate with the wheel and sit on top of the art so
+    //              they read as raised studs (sells "this thing spins") =====
+    const pegR = C * 0.014;
     for (let i = 0; i < 54; i++) {
       const a = -Math.PI / 2 + (i - 0.5) * Core.SEG + rho;
-      const px = Math.cos(a) * R * 0.945;
-      const py = Math.sin(a) * R * 0.945;
-      const g = ctx.createRadialGradient(px - pegR * 0.4, py - pegR * 0.4, 0, px, py, pegR);
-      g.addColorStop(0, '#fff7d1');
-      g.addColorStop(0.5, '#ffd24a');
-      g.addColorStop(1, '#5c3d00');
+      const px = Math.cos(a) * R * 0.935;
+      const py = Math.sin(a) * R * 0.935;
+      // ambient shadow under the peg
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.beginPath();
+      ctx.arc(px + pegR * 0.18, py + pegR * 0.30, pegR * 1.05, 0, TWO_PI);
+      ctx.fill();
+      // peg with hilight
+      const g = ctx.createRadialGradient(px - pegR * 0.4, py - pegR * 0.5, 0, px, py, pegR);
+      g.addColorStop(0,   '#fff7d1');
+      g.addColorStop(0.55,'#ffd24a');
+      g.addColorStop(1,   '#5c3d00');
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(px, py, pegR, 0, TWO_PI);
@@ -1271,6 +1290,7 @@ const els = {
   spin: document.getElementById('btn-spin'),
   clear: document.getElementById('btn-clear'),
   rebet: document.getElementById('btn-rebet'),
+  rebetSpin: document.getElementById('btn-rebet-spin'),
   toast: document.getElementById('result-toast'),
   toastSym: document.getElementById('rt-sym'),
   toastAmt: document.getElementById('rt-amt'),
@@ -1384,6 +1404,7 @@ function updateActions() {
   els.spin.disabled = !betting || staked <= 0;
   els.clear.disabled = !betting || staked <= 0;
   els.rebet.disabled = !betting || !State.lastBets || staked > 0;
+  els.rebetSpin.disabled = !betting || !State.lastBets || staked > 0;
   for (const s of Core.SYMBOLS) spotEls[s].disabled = !betting;
 }
 
@@ -1635,14 +1656,22 @@ function confettiBurst() {
 }
 
 function rebet() {
-  if (State.phase !== 'BETTING' || !State.lastBets) return;
+  if (State.phase !== 'BETTING' || !State.lastBets) return false;
   let need = 0;
   for (const s of Core.SYMBOLS) need += State.lastBets[s];
-  if (need <= 0 || State.balance < need) { setMessage('NOT ENOUGH CHIPS', 'lose'); return; }
+  if (need <= 0 || State.balance < need) { setMessage('NOT ENOUGH CHIPS', 'lose'); return false; }
   setBalance(State.balance - need);
   for (const s of Core.SYMBOLS) { State.bets[s] = State.lastBets[s]; paintSpot(s); }
   playSfx('chip_stack_a', 0.85);
   updateActions();
+  return true;
+}
+
+function rebetAndSpin() {
+  if (rebet()) {
+    // tiny beat so the chips visibly land before the wheel launches
+    setTimeout(spin, 120);
+  }
 }
 
 /* ---------- wiring ---------- */
@@ -1651,6 +1680,7 @@ buildRack();
 els.spin.addEventListener('click', spin);
 els.clear.addEventListener('click', () => clearBets(true));
 els.rebet.addEventListener('click', rebet);
+els.rebetSpin.addEventListener('click', rebetAndSpin);
 document.getElementById('btn-history').addEventListener('click', () => {
   playSfx('button_soft', 0.6);
   if (window.HistoryUI) HistoryUI.open({ scope: 'session', game: 'diamondwheel' });
