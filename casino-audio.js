@@ -100,23 +100,14 @@
      choke-point for normalizing music across the whole site. The source
      tracks are all mastered hot and slightly uneven (measured integrated
      loudness −13.2 to −15.3 LUFS), which is why music drowned out quieter
-     SFX even at low slider settings. We route the element through a small
-     Web Audio graph:
+     SFX even at low slider settings.
 
-         <audio> → MediaElementSource → trackGain → limiter → masterGain → out
-
-     • trackGain  — per-track normalization computed from each track's
-                    measured loudness so they all land at MUSIC_TARGET_LUFS.
-                    This both matches tracks to each other and trims the hot
-                    masters down to a level that leaves SFX room to breathe.
-                    It only ever attenuates (gain ≤ 1) so it can never clip.
-     • limiter    — gentle catch-all so transients can't peak the bus.
-     • masterGain — driven live by Settings.musicVolume(); also the node we
-                    duck on so music can briefly defer to loud SFX moments.
-
-     If the Web Audio path is unavailable (older Safari, autoplay quirks),
-     we fall back to plain element.volume with the per-track gain folded in,
-     so normalization still applies. */
+     Normalization is applied as a per-track gain folded directly into the
+     element's volume (see trackGainFor): every track is pulled toward a
+     common MUSIC_TARGET_LUFS reference that also sits a few dB below the raw
+     masters, so background music leaves room for gameplay SFX. The effective
+     volume is always user-volume × track-gain × duck-amount, written by
+     applyMusicGain(). */
 
   // Reference loudness all music is normalized toward. Sits a few dB below
   // the source masters so background music stays under gameplay SFX.
@@ -149,73 +140,39 @@
   let started = false;
   let pendingSrc = null;
 
-  // Web Audio normalization graph (lazily built, gracefully optional)
-  let musicCtx = null;
-  let musicSource = null;   // MediaElementAudioSourceNode (one-shot per element)
-  let trackGainNode = null;
-  let musicMasterNode = null;
-  let musicGraphReady = false;
-  let musicGraphFailed = false;
-  let currentTrackGain = 1;
+  // Normalization + ducking state, applied straight to the element's volume.
+  // We deliberately avoid routing the element through a Web Audio graph:
+  // createMediaElementSource() permanently captures the element's output, and
+  // if the AudioContext is ever suspended (autoplay policies, mobile) the
+  // music goes silent — which would make the volume slider look dead. Plain
+  // element.volume is reliable on every browser and is enough here, because
+  // the per-track gains only ever attenuate (no clipping to limit).
+  let currentTrackGain = 1;   // per-track loudness normalization (≤ 1)
+  let duckFactor = 1;         // 1 = normal; < 1 while ducked under loud SFX
+  let duckRaf = null;
 
   function ensureAudioEl() {
     if (audioEl) return audioEl;
     audioEl = document.createElement('audio');
     audioEl.loop = true;
     audioEl.preload = 'auto';
+    audioEl.volume = Settings.musicVolume();
     audioEl.style.display = 'none';
     if (document.body) document.body.appendChild(audioEl);
     return audioEl;
   }
 
-  function buildMusicGraph() {
-    if (musicGraphReady || musicGraphFailed || !audioEl) return;
-    const AC = global.AudioContext || global.webkitAudioContext;
-    if (!AC) { musicGraphFailed = true; return; }
-    try {
-      musicCtx = new AC();
-      musicSource = musicCtx.createMediaElementSource(audioEl);
-      trackGainNode = musicCtx.createGain();
-      musicMasterNode = musicCtx.createGain();
-      const limiter = musicCtx.createDynamicsCompressor();
-      limiter.threshold.value = -2;
-      limiter.knee.value = 0;
-      limiter.ratio.value = 20;
-      limiter.attack.value = 0.003;
-      limiter.release.value = 0.18;
-      musicSource.connect(trackGainNode);
-      trackGainNode.connect(limiter);
-      limiter.connect(musicMasterNode);
-      musicMasterNode.connect(musicCtx.destination);
-      audioEl.volume = 1; // element runs at unity; gain lives in the graph
-      musicGraphReady = true;
-      applyMusicGain();
-    } catch (e) {
-      // MediaElementSource can only be created once and may be blocked on
-      // some browsers — fall back to plain element.volume.
-      musicGraphFailed = true;
-      musicCtx = musicSource = trackGainNode = musicMasterNode = null;
-    }
-  }
-
-  // Apply the current music volume (+ per-track normalization) wherever it
-  // belongs: the graph's gain nodes if active, otherwise element.volume.
+  // Single place that pushes the effective music level to the element:
+  //   user volume × per-track normalization × current duck amount.
   function applyMusicGain() {
-    const vol = Settings.musicVolume();
-    if (musicGraphReady && trackGainNode && musicMasterNode) {
-      const now = musicCtx.currentTime;
-      trackGainNode.gain.setTargetAtTime(currentTrackGain, now, 0.01);
-      musicMasterNode.gain.setTargetAtTime(vol, now, 0.02);
-    } else if (audioEl) {
-      audioEl.volume = Math.max(0, Math.min(1, vol * currentTrackGain));
-    }
+    if (!audioEl) return;
+    const v = Settings.musicVolume() * currentTrackGain * duckFactor;
+    audioEl.volume = Math.max(0, Math.min(1, v));
   }
 
   function tryStart() {
     if (!audioEl || !pendingSrc || started) return;
     if (Settings.get().muteMusic) return;   // don't fight a user who has it muted
-    buildMusicGraph();
-    if (musicCtx && musicCtx.state === 'suspended') musicCtx.resume().catch(() => {});
     const p = audioEl.play();
     if (p && typeof p.then === 'function') {
       p.then(() => { started = true; }).catch(() => { /* will retry on next gesture */ });
@@ -239,22 +196,31 @@
       started = false;
     },
     /* Briefly duck the music so it defers to a loud SFX moment (a big win,
-       a bonus trigger). depth 0..1 = fraction to drop to; ms = how long to
-       hold before easing back. No-op-safe if the graph isn't active. */
+       a bonus trigger). depth 0..1 = level to dip to; ms = hold before the
+       music eases back up. Implemented as a small volume ramp on the element
+       so it works regardless of how SFX are produced. */
     duck(depth = 0.45, ms = 600) {
-      if (!musicGraphReady || !musicMasterNode) return;
-      const now = musicCtx.currentTime;
-      const full = Settings.musicVolume();
-      const target = Math.max(0, Math.min(1, depth)) * full;
-      musicMasterNode.gain.cancelScheduledValues(now);
-      musicMasterNode.gain.setTargetAtTime(target, now, 0.04);
-      musicMasterNode.gain.setTargetAtTime(full, now + ms / 1000, 0.25);
+      if (!audioEl) return;
+      if (duckRaf) { clearTimeout(duckRaf); duckRaf = null; }
+      const target = Math.max(0, Math.min(1, depth));
+      duckFactor = target;
+      applyMusicGain();
+      const holdUntil = Date.now() + ms;
+      const releaseMs = 500;
+      const step = () => {
+        const t = Date.now();
+        if (t < holdUntil) { duckRaf = setTimeout(step, 40); return; }
+        const k = (t - holdUntil) / releaseMs;
+        if (k >= 1) { duckFactor = 1; duckRaf = null; }
+        else { duckFactor = target + (1 - target) * k; duckRaf = setTimeout(step, 40); }
+        applyMusicGain();
+      };
+      duckRaf = setTimeout(step, 40);
     },
   };
 
   // Auto-start on any user gesture (browsers require this)
   function gestureUnlock() {
-    if (musicCtx && musicCtx.state === 'suspended') musicCtx.resume().catch(() => {});
     tryStart();
   }
   document.addEventListener('click', gestureUnlock, { capture: true });
