@@ -1600,17 +1600,20 @@ function appendPlayerCard(handIdx, cardIdx) {
   if (State.hands.length === 1) {
     target = row;
   } else {
-    const group = row.querySelector('.hand-group');
-    if (!group || !group.children[handIdx]) { renderPlayer(); return; }
-    target = group.children[handIdx].querySelector('.cards-row');
+    // Use cached per-hand DOM refs captured in renderPlayer — was
+    // doing two querySelectors per card here which compounded across
+    // a 3-hand deal.
+    const cache = renderPlayer._handCache;
+    if (!cache || !cache[handIdx]) { renderPlayer(); return; }
+    target = cache[handIdx].cardsRow;
   }
   const el = cardEl(c, { fresh: true });
   target.appendChild(el);
   clearEnterAfter(el);
   // refresh multi-hand box total if applicable
   if (State.hands.length > 1) {
-    const box = row.querySelector('.hand-group').children[handIdx];
-    const total = box?.querySelector('.hand-total');
+    const total = renderPlayer._handCache && renderPlayer._handCache[handIdx]
+      && renderPlayer._handCache[handIdx].total;
     if (total) {
       const t = handTotal(h.cards);
       total.textContent = t;
@@ -1672,6 +1675,7 @@ function renderDealer() {
 function renderPlayer() {
   const row = UI.playerCards;
   row.innerHTML = '';
+  renderPlayer._handCache = null;
   if (State.hands.length <= 1) {
     if (State.hands.length === 1) {
       const h = State.hands[0];
@@ -1680,6 +1684,7 @@ function renderPlayer() {
   } else {
     const group = document.createElement('div');
     group.className = 'hand-group';
+    const cache = [];
     State.hands.forEach((h, idx) => {
       const box = document.createElement('div');
       box.className = 'hand-box';
@@ -1700,8 +1705,10 @@ function renderPlayer() {
       box.appendChild(cards);
       box.appendChild(total);
       group.appendChild(box);
+      cache[idx] = { box, cardsRow: cards, total };
     });
     row.appendChild(group);
+    renderPlayer._handCache = cache;
     // #player-cards scrolls horizontally so all hands stay reachable —
     // glide the active hand into view, but only when the TURN moves to
     // a different hand. Scrolling on every card render janks the deal.
@@ -1996,22 +2003,22 @@ async function dealHand() {
   renderPlayer();
   updateActionButtons();
 
-  await sleep(120);
+  await sleep(80);
   // First card to each player hand (left to right), then dealer up, second card to each, then dealer hole.
   for (let i = 0; i < State.hands.length; i++) {
     State.hands[i].cards.push(drawCard());
     appendPlayerCard(i, State.hands[i].cards.length - 1); Audio.deal();
-    await sleep(105);
+    await sleep(70);
   }
   State.dealer.cards.push(drawCard());
-  appendDealerCard(State.dealer.cards.length - 1); Audio.deal(); await sleep(140);
+  appendDealerCard(State.dealer.cards.length - 1); Audio.deal(); await sleep(90);
   for (let i = 0; i < State.hands.length; i++) {
     State.hands[i].cards.push(drawCard());
     appendPlayerCard(i, State.hands[i].cards.length - 1); Audio.deal();
-    await sleep(105);
+    await sleep(70);
   }
   State.dealer.cards.push(drawCard());
-  appendDealerCard(State.dealer.cards.length - 1); Audio.deal(); await sleep(180);
+  appendDealerCard(State.dealer.cards.length - 1); Audio.deal(); await sleep(140);
 
   const dealerUp = State.dealer.cards[0];
 
@@ -2219,7 +2226,7 @@ async function revealDealerHole() {
   } else {
     refreshDealerTotal();
   }
-  await sleep(120);
+  await sleep(80);
 }
 
 /* Dealer peeks at the hole card (corner-lift animation + sound),
@@ -2229,7 +2236,7 @@ async function dealerPeek() {
   const hole = UI.dealerCards.children[1];
   if (!hole) return;
   setMessage('DEALER CHECKING...');
-  await sleep(180);
+  await sleep(120);
   hole.classList.add('peeking');
   Audio.peek();
   await new Promise(resolve => {
@@ -2238,7 +2245,7 @@ async function dealerPeek() {
     setTimeout(done, 1400);
   });
   hole.classList.remove('peeking');
-  await sleep(120);
+  await sleep(80);
 }
 
 function showInsurance() {
@@ -2329,18 +2336,18 @@ async function hit(force = false) {
   hideConfirm();
   h.cards.push(drawCard());
   appendPlayerCard(State.activeHandIdx, h.cards.length - 1); Audio.cardHit();
-  await sleep(120);
+  await sleep(80);
   const t = handTotal(h.cards);
   if (t > 21) {
     h.busted = true;
     Audio.bust();
     flashFelt('dim');
     setMessage(State.hands.length > 1 ? `HAND ${State.activeHandIdx+1} BUSTS` : 'BUST', 'lose');
-    await sleep(400);
+    await sleep(300);
     advanceHand();
   } else if (t === 21) {
     h.stood = true;
-    await sleep(350);
+    await sleep(240);
     advanceHand();
   } else {
     updateActionButtons();
@@ -2381,11 +2388,11 @@ async function doubleDown() {
   Audio.chip(true);
   h.cards.push(drawCard());
   appendPlayerCard(State.activeHandIdx, h.cards.length - 1); Audio.cardHit();
-  await sleep(180);
+  await sleep(120);
   const t = handTotal(h.cards);
   if (t > 21) { h.busted = true; Audio.bust(); flashFelt('dim'); }
   else h.stood = true;
-  await sleep(380);
+  await sleep(260);
   advanceHand();
 }
 
@@ -2506,7 +2513,7 @@ async function resolveAllHands() {
     Audio.chipClear();
     await sleep(280);
   }
-  if (losers.length) await sleep(180);
+  if (losers.length) await sleep(120);
 
   // 3. Pay winners + pushes (left to right). Balance updates as chips fly.
   // A blackjack hand gets the full fanfare the moment its chips are paid —
