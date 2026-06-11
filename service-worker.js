@@ -14,7 +14,7 @@
      - Bump CACHE_VERSION to roll out a new shell.
    ============================================================ */
 
-const CACHE_VERSION = 'v97';
+const CACHE_VERSION = 'v98';
 const PRECACHE      = `diamond-casino-shell-${CACHE_VERSION}`;
 const RUNTIME_HTML  = `diamond-casino-html-${CACHE_VERSION}`;
 const RUNTIME_AUDIO = `diamond-casino-audio-${CACHE_VERSION}`;
@@ -125,9 +125,18 @@ self.addEventListener('fetch', (event) => {
   const isAsset = ['image', 'font', 'style', 'script'].includes(dest)
                 || /\.(png|jpe?g|svg|webp|gif|ico|css|js|woff2?|ttf|otf)$/.test(path);
   const isGoogleFont = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
+  // Our own JS is app logic, not an immutable asset. Serving it
+  // stale-while-revalidate meant a deploy didn't take effect until the
+  // *second* load (the first kept running the cached copy) — which is how a
+  // shipped audio/settings fix could look like it "did nothing". Treat
+  // same-origin scripts as network-first so a fresh deploy applies on the
+  // next load, with the cache only as an offline fallback.
+  const isOwnScript = url.origin === self.location.origin
+                   && (dest === 'script' || /\.js$/.test(path));
 
   if (isAudio)              event.respondWith(cacheFirst(req, RUNTIME_AUDIO));
   else if (isHTML)          event.respondWith(networkFirst(req, RUNTIME_HTML));
+  else if (isOwnScript)     event.respondWith(networkFirst(req, RUNTIME_ASSET));
   else if (isAsset || isGoogleFont)
                             event.respondWith(staleWhileRevalidate(req, RUNTIME_ASSET));
   else                      event.respondWith(networkFirst(req, RUNTIME_OTHER));
