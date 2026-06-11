@@ -1227,7 +1227,9 @@ if ('serviceWorker' in navigator) {
 
 if (window.SettingsUI) SettingsUI.mount();
 if (window.HistoryUI) HistoryUI.mount();
-if (window.Music) Music.init(encodeURI('Music/Velvet Pitfall.wav'));
+// 'Velvet Pitfall.wav' was never shipped — fall back to an existing track so
+// Mines isn't silent. Blackjack Velvet shares the dark-velvet tone.
+if (window.Music) Music.init(encodeURI('Music/Blackjack Velvet.m4a'));
 
 /* Low-power heuristic (same as diamondpoker): few cores, narrow screen,
    or reduced-motion. Strips the always-running compositor animations. */

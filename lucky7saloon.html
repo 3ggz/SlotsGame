@@ -1978,13 +1978,23 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
   const $ = id => document.getElementById(id);
   const refs = {};
 
+  // The synth SFX in this game were mixed quiet — their tones sit roughly
+  // 15 dB under the music, so they vanished even with music turned down and
+  // SFX maxed. We pull them back up to a consistent level with a site-wide
+  // SFX calibration (folded into Settings.sfxVolume()) applied as makeup
+  // *before* the compressor, so the extra level is limited cleanly instead
+  // of clipping at the destination.
+  const SFX_CALIBRATION = 2.6;
+  if (window.Settings && Settings.calibrateSfx) Settings.calibrateSfx(SFX_CALIBRATION);
+
   const AudioFX = (() => {
     let ctx = null;
     let comp = null;
     let master = null;
 
     function gainValue() {
-      return window.Settings ? Settings.sfxVolume() : 0.7;
+      // sfxVolume() already includes SFX_CALIBRATION via Settings.calibrateSfx().
+      return window.Settings ? Settings.sfxVolume() : 0.7 * SFX_CALIBRATION;
     }
 
     function ensure() {
@@ -1992,15 +2002,18 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return null;
         ctx = new AC();
+        // Pre-compressor makeup bus: all voices feed `master`, which carries
+        // the user volume × calibration, then the compressor limits the
+        // boosted peaks before they reach the speakers.
+        master = ctx.createGain();
+        master.gain.value = gainValue();
         comp = ctx.createDynamicsCompressor();
         comp.threshold.value = -18;
         comp.knee.value = 18;
         comp.ratio.value = 4;
         comp.attack.value = 0.004;
         comp.release.value = 0.18;
-        master = ctx.createGain();
-        master.gain.value = gainValue();
-        comp.connect(master).connect(ctx.destination);
+        master.connect(comp).connect(ctx.destination);
         if (window.Settings) {
           Settings.onChange(() => {
             if (master) master.gain.value = gainValue();
@@ -2013,13 +2026,13 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
 
     function route(node, pan = 0) {
       const c = ensure();
-      if (!c || !comp) return;
+      if (!c || !master) return;
       if (c.createStereoPanner) {
         const panner = c.createStereoPanner();
         panner.pan.value = Math.max(-0.85, Math.min(0.85, pan));
-        node.connect(panner).connect(comp);
+        node.connect(panner).connect(master);
       } else {
-        node.connect(comp);
+        node.connect(master);
       }
     }
 
@@ -2233,6 +2246,7 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
         noise(0.22, 0.034, 2600, 'bandpass', 0.10, 0, 4.5);
       },
       bigWin() {
+        if (window.Music && Music.duck) Music.duck(0.4, 1400);
         woodKnock(0, 0, 1.08);
         noise(0.48, 0.052, 900, 'bandpass', 0.04, 0, 2.2);
         [262, 330, 392, 523, 659, 880].forEach((f, i) => tone(f, 0.30, 'triangle', 0.105, 0.08 + i * 0.075, 0.022));
@@ -2245,6 +2259,7 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
         brassPing(strong ? 1245 : 932, 0.18, 0, strong ? 0.045 : 0.027);
       },
       bonusTrigger() {
+        if (window.Music && Music.duck) Music.duck(0.35, 1600);
         woodKnock(0, -0.12, 1.22);
         slide(110, 54, 0.58, 'sawtooth', 0.09, 0.02);
         noise(0.70, 0.07, 760, 'bandpass', 0.05, 0, 2.4);
