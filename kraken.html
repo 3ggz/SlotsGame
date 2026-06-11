@@ -3946,14 +3946,14 @@ function lockedCellIdxs(opts = {}) {
 function recalcBonusTotal() {
   const sum = BonusState.cells.reduce((s, c) => s + (c.ship ? c.ship.value : 0), 0);
   BonusState.total = round2(sum + (BonusState.stormJpAward || 0));
-  const totalEl = document.getElementById('bonus-total');
+  const totalEl = $id('bonus-total');
   if (totalEl) {
     totalEl.textContent = BonusState.revealing ? fmt(BonusState.total) : '???';
   }
 }
 
 function setBonusStatus(text) {
-  const el = document.getElementById('bonus-status');
+  const el = $id('bonus-status');
   if (el) el.textContent = text;
 }
 

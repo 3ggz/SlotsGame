@@ -3262,6 +3262,13 @@ setTimeout(startLiveStats, 1500);
 const JP_TIERS = ['grand', 'major', 'minor', 'mini'];
 const jpState = { grand: 0, major: 0, minor: 0, mini: 0 };
 const jpRAF   = {};
+/* Cache the per-tier elements once — tweenJP runs on every pool update */
+const JP_AMT_EL = {}, JP_FOOT_EL = {}, JP_TILE_EL = {}, jpLastTick = {};
+JP_TIERS.forEach(t => {
+  JP_AMT_EL[t]  = document.getElementById('jp-amt-' + t);
+  JP_FOOT_EL[t] = document.getElementById('jp-foot-' + t);
+  JP_TILE_EL[t] = JP_AMT_EL[t] ? JP_AMT_EL[t].closest('.jp-tile') : null;
+});
 
 function fmtJPMoney(v) {
   if (!Number.isFinite(v)) v = 0;
@@ -3274,15 +3281,24 @@ function tweenJP(tier, target) {
   cancelAnimationFrame(jpRAF[tier]);
   const start = jpState[tier];
   const delta = target - start;
-  const el = document.getElementById('jp-amt-' + tier);
+  const el = JP_AMT_EL[tier];
   if (!el) return;
   if (Math.abs(delta) < 0.005) { el.textContent = fmtJPMoney(target); jpState[tier] = target; return; }
+  const tile = JP_TILE_EL[tier];
   // Pool reset (big negative delta) means a jackpot just hit — bump the tile.
   if (delta < -1) {
-    const tile = el.closest('.jp-tile');
     if (tile) {
       tile.classList.add('bump');
       setTimeout(() => tile.classList.remove('bump'), 1200);
+    }
+  } else if (delta > 0.5 && tile) {
+    // Gentle tick on pool growth, throttled per tier so the strip
+    // feels alive without strobing on every contribution.
+    const now = Date.now();
+    if (!jpLastTick[tier] || now - jpLastTick[tier] > 4000) {
+      jpLastTick[tier] = now;
+      tile.classList.add('tick');
+      setTimeout(() => tile.classList.remove('tick'), 320);
     }
   }
   const t0 = performance.now();
@@ -3305,7 +3321,7 @@ function applyJackpots(snap) {
     const d = snap[tier];
     if (!d) continue;
     tweenJP(tier, Number(d.pool) || 0);
-    const foot = document.getElementById('jp-foot-' + tier);
+    const foot = JP_FOOT_EL[tier];
     if (foot) {
       if (d.lastWinner) {
         foot.textContent = 'LAST · ' + String(d.lastWinner).toUpperCase().slice(0, 14);
@@ -3335,6 +3351,22 @@ setTimeout(startJackpots, 1500);
 /* Account UI (chip + sign-in / profile modal) lives in casino-account.js
    and auto-mounts on every page. The lobby only handles the LIVE FROM
    THE FLOOR global counters and recent-jackpot ticker above. */
+
+/* ============================================================
+   PERF — pause preview / panel loops while offscreen.
+   Toggles .anim-idle (CSS sets animation-play-state: paused).
+   Pure class toggle; casino-bots.js still owns the presence pill
+   and nothing structural changes on the cards.
+   ============================================================ */
+(() => {
+  if (!('IntersectionObserver' in window)) return;
+  const targets = document.querySelectorAll('.game-card, .live-floor, .jp-pools');
+  if (!targets.length) return;
+  const io = new IntersectionObserver(entries => {
+    for (const en of entries) en.target.classList.toggle('anim-idle', !en.isIntersecting);
+  }, { rootMargin: '160px 0px' });
+  targets.forEach(t => io.observe(t));
+})();
 </script>
 
 </body>

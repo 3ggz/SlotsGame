@@ -1921,6 +1921,7 @@ async function dealHand() {
   State.activeHandIdx = 0;
   State.insurance = 0;
 
+  Audio.click(); // instant press feedback — first card sound lands ~180ms later
   setMessage('DEALING...');
   hideInsurance();
   renderDealer();
@@ -1993,7 +1994,7 @@ function resolveSideBets() {
   // Perfect Pairs
   if (State.bets.pp > 0) {
     const r = evalPerfectPairs(c1, c2);
-    const circle = document.getElementById('bet-pp');
+    const circle = UI.circleByKey.pp;
     if (r) {
       const win = State.bets.pp * (r.pay + 1); // payout includes the bet
       setBalance(State.balance + win);
@@ -2012,7 +2013,7 @@ function resolveSideBets() {
   // 21+3
   if (State.bets.tpt > 0) {
     const r = eval21Plus3(c1, c2, dealerUp);
-    const circle = document.getElementById('bet-tpt');
+    const circle = UI.circleByKey.tpt;
     if (r) {
       const win = State.bets.tpt * (r.pay + 1);
       setBalance(State.balance + win);
@@ -2093,10 +2094,11 @@ async function dealerPeek() {
 }
 
 function showInsurance() {
-  document.getElementById('insurance-prompt').classList.add('show');
+  UI.insurancePrompt.classList.add('show');
+  Audio.prompt();
 }
 function hideInsurance() {
-  document.getElementById('insurance-prompt').classList.remove('show');
+  UI.insurancePrompt.classList.remove('show');
 }
 
 async function takeInsurance(yes) {
@@ -2158,14 +2160,13 @@ async function takeInsurance(yes) {
 let _confirmPending = null;
 function showConfirm(label, onYes) {
   _confirmPending = onYes;
-  const el = document.getElementById('confirm-prompt');
-  document.getElementById('confirm-label').textContent = label;
-  el.classList.add('show');
-  Audio.click?.();
+  UI.confirmLabel.textContent = label;
+  UI.confirmPrompt.classList.add('show');
+  Audio.prompt();
 }
 function hideConfirm() {
   _confirmPending = null;
-  document.getElementById('confirm-prompt').classList.remove('show');
+  UI.confirmPrompt.classList.remove('show');
 }
 
 /* PLAYER ACTIONS */
@@ -2186,8 +2187,9 @@ async function hit(force = false) {
   if (t > 21) {
     h.busted = true;
     Audio.bust();
+    flashFelt('dim');
     setMessage(State.hands.length > 1 ? `HAND ${State.activeHandIdx+1} BUSTS` : 'BUST', 'lose');
-    await sleep(700);
+    await sleep(550);
     advanceHand();
   } else if (t === 21) {
     h.stood = true;
@@ -2226,7 +2228,7 @@ async function doubleDown() {
   appendPlayerCard(State.activeHandIdx, h.cards.length - 1); Audio.cardHit();
   await sleep(300);
   const t = handTotal(h.cards);
-  if (t > 21) { h.busted = true; Audio.bust(); }
+  if (t > 21) { h.busted = true; Audio.bust(); flashFelt('dim'); }
   else h.stood = true;
   await sleep(500);
   advanceHand();
@@ -2304,11 +2306,11 @@ async function dealerPlay() {
 
   if (anyAlive) {
     while (handTotal(State.dealer.cards) < 17) {
-      await sleep(550);
+      await sleep(450);
       State.dealer.cards.push(drawCard());
       appendDealerCard(State.dealer.cards.length - 1); Audio.cardHit();
     }
-    await sleep(400);
+    await sleep(320);
   }
 
   resolveAllHands();
@@ -2318,7 +2320,7 @@ async function dealerPlay() {
    PER-HAND RESULT FX — badges, colored bet-value, sequenced chip animations.
    ============================================================ */
 function handBoxFor(handIdx) {
-  const row = document.getElementById('player-cards');
+  const row = UI.playerCards;
   if (State.hands.length === 1) return row;
   const group = row.querySelector('.hand-group');
   return group ? group.children[handIdx] : null;
@@ -2349,7 +2351,7 @@ function showCircleResult(circle, kind, amount) {
   circle.classList.remove('has-chips');
 }
 function clearAllCircleResults() {
-  document.querySelectorAll('.bet-circle').forEach(c => {
+  UI.circles.forEach(c => {
     c.classList.remove('resolved', 'win', 'lose', 'push', 'bj');
     const v = c.querySelector('.bet-value');
     if (v) v.classList.remove('result', 'win', 'lose', 'push', 'bj');
@@ -2397,7 +2399,7 @@ function sweepLossChips(circle, amount) {
 function payWinChips(circle, amount) {
   if (!circle) return;
   const r = circle.getBoundingClientRect();
-  const rack = document.querySelector('.chip-rack');
+  const rack = UI.chipRack;
   const rr = rack ? rack.getBoundingClientRect()
                   : { left: window.innerWidth/2 - 60, top: window.innerHeight - 80, width: 120, height: 60 };
   const denoms = pickChipBreakdown(amount, 5);
@@ -2415,7 +2417,7 @@ function payWinChips(circle, amount) {
 async function resolveAllHands() {
   const dealerTotal = handTotal(State.dealer.cards);
   const dealerBusted = dealerTotal > 21;
-  const circle = document.getElementById('bet-main');
+  const circle = UI.circleByKey.main;
 
   // 1. Compute per-hand results up front.
   const results = State.hands.map((h, i) => {
@@ -2463,11 +2465,11 @@ async function resolveAllHands() {
   else              showCircleResult(circle, 'push', 0);
 
   if (dealerBusted) {
-    setMessage(`DEALER BUSTS · +$${fmt(net)}`, 'win'); Audio.bigWin(); spawnCoinShower();
+    setMessage(`DEALER BUSTS · +$${fmt(net)}`, 'win'); Audio.bigWin(); flashFelt('gold'); spawnCoinShower();
   } else if (wins > 0 && losses === 0 && pushes === 0) {
-    setMessage(`WIN +$${fmt(totalWon)}`, 'win'); Audio.win();
+    setMessage(`WIN +$${fmt(totalWon)}`, 'win'); Audio.win(); flashFelt('gold');
   } else if (losses > 0 && wins === 0 && pushes === 0) {
-    setMessage(`DEALER WINS · ${dealerTotal}`, 'lose'); Audio.lose();
+    setMessage(`DEALER WINS · ${dealerTotal}`, 'lose'); Audio.lose(); flashFelt('dim');
   } else if (pushes > 0 && wins === 0 && losses === 0) {
     setMessage(`PUSH · ${dealerTotal}`, 'push'); Audio.push();
   } else {
@@ -2477,8 +2479,8 @@ async function resolveAllHands() {
     if (pushes) parts.push(`${pushes}P`);
     setMessage(`SPLIT · ${parts.join(' · ')}  ${net >= 0 ? '+' : '-'}$${fmt(Math.abs(net))}`,
                net > 0 ? 'win' : (net < 0 ? 'lose' : 'push'));
-    if (net > 0) Audio.win();
-    else if (net < 0) Audio.lose();
+    if (net > 0) { Audio.win(); flashFelt('gold'); }
+    else if (net < 0) { Audio.lose(); flashFelt('dim'); }
     else Audio.push();
   }
 

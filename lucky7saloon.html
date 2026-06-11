@@ -1325,6 +1325,42 @@ button { border: 0; cursor: pointer; }
   color: var(--green);
 }
 
+/* Quick gold wash over the screen on solid wins — opacity-only, ~450ms. */
+.win-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at 50% 42%, rgba(255,215,106,0.42), rgba(255,215,106,0.12) 45%, transparent 75%);
+}
+
+.win-flash.show {
+  animation: winFlash 0.45s ease-out forwards;
+}
+
+@keyframes winFlash {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* LOW-POWER BRANCH — weak/reduced-motion devices skip the expensive layers. */
+html.low-power body::before { display: none; }
+html.low-power .modal-veil,
+html.low-power .bonus-stage,
+html.low-power .bigwin-stage { backdrop-filter: none; }
+html.low-power .spin-btn.spinning,
+html.low-power .feature-strip.live::after { animation: none; }
+html.low-power .feature-strip.live::after { opacity: 0.7; }
+
+/* Sleep every looping animation while the tab is hidden. */
+html.fx-hidden .bulbs,
+html.fx-hidden .feature-strip.live::after,
+html.fx-hidden .symbol.win,
+html.fx-hidden .sym-scatter.tease,
+html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
+
 @media (max-width: 860px) {
   .stage { width: min(100vw - 10px, 760px); padding-top: 58px; }
   .cabinet { padding: 10px; }
@@ -1663,6 +1699,7 @@ button { border: 0; cursor: pointer; }
   </div>
 </div>
 
+<div class="win-flash" id="win-flash"></div>
 <div class="particle-layer" id="particles"></div>
 
 <script>
@@ -1887,6 +1924,16 @@ button { border: 0; cursor: pointer; }
     return rounded.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  /* Weak devices (few cores) or reduced-motion users get the html.low-power
+     CSS branch: no noise overlay, no backdrop blur, fewer particles. */
+  const LOW_POWER = !!((navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+    (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches));
+  if (LOW_POWER) document.documentElement.classList.add('low-power');
+  // Sleep all looping animations while the tab is hidden (single class toggle).
+  document.addEventListener('visibilitychange', () => {
+    document.documentElement.classList.toggle('fx-hidden', document.hidden);
+  });
 
   function loadBalance() {
     try {
@@ -2343,30 +2390,39 @@ button { border: 0; cursor: pointer; }
     return el;
   }
 
+  /* symbolEls[reel][row] — rebuilt on every render so the cascade loop can
+     mark/clear win classes without a querySelector per position. */
+  const symbolEls = [];
+
   function renderReels(grid = State.grid) {
     refs.reels.innerHTML = '';
+    symbolEls.length = 0;
     grid.forEach((reel, reelIndex) => {
       const reelEl = document.createElement('div');
       reelEl.className = 'reel';
       reelEl.style.setProperty('--rows', reel.length);
+      const rowEls = [];
       reel.forEach((symbol, rowIndex) => {
-        reelEl.appendChild(makeSymbolEl(symbol, reelIndex, rowIndex));
+        const el = makeSymbolEl(symbol, reelIndex, rowIndex);
+        reelEl.appendChild(el);
+        rowEls.push(el);
       });
+      symbolEls.push(rowEls);
       refs.reels.appendChild(reelEl);
     });
   }
 
   function markPositions(positions, className) {
     positions.forEach(pos => {
-      const el = refs.reels.querySelector(`[data-reel="${pos.reel}"][data-row="${pos.row}"]`);
+      const el = symbolEls[pos.reel] && symbolEls[pos.reel][pos.row];
       if (el) el.classList.add(className);
     });
   }
 
   function clearSymbolClasses() {
-    refs.reels.querySelectorAll('.symbol').forEach(el => {
+    symbolEls.forEach(rowEls => rowEls.forEach(el => {
       el.classList.remove('win', 'burst', 'tease');
-    });
+    }));
   }
 
   const SPIN_REEL_SYMBOLS = [
@@ -2420,19 +2476,30 @@ button { border: 0; cursor: pointer; }
     return clone;
   }
 
-  function attachSpinStrip(reelEl, reelIndex) {
-    const strip = document.createElement('div');
-    strip.className = 'spin-strip';
-
+  /* Read-only measurement pass — keep all layout reads here so the spin can
+     measure every reel against ONE layout, then build all strips (writes). */
+  function measureReel(reelEl) {
     const reelStyles = getComputedStyle(reelEl);
-    const finalSymbols = Array.from(reelEl.querySelectorAll(':scope > .symbol'));
-    const rows = Math.max(1, finalSymbols.length);
-    const gap = parseFloat(reelStyles.rowGap || reelStyles.gap) || 0;
     const padTop = parseFloat(reelStyles.paddingTop) || 0;
     const padBottom = parseFloat(reelStyles.paddingBottom) || padTop;
     const padLeft = parseFloat(reelStyles.paddingLeft) || 0;
     const padRight = parseFloat(reelStyles.paddingRight) || padLeft;
-    const contentHeight = Math.max(1, reelEl.clientHeight - padTop - padBottom);
+    return {
+      gap: parseFloat(reelStyles.rowGap || reelStyles.gap) || 0,
+      padTop,
+      padLeft,
+      padRight,
+      contentHeight: Math.max(1, reelEl.clientHeight - padTop - padBottom),
+    };
+  }
+
+  function attachSpinStrip(reelEl, reelIndex, metrics) {
+    const strip = document.createElement('div');
+    strip.className = 'spin-strip';
+
+    const finalSymbols = Array.from(reelEl.querySelectorAll(':scope > .symbol'));
+    const rows = Math.max(1, finalSymbols.length);
+    const { gap, padTop, padLeft, padRight, contentHeight } = metrics;
     const cellHeight = Math.max(24, (contentHeight - gap * (rows - 1)) / rows);
     const step = cellHeight + gap;
     reelEl.style.setProperty('--spin-pad-y', padTop + 'px');
