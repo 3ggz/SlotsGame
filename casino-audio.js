@@ -9,10 +9,16 @@
      Settings.musicVolume()  → 0..1
      Settings.sfxVolume()    → 0..1   (each game's Audio engine
                                        multiplies its master gain
-                                       by this)
-     Music.init(src)         → load a track for this page
+                                       by this; includes the per-game
+                                       SFX calibration)
+     Settings.calibrateSfx(mult)
+                             → per-game SFX makeup so quiet/synth-heavy
+                               games sit at a consistent level site-wide
+     Music.init(src)         → load a track for this page (auto loudness-
+                               normalized toward MUSIC_TARGET_LUFS)
      Music.start()           → attempt to play (no-op if not init
                                or if browser hasn't unlocked yet)
+     Music.duck(depth, ms)   → briefly dip music under a loud SFX moment
      SettingsUI.mount({ openBtn })
                              → injects the modal once and wires
                                the gear button to open it
@@ -51,6 +57,19 @@
     state = { ...defaults, ...saved };
   } catch (e) {}
 
+  /* ---------- SFX LOUDNESS CALIBRATION ----------
+     Per-game makeup multiplier folded into Settings.sfxVolume(). Each
+     page's audio engine reads sfxVolume() to drive its master gain, so
+     one number here re-levels that whole game's SFX relative to the rest
+     of the site. Games with quiet/synth-heavy SFX (e.g. Lucky 7 Saloon,
+     whose tones sit ~15 dB under the music) call Settings.calibrateSfx()
+     once at init to pull themselves up to a consistent perceived level.
+     Default 1 = no change, so games that don't opt in are untouched.
+     Values >1 may push HTMLAudio .volume past 1.0 (browsers clamp it,
+     which is fine) — engines that route through a Web Audio compressor
+     get true makeup gain with the peaks limited instead of clipped. */
+  let sfxCalibration = 1;
+
   const listeners = [];
   function save() {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(state)); } catch (e) {}
@@ -67,13 +86,70 @@
     },
     onChange(fn) { listeners.push(fn); },
     musicVolume() { return state.muteMusic ? 0 : state.master * state.music; },
-    sfxVolume()   { return state.muteSfx   ? 0 : state.master * state.sfx; },
+    sfxVolume()   { return state.muteSfx   ? 0 : state.master * state.sfx * sfxCalibration; },
+    calibrateSfx(mult) {
+      sfxCalibration = (typeof mult === 'number' && isFinite(mult) && mult > 0) ? mult : 1;
+      notify();
+      return sfxCalibration;
+    },
+    sfxCalibration() { return sfxCalibration; },
   };
 
-  /* ---------- MUSIC PLAYER ---------- */
+  /* ---------- MUSIC PLAYER ----------
+     Every page shares this one <audio> element, which makes it the single
+     choke-point for normalizing music across the whole site. The source
+     tracks are all mastered hot and slightly uneven (measured integrated
+     loudness −13.2 to −15.3 LUFS), which is why music drowned out quieter
+     SFX even at low slider settings.
+
+     Normalization is applied as a per-track gain folded directly into the
+     element's volume (see trackGainFor): every track is pulled toward a
+     common MUSIC_TARGET_LUFS reference that also sits a few dB below the raw
+     masters, so background music leaves room for gameplay SFX. The effective
+     volume is always user-volume × track-gain × duck-amount, written by
+     applyMusicGain(). */
+
+  // Reference loudness all music is normalized toward. Sits a few dB below
+  // the source masters so background music stays under gameplay SFX.
+  const MUSIC_TARGET_LUFS = -17.5;
+  // Measured integrated loudness (LUFS) of each track, keyed by file name.
+  const MUSIC_LOUDNESS = {
+    'Blackjack Velvet.m4a': -14.70,
+    'Crash Table.m4a': -13.98,
+    'Diamond Spin.m4a': -14.39,
+    'Dragon Tree.m4a': -13.17,
+    "High Roller's Room.m4a": -14.53,
+    'Kraken’s Haunted Jackpots.m4a': -14.19, // curly apostrophe in filename
+    'Plinko Royale.m4a': -15.31,
+    'Snake Eyes Shuffle.m4a': -14.12,
+  };
+
+  function trackGainFor(src) {
+    if (!src) return 1;
+    let name = src;
+    try { name = decodeURIComponent(src); } catch (e) {}
+    name = name.split('/').pop();
+    const lufs = MUSIC_LOUDNESS[name];
+    if (typeof lufs !== 'number') return 1; // unknown track → leave as-is
+    // Pure attenuation toward the target (never boost → never clip).
+    const g = Math.pow(10, (MUSIC_TARGET_LUFS - lufs) / 20);
+    return Math.min(1, g);
+  }
+
   let audioEl = null;
   let started = false;
   let pendingSrc = null;
+
+  // Normalization + ducking state, applied straight to the element's volume.
+  // We deliberately avoid routing the element through a Web Audio graph:
+  // createMediaElementSource() permanently captures the element's output, and
+  // if the AudioContext is ever suspended (autoplay policies, mobile) the
+  // music goes silent — which would make the volume slider look dead. Plain
+  // element.volume is reliable on every browser and is enough here, because
+  // the per-track gains only ever attenuate (no clipping to limit).
+  let currentTrackGain = 1;   // per-track loudness normalization (≤ 1)
+  let duckFactor = 1;         // 1 = normal; < 1 while ducked under loud SFX
+  let duckRaf = null;
 
   function ensureAudioEl() {
     if (audioEl) return audioEl;
@@ -84,6 +160,14 @@
     audioEl.style.display = 'none';
     if (document.body) document.body.appendChild(audioEl);
     return audioEl;
+  }
+
+  // Single place that pushes the effective music level to the element:
+  //   user volume × per-track normalization × current duck amount.
+  function applyMusicGain() {
+    if (!audioEl) return;
+    const v = Settings.musicVolume() * currentTrackGain * duckFactor;
+    audioEl.volume = Math.max(0, Math.min(1, v));
   }
 
   function tryStart() {
@@ -102,13 +186,36 @@
       pendingSrc = src;
       ensureAudioEl();
       audioEl.src = src;
-      audioEl.volume = Settings.musicVolume();
+      currentTrackGain = trackGainFor(src);
+      applyMusicGain();
     },
     start() { tryStart(); },
     isStarted() { return started; },
     pause() {
       if (audioEl) audioEl.pause();
       started = false;
+    },
+    /* Briefly duck the music so it defers to a loud SFX moment (a big win,
+       a bonus trigger). depth 0..1 = level to dip to; ms = hold before the
+       music eases back up. Implemented as a small volume ramp on the element
+       so it works regardless of how SFX are produced. */
+    duck(depth = 0.45, ms = 600) {
+      if (!audioEl) return;
+      if (duckRaf) { clearTimeout(duckRaf); duckRaf = null; }
+      const target = Math.max(0, Math.min(1, depth));
+      duckFactor = target;
+      applyMusicGain();
+      const holdUntil = Date.now() + ms;
+      const releaseMs = 500;
+      const step = () => {
+        const t = Date.now();
+        if (t < holdUntil) { duckRaf = setTimeout(step, 40); return; }
+        const k = (t - holdUntil) / releaseMs;
+        if (k >= 1) { duckFactor = 1; duckRaf = null; }
+        else { duckFactor = target + (1 - target) * k; duckRaf = setTimeout(step, 40); }
+        applyMusicGain();
+      };
+      duckRaf = setTimeout(step, 40);
     },
   };
 
@@ -124,7 +231,7 @@
   // pause/resume the track when mute state flips.
   Settings.onChange((s) => {
     if (!audioEl) return;
-    audioEl.volume = Settings.musicVolume();
+    applyMusicGain();
     if (s.muteMusic) {
       if (started) { audioEl.pause(); started = false; }
     } else {
