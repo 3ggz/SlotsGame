@@ -429,20 +429,34 @@ body::before {
     0 1px 2px rgba(0,0,0,0.6), 0 0 6px rgba(255,210,74,0.5);
 }
 
-/* Winning flash — applied to any zone (bet-zone, hop-cell, bonus-zone) */
-.win-flash {
-  animation: winFlash 0.7s ease-out;
+/* Winning flash — gold overlay on a ::after layer so only opacity (plus a
+   transform pop on the zone) animates; background/box-shadow stay static. */
+.bet-zone::after, .hop-cell::after, .bonus-zone::after, .bt-section::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(180deg, rgba(255,210,74,0.65), rgba(255,210,74,0.22));
+  box-shadow: inset 0 0 0 2px var(--gold-1), 0 0 28px rgba(255,210,74,0.85);
 }
-@keyframes winFlash {
-  0%   { background: linear-gradient(180deg, rgba(255,210,74,0.7), rgba(255,210,74,0.4)) !important; box-shadow: inset 0 0 0 2px var(--gold-1), 0 0 32px rgba(255,210,74,0.8); }
-  100% { /* falls back to element's default background after animation completes */ }
+.win-flash { animation: winFlashPop 0.9s ease-out; }
+.win-flash::after { animation: overlayFade 0.9s ease-out; }
+@keyframes winFlashPop {
+  0%   { transform: scale(1); }
+  18%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
 }
-.lose-fade {
-  animation: loseFade 0.6s ease-out;
+@keyframes overlayFade {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
 }
-@keyframes loseFade {
-  0%   { background: linear-gradient(180deg, rgba(220,40,60,0.4), rgba(0,0,0,0.5)) !important; }
-  100% { /* falls back */ }
+/* Losses: quick respectful dim on the same overlay layer */
+.lose-fade::after {
+  background: linear-gradient(180deg, rgba(220,40,60,0.38), rgba(0,0,0,0.5));
+  box-shadow: none;
+  animation: overlayFade 0.55s ease-out;
 }
 
 /* Field's larger merged feel */
@@ -531,15 +545,34 @@ body::before {
 }
 .win-toast.big .wt-label { color: var(--neon-pink); text-shadow: 0 0 16px rgba(255,46,147,0.9); }
 
-/* Stronger bet-zone win flash — keeps the gold glow longer + adds scale pulse */
-.bet-zone.win-flash, .hop-cell.win-flash, .bonus-zone.win-flash {
-  animation: winFlashStrong 1.2s ease-out;
+/* SEVEN OUT — one quick, respectful dim swept over the table (opacity only) */
+.sevenout-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse at 50% 35%, rgba(150,20,35,0.30), transparent 60%),
+    linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.3));
 }
-@keyframes winFlashStrong {
-  0%   { box-shadow: inset 0 0 0 2.5px var(--gold-1), 0 0 0 rgba(255,210,74,0); transform: scale(1); }
-  20%  { box-shadow: inset 0 0 0 2.5px var(--gold-1), 0 0 32px rgba(255,210,74,0.9); transform: scale(1.06); }
-  100% { box-shadow: inset 0 0 0 2.5px var(--gold-1), 0 0 0 rgba(255,210,74,0); transform: scale(1); }
+.sevenout-veil.show { animation: veilPulse 0.85s ease-out; }
+@keyframes veilPulse {
+  0%   { opacity: 0; }
+  22%  { opacity: 1; }
+  100% { opacity: 0; }
 }
+
+/* Low-power devices: shorter flashes, no veil sweep, lighter chrome */
+html.low-power body::before { display: none; }
+html.low-power .win-flash,
+html.low-power .win-flash::after,
+html.low-power .lose-fade::after { animation-duration: 0.35s; }
+html.low-power .sevenout-veil.show { animation: none; }
+html.low-power .flying-chip { box-shadow: inset 0 0 0 3px var(--chip-rim, #fff); }
+html.low-power .balance-link,
+html.low-power .lobby-link,
+html.low-power .history-btn { backdrop-filter: none; -webkit-backdrop-filter: none; }
 
 /* "LAST WIN" indicator block — green when there's a win, dim otherwise */
 .ind-block.last-win .ind-value { color: var(--neon-green); text-shadow: 0 0 10px rgba(92,255,161,0.6); }
@@ -572,7 +605,7 @@ body::before {
   will-change: transform, opacity;
 }
 .flying-chip.fly {
-  animation: chipFly 720ms cubic-bezier(.45,.05,.55,.95) forwards;
+  animation: chipFly 600ms cubic-bezier(.45,.05,.55,.95) forwards;
 }
 @keyframes chipFly {
   0%   { transform: translate(0, 0) scale(1)            rotate(0deg); opacity: 0; }
@@ -700,11 +733,12 @@ body.rolling .bt-section { opacity: 0.55; filter: saturate(0.7); transition: opa
 }
 .btn-shake:hover:not(:disabled) { filter: brightness(1.08); }
 
-/* Bet zone stack badge styling already in Task 6; add a place-pulse */
-.bet-zone.placed-pulse { animation: placedPulse 0.4s ease-out; }
+/* Bet zone stack badge styling already in Task 6; add a place-pulse.
+   Transform-only (the has-chips cyan ring is static) so it stays composited. */
+.placed-pulse { animation: placedPulse 0.3s ease-out; }
 @keyframes placedPulse {
   0%   { transform: scale(1); }
-  50%  { transform: scale(1.04); box-shadow: inset 0 0 0 1.5px var(--neon-cyan), 0 0 24px rgba(34,211,238,0.6); }
+  50%  { transform: scale(1.05); }
   100% { transform: scale(1); }
 }
 
@@ -1663,8 +1697,9 @@ function fmt(n) {
   return cents.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 let balance = loadBalance();
+const balanceEl = document.getElementById('balance');
 function refreshBalance() {
-  document.getElementById('balance').textContent = fmt(balance);
+  balanceEl.textContent = fmt(balance);
 }
 refreshBalance();
 document.addEventListener('jackpot-win', () => { balance = loadBalance(); refreshBalance(); });
@@ -1690,8 +1725,22 @@ function setDieFace(dieEl, value) {
   dieEl.style.transition = 'none';
   dieEl.style.transform = `rotateX(${r.x}deg) rotateY(${r.y}deg)`;
 }
-setDieFace(document.getElementById('die1'), 1);
-setDieFace(document.getElementById('die2'), 1);
+/* Hot-path DOM caches — resolved once, reused on every roll */
+const die1El   = document.getElementById('die1');
+const die2El   = document.getElementById('die2');
+const domeEl   = document.getElementById('dome');
+const fanEl    = document.getElementById('fan');
+const shakeBtn = document.getElementById('btn-shake');
+const clearBtn = document.getElementById('btn-clear');
+setDieFace(die1El, 1);
+setDieFace(die2El, 1);
+
+/* Low-power detection (matches blackjack/slots heuristics) */
+const LOW_POWER =
+  !!(navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+  !!(window.matchMedia && (window.matchMedia('(max-width: 720px)').matches ||
+                           window.matchMedia('(prefers-reduced-motion: reduce)').matches));
+if (LOW_POWER) document.documentElement.classList.add('low-power');
 
 /* Roll outcome + tumble animation */
 function rollDie() { return 1 + Math.floor(Math.random() * 6); }
@@ -1718,19 +1767,20 @@ function tumbleDie(dieEl, finalValue, durationMs) {
   dieEl.style.transform = `rotateX(${endX}deg) rotateY(${endY}deg)`;
 }
 
-const ROLL_DUR = IS_MOBILE ? 900 : 1400;
+/* Tight, punchy roll — the shake/settle is the drama, not a wait. */
+const ROLL_DUR = IS_MOBILE ? 750 : 1050;
 const ROLL_WAIT = ROLL_DUR + 120;
 
 function rollDice() {
   const d1 = rollDie();
   const d2 = rollDie();
-  document.getElementById('dome').classList.add('shaking');
-  document.getElementById('fan').classList.add('glowing');
-  tumbleDie(document.getElementById('die1'), d1, ROLL_DUR);
-  tumbleDie(document.getElementById('die2'), d2, ROLL_DUR + 60);
+  domeEl.classList.add('shaking');
+  fanEl.classList.add('glowing');
+  tumbleDie(die1El, d1, ROLL_DUR);
+  tumbleDie(die2El, d2, ROLL_DUR + 60);
   setTimeout(() => {
-    document.getElementById('dome').classList.remove('shaking');
-    document.getElementById('fan').classList.remove('glowing');
+    domeEl.classList.remove('shaking');
+    fanEl.classList.remove('glowing');
   }, ROLL_DUR + 150);
   return { d1, d2, total: d1 + d2 };
 }
@@ -2115,8 +2165,23 @@ function renderChipsInto(el, stake, opts = {}) {
   el.appendChild(total);
 }
 
+/* Memoized stack-container lookups — the felt DOM is static */
+const _zoneStackEls = new Map();   // bet key -> .bz-stack element (or null)
+const _betElCache   = new Map();   // bet key -> first [data-bet] element
+function getBetEl(key) {
+  let el = _betElCache.get(key);
+  if (el === undefined) {
+    el = document.querySelector(`[data-bet="${key}"]`) || null;
+    _betElCache.set(key, el);
+  }
+  return el;
+}
 function renderZoneStack(key) {
-  const el = document.querySelector(`.bet-zone[data-bet="${key}"] .bz-stack`);
+  let el = _zoneStackEls.get(key);
+  if (el === undefined) {
+    el = document.querySelector(`.bet-zone[data-bet="${key}"] .bz-stack`) || null;
+    _zoneStackEls.set(key, el);
+  }
   if (!el) return;
   const stake = getBetStake(key);
   renderChipsInto(el, stake);
@@ -2143,7 +2208,7 @@ function placeChip(key, overrideAmount) {
   if (key.startsWith('hop:'))        renderHopStack(key);
   else if (key.startsWith('bonus:')) renderBonusStack(key.slice(6));
   else                               renderZoneStack(key);
-  const el = document.querySelector(`[data-bet="${key}"]`);
+  const el = getBetEl(key);
   if (el) {
     el.classList.remove('placed-pulse');
     void el.offsetWidth;
@@ -2216,16 +2281,13 @@ function clearAllBets() {
   for (const key of removable) setBetStake(key, 0);
   refreshBalance();
   // Re-render every zone (locked ones keep their chips, cleared ones empty)
-  document.querySelectorAll('.bet-zone[data-bet]').forEach(z => renderZoneStack(z.dataset.bet));
-  document.querySelectorAll('.hop-cell[data-bet]').forEach(c => renderHopStack(c.dataset.bet));
-  BONUS_KEYS.forEach(k => renderBonusStack(k));
+  rerenderAllStacks();
   updateShakeEnabled();
   refreshSecondaryUI();
 }
 
 /* Disable CLEAR when nothing on the table is takeable */
 function updateClearEnabled() {
-  const btn = document.getElementById('btn-clear');
   let hasRemovable = false;
   for (const key of ['pass','odds','field']) if (!isBetLocked(key) && getBetStake(key) > 0) hasRemovable = true;
   if (!hasRemovable) {
@@ -2243,16 +2305,15 @@ function updateClearEnabled() {
   if (!hasRemovable) {
     for (const k in game.bets.bonus) if (!isBetLocked('bonus:'+k) && game.bets.bonus[k] > 0) { hasRemovable = true; break; }
   }
-  btn.disabled = !hasRemovable;
+  clearBtn.disabled = !hasRemovable;
 }
 
 function updateShakeEnabled() {
-  const btn = document.getElementById('btn-shake');
   // Shooter can shake when:
   //   come-out: a pass bet is required (otherwise nothing to play). v1: allow shaking with any bet at all.
   //   point: pass must remain (you can't take it down once a point is set); pressing SHAKE just rolls.
   // Simplest rule: SHAKE enabled whenever totalWagered > 0 OR phase === 'point' (forced to roll out the shooter).
-  btn.disabled = (totalWagered() === 0 && game.phase === 'comeOut');
+  shakeBtn.disabled = (totalWagered() === 0 && game.phase === 'comeOut');
 }
 
 /* Wire zone click handlers — these run for the always-visible zones.
@@ -2264,7 +2325,7 @@ document.querySelectorAll('#felt .bet-zone').forEach(z => {
 });
 
 /* CLEAR */
-document.getElementById('btn-clear').addEventListener('click', clearAllBets);
+clearBtn.addEventListener('click', clearAllBets);
 
 /* Initial render */
 ['pass','odds','field','place:4','place:5','place:6','place:8','place:9','place:10','hard:4','hard:6','hard:8','hard:10'].forEach(renderZoneStack);
@@ -2290,8 +2351,8 @@ function toggleDrawer(name) {
     propsBtn.classList.remove('active');
   }
 }
-document.getElementById('tab-props').addEventListener('click', () => toggleDrawer('props'));
-document.getElementById('tab-bonus').addEventListener('click', () => toggleDrawer('bonus'));
+document.getElementById('tab-props').addEventListener('click', () => { playSfx('buttonSoft'); toggleDrawer('props'); });
+document.getElementById('tab-bonus').addEventListener('click', () => { playSfx('buttonSoft'); toggleDrawer('bonus'); });
 
 /* PROP zones — wire same handler */
 document.querySelectorAll('#drawer-props .bet-zone').forEach(z => {
@@ -2299,13 +2360,19 @@ document.querySelectorAll('#drawer-props .bet-zone').forEach(z => {
 });
 
 /* HOP cells — slightly different rendering (text in `.hc-stake`) */
+const _hopCellEls = new Map();   // hop key -> { cell, stakeEl } (or null)
 function renderHopStack(key) {
-  const cell = document.querySelector(`.hop-cell[data-bet="${key}"]`);
-  if (!cell) return;
+  let entry = _hopCellEls.get(key);
+  if (entry === undefined) {
+    const cell = document.querySelector(`.hop-cell[data-bet="${key}"]`);
+    entry = cell ? { cell, stakeEl: cell.querySelector('.hc-stake') } : null;
+    _hopCellEls.set(key, entry);
+  }
+  if (!entry) return;
   const stake = getBetStake(key);
   // Hop cells are tiny — fewer visible chips, tighter overlap
-  renderChipsInto(cell.querySelector('.hc-stake'), stake, { max: 4, step: 3 });
-  cell.classList.toggle('has-chips', stake > 0);
+  renderChipsInto(entry.stakeEl, stake, { max: 4, step: 3 });
+  entry.cell.classList.toggle('has-chips', stake > 0);
 }
 document.querySelectorAll('.hop-cell').forEach(c => {
   c.addEventListener('click', () => {
@@ -2333,32 +2400,43 @@ document.querySelectorAll('#drawer-bonus .bonus-zone').forEach(z => {
 
 const BONUS_KEYS = ['fire','allSmall','allTall','makeAll'];
 
+const _bonusEls = new Map();   // bonus key -> cached drawer/tracker elements
 function renderBonusStack(key) {
+  let els = _bonusEls.get(key);
+  if (els === undefined) {
+    const drawer  = document.querySelector(`.bonus-zone[data-bet="bonus:${key}"]`);
+    const tracker = document.querySelector(`.bt-section[data-bet="bonus:${key}"]`);
+    els = {
+      drawer,  drawerStack:  drawer  ? drawer.querySelector('.bz-stack')  : null,
+      tracker, trackerStack: tracker ? tracker.querySelector('.bt-stake') : null,
+    };
+    _bonusEls.set(key, els);
+  }
   const stake = getBetStake('bonus:' + key);
   const placeable = canPlace('bonus:' + key);
 
   // Drawer zone (still present as a longer-form view)
-  const drawerEl = document.querySelector(`.bonus-zone[data-bet="bonus:${key}"]`);
-  if (drawerEl) {
-    renderChipsInto(drawerEl.querySelector('.bz-stack'), stake);
-    drawerEl.classList.toggle('has-chips', stake > 0);
-    drawerEl.classList.toggle('disabled', !placeable && stake === 0);
+  if (els.drawer) {
+    renderChipsInto(els.drawerStack, stake);
+    els.drawer.classList.toggle('has-chips', stake > 0);
+    els.drawer.classList.toggle('disabled', !placeable && stake === 0);
   }
 
   // Top-deck tracker section (primary betting UI)
-  const trackerEl = document.querySelector(`.bt-section[data-bet="bonus:${key}"]`);
-  if (trackerEl) {
-    renderChipsInto(trackerEl.querySelector('.bt-stake'), stake, { max: 4, step: 3 });
-    trackerEl.classList.toggle('has-chips', stake > 0);
-    trackerEl.classList.toggle('disabled', !placeable && stake === 0);
+  if (els.tracker) {
+    renderChipsInto(els.trackerStack, stake, { max: 4, step: 3 });
+    els.tracker.classList.toggle('has-chips', stake > 0);
+    els.tracker.classList.toggle('disabled', !placeable && stake === 0);
   }
 }
 
+const _bpSmallDots = document.querySelectorAll('#bp-small .bp-dot');
+const _bpTallDots  = document.querySelectorAll('#bp-tall .bp-dot');
 function renderBonusProgress() {
-  document.querySelectorAll('#bp-small .bp-dot').forEach(d => {
+  _bpSmallDots.forEach(d => {
     d.classList.toggle('lit', game.shooter.smallHit.has(parseInt(d.dataset.n, 10)));
   });
-  document.querySelectorAll('#bp-tall .bp-dot').forEach(d => {
+  _bpTallDots.forEach(d => {
     d.classList.toggle('lit', game.shooter.tallHit.has(parseInt(d.dataset.n, 10)));
   });
 }
@@ -2398,24 +2476,47 @@ function applyEvents(events) {
   }
 }
 
+const PROP_ZONE_SET = new Set(['any7','anyCraps','aces','boxcars','yo','aceDeuce','ceCraps','ceEleven','horn','world']);
 function zoneSelector(zoneKey) {
   if (['pass','odds','field'].includes(zoneKey)) return `.bet-zone[data-bet="${zoneKey}"]`;
   if (zoneKey.startsWith('place:')) return `.bet-zone[data-bet="${zoneKey}"]`;
   if (zoneKey.startsWith('hard:'))  return `.bet-zone[data-bet="${zoneKey}"]`;
   if (zoneKey.startsWith('hop:'))   return `.hop-cell[data-bet="${zoneKey}"]`;
-  if (['any7','anyCraps','aces','boxcars','yo','aceDeuce','ceCraps','ceEleven','horn','world'].includes(zoneKey)) return `.bet-zone[data-bet="props:${zoneKey}"]`;
-  if (zoneKey.startsWith('bonus:')) return `.bonus-zone[data-bet="${zoneKey}"]`;
+  if (PROP_ZONE_SET.has(zoneKey))   return `.bet-zone[data-bet="props:${zoneKey}"]`;
+  // Bonus: prefer the always-visible top-deck tracker over the (often closed) drawer zone.
+  if (zoneKey.startsWith('bonus:')) return `.bt-section[data-bet="${zoneKey}"], .bonus-zone[data-bet="${zoneKey}"]`;
   return null;
 }
 
-function flashZone(zoneKey, won) {
+/* Memoized zone lookups — the felt never changes, so resolve each selector once. */
+const _zoneElCache = new Map();
+function getZoneEl(zoneKey) {
+  if (_zoneElCache.has(zoneKey)) return _zoneElCache.get(zoneKey);
   const selector = zoneSelector(zoneKey);
-  if (!selector) return;
-  const el = document.querySelector(selector);
+  const el = selector ? document.querySelector(selector) : null;
+  _zoneElCache.set(zoneKey, el);
+  return el;
+}
+const chipRailEl = document.querySelector('.chip-rail');
+
+function flashZone(zoneKey, won) {
+  const el = getZoneEl(zoneKey);
   if (!el) return;
-  el.classList.remove('win-flash','lose-fade');
+  // Drop a lingering placed-pulse too — its animation rule would otherwise
+  // override the win-flash pop (both are single-class selectors now).
+  el.classList.remove('win-flash','lose-fade','placed-pulse');
   void el.offsetWidth;
   el.classList.add(won ? 'win-flash' : 'lose-fade');
+}
+
+/* SEVEN OUT — quick respectful dim swept over the table */
+const sevenVeil = document.createElement('div');
+sevenVeil.className = 'sevenout-veil';
+document.body.appendChild(sevenVeil);
+function showSevenOutVeil() {
+  sevenVeil.classList.remove('show');
+  void sevenVeil.offsetWidth;
+  sevenVeil.classList.add('show');
 }
 
 /* FLYING CHIPS — visualize wins/losses with chips moving from the bet zone */
@@ -2437,9 +2538,7 @@ function pickChipDenoms(amount) {
 }
 
 function flyChipsFromZone(zoneKey, direction, amount) {
-  const selector = zoneSelector(zoneKey);
-  if (!selector) return;
-  const sourceEl = document.querySelector(selector);
+  const sourceEl = getZoneEl(zoneKey);
   if (!sourceEl) return;
   const sourceRect = sourceEl.getBoundingClientRect();
   const sourceX = sourceRect.left + sourceRect.width / 2;
@@ -2448,9 +2547,8 @@ function flyChipsFromZone(zoneKey, direction, amount) {
   // Target: chip rail (wins fly DOWN to the player) or top of screen (losses fly UP to the dealer).
   let targetX, targetY;
   if (direction === 'win') {
-    const rail = document.querySelector('.chip-rail');
-    if (rail) {
-      const r = rail.getBoundingClientRect();
+    if (chipRailEl) {
+      const r = chipRailEl.getBoundingClientRect();
       targetX = r.left + r.width / 2;
       targetY = r.top + r.height / 2;
     } else {
@@ -2464,6 +2562,8 @@ function flyChipsFromZone(zoneKey, direction, amount) {
   }
 
   const denoms = pickChipDenoms(amount);
+  const frag = document.createDocumentFragment();
+  const made = [];
   denoms.forEach((d, i) => {
     const chip = document.createElement('div');
     chip.className = 'flying-chip d' + d;
@@ -2478,12 +2578,14 @@ function flyChipsFromZone(zoneKey, direction, amount) {
     chip.style.setProperty('--tx', (targetX - startX - 14 + (i - denoms.length/2) * 6) + 'px');
     chip.style.setProperty('--ty', (targetY - startY - 14) + 'px');
     chip.style.animationDelay = (i * 60) + 'ms';
-    document.body.appendChild(chip);
-    // Force layout, then start animation
-    void chip.offsetWidth;
-    chip.classList.add('fly');
     chip.addEventListener('animationend', () => chip.remove(), { once: true });
+    frag.appendChild(chip);
+    made.push(chip);
   });
+  // One append + a single layout flush for the whole batch (not per chip)
+  document.body.appendChild(frag);
+  void document.body.offsetWidth;
+  for (const chip of made) chip.classList.add('fly');
 }
 
 function clearLosingStakesFromBets(events) {
@@ -2524,20 +2626,21 @@ function clearLosingStakesFromBets(events) {
   }
 }
 
+const ALL_BET_ZONE_KEYS = Array.from(document.querySelectorAll('.bet-zone[data-bet]'), z => z.dataset.bet);
 function rerenderAllStacks() {
-  document.querySelectorAll('.bet-zone[data-bet]').forEach(z => renderZoneStack(z.dataset.bet));
+  ALL_BET_ZONE_KEYS.forEach(renderZoneStack);
 }
 
 /* The full shake handler — animates dice, then resolves. */
 async function shake() {
   if (game.shooter.rolling) return;
-  if (document.getElementById('btn-shake').disabled) return;
+  if (shakeBtn.disabled) return;
   playSfx('buttonSoft');
   game.shooter.rolling = true;
   document.body.classList.add('rolling');
   if (typeof closeBetMenu === 'function') closeBetMenu();
-  document.getElementById('btn-shake').disabled = true;
-  document.getElementById('btn-clear').disabled = true;
+  shakeBtn.disabled = true;
+  clearBtn.disabled = true;
 
   // Roll the dice (animation)
   const { d1, d2, total } = rollDice();
@@ -2547,8 +2650,8 @@ async function shake() {
   await new Promise(r => setTimeout(r, ROLL_WAIT));
 
   // Set dice to their final faces (anchoring after animation)
-  setDieFace(document.getElementById('die1'), d1);
-  setDieFace(document.getElementById('die2'), d2);
+  setDieFace(die1El, d1);
+  setDieFace(die2El, d2);
   playSfx('settle');
 
   // Resolve
@@ -2557,7 +2660,9 @@ async function shake() {
 
   // Outcome stings
   if (result.pointMade)        playSfx('pointMade');
-  else if (result.sevenOut)    playSfx('sevenOut');
+  else if (result.sevenOut)  { playSfx('sevenOut'); showSevenOutVeil(); }
+  else if (result.events.some(ev => ev.zone === 'pass' && ev.kind === 'lose'))
+                               playSfx('loseLow');  // come-out craps — quick + respectful
 
   // Fire-light ping after a new fire dot is added
   if (result.pointMade) {
@@ -2576,7 +2681,8 @@ async function shake() {
         else if (ev.zone === 'field')                  playSfx('fieldWin');
         else if (ev.zone.startsWith('hard:'))          playSfx('hardwayWin');
         else if (ev.zone.startsWith('hop:'))           playSfx('propsWin');
-        else if (ev.zone.startsWith('bonus:fire'))     playSfx('fireBig');
+        else if (PROP_ZONE_SET.has(ev.zone))           playSfx('propsWin');
+        else if (ev.zone.startsWith('place:'))         playSfx('passWin');
         else if (ev.zone.startsWith('bonus:'))         playSfx('fireBig');
       } else if (ev.kind === 'lose') {
         flyChipsFromZone(ev.zone, 'lose', ev.amount);
@@ -2585,7 +2691,7 @@ async function shake() {
         flyChipsFromZone(ev.zone, 'win', ev.stakeReturn || 0);
         playSfx('chipPayout');
       }
-    }, i * 80);
+    }, i * 70);
   }
 
   // Total winnings (winnings + returned stakes, excluding losses)
@@ -2622,15 +2728,15 @@ async function shake() {
   rerenderAllStacks();
   updateIndicators();
 
-  // Wait a beat for animations to settle, then re-enable
-  await new Promise(r => setTimeout(r, IS_MOBILE ? 350 : 600));
+  // Quick beat for animations to land, then re-enable — keep it snappy
+  await new Promise(r => setTimeout(r, IS_MOBILE ? 280 : 420));
   game.shooter.rolling = false;
   document.body.classList.remove('rolling');
-  document.getElementById('btn-clear').disabled = false;
+  clearBtn.disabled = false;
   updateShakeEnabled();
 }
 
-document.getElementById('btn-shake').addEventListener('click', shake);
+shakeBtn.addEventListener('click', shake);
 
 /* PUCK */
 const puck = document.getElementById('puck');
@@ -2666,29 +2772,38 @@ setPuck(null);
 window.addEventListener('resize', () => { if (game.point !== null) positionPuckAtZone('place:' + game.point); });
 
 /* INDICATOR */
+var _indEls = null;   // var (hoisted): updateIndicators runs mid-script before this line executes
 function updateIndicators() {
-  document.getElementById('ind-point').textContent =
+  if (!_indEls) _indEls = {
+    point:      document.getElementById('ind-point'),
+    last:       document.getElementById('ind-last'),
+    shooter:    document.getElementById('ind-shooter'),
+    lastWin:    document.getElementById('ind-lastwin'),
+    lastWinBlk: document.getElementById('ind-lastwin-block'),
+  };
+  _indEls.point.textContent =
     game.point === null ? 'OFF' : String(game.point);
-  document.getElementById('ind-last').textContent =
+  _indEls.last.textContent =
     game.lastRoll === null ? '–' :
       `${game.lastRoll.d1}+${game.lastRoll.d2}=${game.lastRoll.total}`;
   // Fire dots are rendered by renderBonusTracker() in the top-deck.
   // Shooter status text
-  document.getElementById('ind-shooter').textContent =
+  _indEls.shooter.textContent =
     game.shooter.pointsMade.size === 0 ? 'NEW' :
     (game.shooter.pointsMade.size + ' PT' + (game.shooter.pointsMade.size === 1 ? '' : 'S'));
   // Last win
   const lw = game.lastWin || 0;
-  document.getElementById('ind-lastwin').textContent = lw > 0 ? '+$' + fmt(lw) : '$0';
-  document.getElementById('ind-lastwin-block').classList.toggle('zero', lw === 0);
+  _indEls.lastWin.textContent = lw > 0 ? '+$' + fmt(lw) : '$0';
+  _indEls.lastWinBlk.classList.toggle('zero', lw === 0);
 }
 updateIndicators();
 
 /* WIN TOAST — big centered "+$X" popup over the dice tray */
+const winToastEl  = document.getElementById('win-toast');
+const winToastLbl = document.getElementById('win-toast-label');
+const winToastAmt = document.getElementById('win-toast-amount');
 function showWinToast(amount, ctx) {
-  const toast = document.getElementById('win-toast');
-  const labelEl = document.getElementById('win-toast-label');
-  const amountEl = document.getElementById('win-toast-amount');
+  const toast = winToastEl, labelEl = winToastLbl, amountEl = winToastAmt;
   if (!toast) return;
   // Pick a label based on roll context and size
   let label = 'WIN';
@@ -2727,6 +2842,7 @@ const SFX_PATHS = {
   chipPayout:  'sfx/chip_payout.mp3',
   chipClear:   'sfx/chip_clear.mp3',
   buttonSoft:  'sfx/button_soft.mp3',
+  loseLow:     'sfx/lose_low.mp3',
 };
 const sfxPool = {};
 function preloadSfx() {
@@ -3050,6 +3166,7 @@ function canTakeDown(key) {
 }
 function openBetMenu(key, x, y) {
   if (game.shooter.rolling) return;
+  playSfx('buttonSoft');
   menuKey = key;
   betMenuTitle.textContent = betLabel(key) + ' — $' + fmt(getBetStake(key));
   const stake = getBetStake(key);
@@ -3133,13 +3250,20 @@ function attachLongPress(el) {
 document.querySelectorAll('.bet-zone[data-bet], .hop-cell[data-bet], .bonus-zone[data-bet], .bt-section[data-bet]')
   .forEach(attachLongPress);
 
-/* ---- Wire everything together: a single refresh function we call after state changes ---- */
+/* ---- Wire everything together: a single refresh function we call after state changes.
+   Coalesced via microtask — several callers fire per roll; the work runs once. ---- */
+let _secondaryQueued = false;
 function refreshSecondaryUI() {
-  refreshMaxOddsBtn();
-  refreshWagered();
-  refreshRebet();
-  updateClearEnabled();
-  renderBonusTracker();
+  if (_secondaryQueued) return;
+  _secondaryQueued = true;
+  queueMicrotask(() => {
+    _secondaryQueued = false;
+    refreshMaxOddsBtn();
+    refreshWagered();
+    refreshRebet();
+    updateClearEnabled();
+    renderBonusTracker();
+  });
 }
 
 // Hook into existing render chain.
@@ -3197,8 +3321,8 @@ shake = async function() {
   }
   refreshSecondaryUI();
 };
-document.getElementById('btn-shake').removeEventListener('click', _origShake);
-document.getElementById('btn-shake').addEventListener('click', shake);
+shakeBtn.removeEventListener('click', _origShake);
+shakeBtn.addEventListener('click', shake);
 
 // HISTORY modal open
 document.getElementById('btn-history').addEventListener('click', () => {
