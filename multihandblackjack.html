@@ -2341,7 +2341,7 @@ async function doubleDown() {
   appendPlayerCard(State.activeHandIdx, h.cards.length - 1); Audio.cardHit();
   await sleep(300);
   const t = handTotal(h.cards);
-  if (t > 21) { h.busted = true; Audio.bust(); }
+  if (t > 21) { h.busted = true; Audio.bust(); flashFelt('dim'); }
   else h.stood = true;
   await sleep(500);
   advanceHand();
@@ -2426,11 +2426,11 @@ async function dealerPlay() {
 
   if (anyAlive) {
     while (handTotal(State.dealer.cards) < 17) {
-      await sleep(550);
+      await sleep(450);
       State.dealer.cards.push(drawCard());
       appendDealerCard(State.dealer.cards.length - 1); Audio.cardHit();
     }
-    await sleep(400);
+    await sleep(320);
   }
 
   resolveAllHands();
