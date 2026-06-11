@@ -412,7 +412,10 @@ button, input { font: inherit; }
 }
 
 @media (max-width: 720px) {
-  .stage { padding: 52px 8px 28px; gap: 10px; }
+  /* Extra top room so the fixed level bar + NET pill (top-right
+     chrome) clear the centered title instead of sitting on it. */
+  .stage { padding: 96px 8px 28px; gap: 10px; }
+  .title { font-size: clamp(28px, 9vw, 42px); }
   .lobby-link, .history-btn { top: 8px; height: 30px; padding: 0 11px; font-size: 9px; }
   .lobby-link { left: 8px; }
   .history-btn { left: 98px; }
@@ -755,6 +758,26 @@ function paintFace(size, withPegs) {
   ctx.textBaseline = 'middle';
   ctx.fillText('♦', 0, size * 0.004);
   ctx.shadowBlur = 0;
+
+  // Pre-shaded lighting baked into the art: the 3D face material is
+  // unlit (MeshBasicMaterial) so the painted colors are WYSIWYG on
+  // every device — scene lights only sculpt the gold 3D parts.
+  // Soft top sheen…
+  const sheen = ctx.createLinearGradient(0, -R, 0, R * 0.4);
+  sheen.addColorStop(0, 'rgba(255,255,255,0.10)');
+  sheen.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = sheen;
+  ctx.beginPath();
+  ctx.arc(0, 0, R * 0.955, 0, TWO_PI);
+  ctx.fill();
+  // …and an edge vignette for depth.
+  const vig = ctx.createRadialGradient(0, 0, R * 0.55, 0, 0, R * 0.955);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, 'rgba(0,0,0,0.30)');
+  ctx.fillStyle = vig;
+  ctx.beginPath();
+  ctx.arc(0, 0, R * 0.955, 0, TWO_PI);
+  ctx.fill();
   return cv;
 
   function ring(c, r0, r1, edge, mid, deep) {
@@ -790,7 +813,12 @@ const house = document.getElementById('wheelhouse');
 function makeFallback2D() {
   const canvas = document.createElement('canvas');
   house.appendChild(canvas);
-  const face = paintFace(LOW_POWER ? 1024 : 1536, true);
+  let face = paintFace(LOW_POWER ? 1024 : 1536, true);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+      try { face = paintFace(LOW_POWER ? 1024 : 1536, true); renderOnce(); } catch (e) {}
+    });
+  }
   let rho = 0, flap = 0, W = 0, H = 0;
   function resize() {
     const r = house.getBoundingClientRect();
@@ -857,20 +885,18 @@ async function make3D() {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 30);
-  camera.position.set(0, 0.20, 3.05);
-  camera.lookAt(0, 0.02, 0);
+  camera.position.set(0, 0.34, 3.35);
+  camera.lookAt(0, 0, 0);
 
-  // lights
-  scene.add(new THREE.AmbientLight(0x8877cc, 0.65));
-  const key = new THREE.DirectionalLight(0xffe9b0, 1.7);
+  // Lights sculpt ONLY the gold 3D parts (rim/pegs/hub/flapper) —
+  // the painted face is unlit so its colors are exact everywhere.
+  scene.add(new THREE.AmbientLight(0xbbaadd, 1.15));
+  const key = new THREE.DirectionalLight(0xffe9b0, 2.4);
   key.position.set(2.2, 3.0, 4.0);
   scene.add(key);
-  const rimL = new THREE.PointLight(0x22d3ee, 22.0, 12);
-  rimL.position.set(-3.0, 0.8, 2.4);
-  scene.add(rimL);
-  const goldL = new THREE.PointLight(0xffd24a, 9.0, 8);
-  goldL.position.set(0.4, -0.6, 1.8);
-  scene.add(goldL);
+  const fill = new THREE.DirectionalLight(0x22d3ee, 0.6);
+  fill.position.set(-3.0, 0.8, 2.4);
+  scene.add(fill);
 
   // soft felt backdrop
   const felt = new THREE.Mesh(
@@ -900,21 +926,33 @@ async function make3D() {
 
   // ---- wheel group ----
   const tilt = new THREE.Group();
-  tilt.rotation.x = -0.10;
+  tilt.rotation.x = -0.16;
   scene.add(tilt);
   const wheel = new THREE.Group();
   tilt.add(wheel);
 
-  const faceCanvas = paintFace(LOW_POWER ? 1024 : 2048, false);
-  const faceTex = new THREE.CanvasTexture(faceCanvas);
+  const faceTex = new THREE.CanvasTexture(paintFace(LOW_POWER ? 1024 : 2048, false));
   faceTex.colorSpace = THREE.SRGBColorSpace;
   faceTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  // Unlit: the painted art (with its baked sheen/vignette) IS the look.
   const face = new THREE.Mesh(
     new THREE.CircleGeometry(1, 108),
-    new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.82, metalness: 0.12 })
+    new THREE.MeshBasicMaterial({ map: faceTex })
   );
   face.position.z = 0.035;
   wheel.add(face);
+
+  // Repaint once webfonts land so the labels render in Outfit, not
+  // the system fallback the first paint may have used.
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+      try {
+        faceTex.image = paintFace(LOW_POWER ? 1024 : 2048, false);
+        faceTex.needsUpdate = true;
+        renderOnce();
+      } catch (e) {}
+    });
+  }
 
   // body behind the face
   const body = new THREE.Mesh(
@@ -962,14 +1000,14 @@ async function make3D() {
   flapGroup.position.set(0, 1.13, 0.10);
   tilt.add(flapGroup);
   const blade = new THREE.Mesh(
-    new THREE.ConeGeometry(0.045, 0.21, 4),
-    new THREE.MeshStandardMaterial({ color: 0x9c1230, roughness: 0.55, metalness: 0.2 })
+    new THREE.ConeGeometry(0.058, 0.26, 4),
+    new THREE.MeshStandardMaterial({ color: 0xb01430, roughness: 0.5, metalness: 0.2, emissive: 0x40060f, emissiveIntensity: 0.6 })
   );
   blade.rotation.x = Math.PI; // point down
   blade.scale.z = 0.45;
-  blade.position.y = -0.085;
+  blade.position.y = -0.10;
   flapGroup.add(blade);
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.034, 16, 12), goldMat);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12), goldMat);
   flapGroup.add(cap);
 
   function resize() {
@@ -1383,6 +1421,17 @@ if (window.Music) Music.init(encodeURI('Music/Diamond Spin.m4a'));
 
 /* ---------- bring up a renderer (3D, else 2D) ---------- */
 (async () => {
+  // Give the webfonts a beat to arrive so the first face paint uses
+  // Outfit; the fonts.ready repaint hooks catch any stragglers.
+  try {
+    await Promise.race([
+      Promise.all([
+        document.fonts.load('800 60px Outfit'),
+        document.fonts.load('400 60px Outfit'),
+      ]),
+      new Promise(r => setTimeout(r, 900)),
+    ]);
+  } catch (e) {}
   try {
     if (!window.WebGLRenderingContext) throw new Error('no webgl');
     renderer = await make3D();
