@@ -449,7 +449,7 @@ body::before {
     inset 0 0 0 4px rgba(255,255,255,0.92),
     inset 0 0 0 5px rgba(0,0,0,0.25),
     0 8px 16px rgba(0,0,0,0.6);
-  transition: transform 0.38s cubic-bezier(.25,.6,.3,1.15), opacity 0.12s linear 0.32s;
+  transition: transform 0.24s cubic-bezier(.25,.6,.3,1.15), opacity 0.10s linear 0.20s;
   will-change: transform, opacity;
 }
 .flying-chip::before {
@@ -570,20 +570,9 @@ body::before {
   --chipH: 32px;
 }
 .bet-circle.main .chip-stack { width: 64px; --chipH: 32px; }
-/* Total label that floats above the topmost chip — JS sets `bottom`. */
-.bet-circle .chip-stack .stack-total {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: 'Bungee', cursive;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  color: var(--gold-0);
-  text-shadow: 0 0 6px rgba(0,0,0,0.9), 0 1px 0 rgba(0,0,0,0.7);
-  white-space: nowrap;
-  pointer-events: none;
-}
-.bet-circle.main .chip-stack .stack-total { font-size: 13px; }
+/* .stack-total is suppressed — the .bet-value above the circle is the
+   single source of truth for the wager amount. */
+.bet-circle .chip-stack .stack-total { display: none; }
 
 .bet-circle .pay-tier {
   position: absolute;
@@ -1743,9 +1732,11 @@ function addBet(key) {
   const wasEmpty = State.bets[key] === 0;
   setBalance(State.balance - chip);
   State.bets[key] += chip;
-  Audio.chipPick(); // instant feedback at lift-off; the clack lands with the chip
+  // Repaint the bet immediately so the number reflects the click without
+  // waiting for the chip-fly to land — that's purely visual flair.
+  refreshBets();
+  Audio.chipPick();
   flyChipToCircle(chip, key, () => {
-    refreshBets();
     Audio.chip(!wasEmpty);
     bumpCircle(key);
   });
@@ -1852,8 +1843,8 @@ function flyChipToCircle(value, key, onLand) {
   setTimeout(() => {
     fly.style.opacity = '0';
     onLand && onLand();
-  }, 360);
-  setTimeout(() => fly.remove(), 520);
+  }, 220);
+  setTimeout(() => fly.remove(), 360);
 }
 
 function updateActionButtons() {
@@ -1928,15 +1919,15 @@ async function dealHand() {
   updateActionButtons();
 
   // Deal: P, D(up), P, D(hole)
-  await sleep(180);
+  await sleep(120);
   State.hands[0].cards.push(drawCard());
-  appendPlayerCard(0, State.hands[0].cards.length - 1); Audio.deal(); await sleep(220);
+  appendPlayerCard(0, State.hands[0].cards.length - 1); Audio.deal(); await sleep(150);
   State.dealer.cards.push(drawCard());
-  appendDealerCard(State.dealer.cards.length - 1); Audio.deal(); await sleep(220);
+  appendDealerCard(State.dealer.cards.length - 1); Audio.deal(); await sleep(150);
   State.hands[0].cards.push(drawCard());
-  appendPlayerCard(0, State.hands[0].cards.length - 1); Audio.deal(); await sleep(220);
+  appendPlayerCard(0, State.hands[0].cards.length - 1); Audio.deal(); await sleep(150);
   State.dealer.cards.push(drawCard());
-  appendDealerCard(State.dealer.cards.length - 1); Audio.deal(); await sleep(240);
+  appendDealerCard(State.dealer.cards.length - 1); Audio.deal(); await sleep(180);
 
   // Resolve side bets immediately (Vegas video BJ behaviour)
   resolveSideBets();
