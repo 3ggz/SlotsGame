@@ -1971,6 +1971,7 @@ async function dealHand() {
   State.activeHandIdx = 0;
   State.insurance = 0;
 
+  Audio.click(); // instant press feedback — first card sound lands ~180ms later
   setMessage('DEALING...');
   hideInsurance();
   renderDealer();
@@ -2016,9 +2017,11 @@ async function dealHand() {
   }
 
   // Skip past any starting blackjacks: auto-stand them, advance to first playable hand.
+  let startingBJ = false;
   for (const h of State.hands) {
-    if (isBlackjack(h.cards)) { h.stood = true; h.locked = true; }
+    if (isBlackjack(h.cards)) { h.stood = true; h.locked = true; startingBJ = true; }
   }
+  if (startingBJ) Audio.bjHint();
   while (State.activeHandIdx < State.hands.length &&
          (State.hands[State.activeHandIdx].stood || State.hands[State.activeHandIdx].busted)) {
     State.activeHandIdx++;
@@ -2046,10 +2049,10 @@ async function dealHand() {
 function circleForHand(handIdx) {
   const h = State.hands[handIdx];
   if (!h) return null;
-  return document.getElementById('bet-main-' + (h.slot ?? 0));
+  return UI.circleByKey['main:' + (h.slot ?? 0)];
 }
 function handBoxFor(handIdx) {
-  const row = document.getElementById('player-cards');
+  const row = UI.playerCards;
   if (State.hands.length === 1) return row;
   const group = row.querySelector('.hand-group');
   return group ? group.children[handIdx] : null;
@@ -2246,9 +2249,11 @@ async function takeInsurance(yes) {
   if (State.insurance > 0) setMessage('INSURANCE LOST');
 
   // Auto-stand any starting blackjacks, then advance to the first playable hand.
+  let startingBJ = false;
   for (const h of State.hands) {
-    if (isBlackjack(h.cards)) { h.stood = true; h.locked = true; }
+    if (isBlackjack(h.cards)) { h.stood = true; h.locked = true; startingBJ = true; }
   }
+  if (startingBJ) Audio.bjHint();
   while (State.activeHandIdx < State.hands.length &&
          (State.hands[State.activeHandIdx].stood || State.hands[State.activeHandIdx].busted)) {
     State.activeHandIdx++;
