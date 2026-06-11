@@ -339,7 +339,7 @@ body::before {
 .card:first-child { margin-left: 0; }
 .card.enter,
 .card.dealing {
-  animation: cardLand 0.42s cubic-bezier(.22,.61,.36,1);
+  animation: cardLand 0.26s cubic-bezier(.22,.61,.36,1);
 }
 @keyframes cardLand {
   0%   { opacity: 0; transform: translate(-40px, -120px) rotate(-22deg) scale(0.72); }
@@ -374,7 +374,7 @@ body::before {
   display: none;
 }
 .card.flipping {
-  animation: cardFlip 0.6s ease-in-out;
+  animation: cardFlip 0.5s ease-in-out;
 }
 @keyframes cardFlip {
   0%   { transform: rotateY(0deg) scaleX(1); }
@@ -833,6 +833,44 @@ body::before {
   100% { transform: translate(var(--tx,0), var(--ty,0)) rotate(720deg) scale(1); opacity: 0; }
 }
 
+/* FELT RESULT FLASH — gold wash for wins, quick respectful dim for losses.
+   Opacity-only animation on a pinned overlay: no layout, no paint storms. */
+.felt-flash {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 6;
+  opacity: 0;
+  will-change: opacity;
+}
+.felt-flash.gold {
+  background: radial-gradient(ellipse at 50% 38%, rgba(255,210,74,0.42), rgba(255,210,74,0.12) 55%, transparent 78%);
+}
+.felt-flash.dim { background: rgba(0,0,0,0.5); }
+.felt-flash.gold.flash { animation: feltFlashGold 0.6s ease-out; }
+.felt-flash.dim.flash  { animation: feltFlashDim 0.45s ease-out; }
+@keyframes feltFlashGold {
+  0%   { opacity: 0; }
+  18%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes feltFlashDim {
+  0%   { opacity: 0; }
+  25%  { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+/* LOW-POWER — drop blur-backed chrome + noise overlay (composite-heavy on weak GPUs) */
+html.low-power .lobby-link,
+html.low-power .history-btn,
+html.low-power .balance-link {
+  background: linear-gradient(180deg, rgba(42,18,77,0.96), rgba(15,4,30,0.96));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.low-power body::before { display: none; }
+
 /* ADD FUNDS MODAL (reused style) */
 .modal-veil {
   position: fixed;
@@ -1050,6 +1088,7 @@ body::before {
     </div>
 
     <div class="felt">
+      <div class="felt-flash" id="felt-flash"></div>
 
       <!-- DEALER -->
       <div class="area">
@@ -1276,6 +1315,11 @@ const Audio = (() => {
       else         play(pick('chip_place_a', 'chip_place_b', 'chip_place_c'), { gain: 0.95, pitchVariance: 0.06, maxMs: 220 });
     },
     chipSelect()    { play('chip_select', { gain: 0.6, pitchVariance: 0.04, maxMs: 180 }); },
+    // Instant tactile tick the moment a chip lifts off the rack — the proper
+    // clack still lands with the chip ~360ms later via chip().
+    chipPick()      { play('chip_select', { gain: 0.4, pitch: 1.08, pitchVariance: 0.05, maxMs: 150 }); },
+    // Soft attention cue for prompts sliding in (insurance, confirms).
+    prompt()        { play('button_soft', { gain: 0.5, pitch: 1.15, pitchVariance: 0.03 }); },
     chipPayout()    { play('chip_payout', { gain: 0.85, pitchVariance: 0.04 }); },
     chipClear()     { play('chip_clear', { gain: 0.75, pitchVariance: 0.04 }); },
     deal()          { play(pick('card_deal_a', 'card_deal_b', 'card_deal_c'), { gain: 0.8, pitchVariance: 0.08 }); },
@@ -1291,15 +1335,31 @@ const Audio = (() => {
       play('chip_payout', { gain: 0.5, delay: 0.18 });
     },
     bj()            {
-      play('blackjack_fanfare', { gain: 0.95 });
-      play('chip_payout', { gain: 0.6, delay: 0.35 });
+      // Layered fanfare — fanfare hit, ascending chime, and a stacked chip-payout
+      // shower so a blackjack always sounds like the *biggest* thing that can happen.
+      play('blackjack_fanfare', { gain: 1.0 });
+      play('win_chime',         { gain: 0.85, delay: 0.18, pitch: 1.05 });
+      play('chip_payout',       { gain: 0.7,  delay: 0.32 });
+      play('chip_payout',       { gain: 0.55, delay: 0.6,  pitch: 1.12 });
     },
+    // Small chime when a dealt hand turns out to be a natural — the full
+    // fanfare is saved for the payout moment in resolveAllHands.
+    bjHint()        { play('win_chime', { gain: 0.5, pitch: 1.12 }); },
     push()          { play('push_neutral', { gain: 0.75 }); },
     lose()          { play('lose_low', { gain: 0.7 }); },
     coin()          { play(pick('chip_place_a', 'chip_place_b', 'chip_place_c'), { gain: 0.25, pitch: 1.6, pitchVariance: 0.15 }); },
     addCash()       { play('chip_payout', { gain: 0.9 }); },
   };
 })();
+
+/* ============================================================
+   LOW-POWER DETECTION (matches plinko/slots heuristics)
+   ============================================================ */
+const LOW_POWER =
+  !!(navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+  !!(window.matchMedia && (window.matchMedia('(max-width: 720px)').matches ||
+                           window.matchMedia('(prefers-reduced-motion: reduce)').matches));
+if (LOW_POWER) document.documentElement.classList.add('low-power');
 
 /* ============================================================
    SHARED BALANCE
@@ -1313,6 +1373,56 @@ function persistBalance(v) {
   try { localStorage.setItem(BALANCE_KEY, String(v)); } catch (e) {}
 }
 const fmt = n => Math.round(n).toLocaleString('en-US');
+
+/* ============================================================
+   DOM CACHE — hot-path lookups resolved once. The script sits at the
+   end of <body>, so every element already exists. Deal/render/refresh
+   paths below all read from here instead of re-querying the document.
+   ============================================================ */
+const $id = id => document.getElementById(id);
+const UI = {
+  balance:      $id('balance'),
+  message:      $id('message'),
+  dealerCards:  $id('dealer-cards'),
+  playerCards:  $id('player-cards'),
+  dealerTotal:  $id('dealer-total'),
+  playerTotal:  $id('player-total'),
+  feltFlash:    $id('felt-flash'),
+  particles:    $id('particles'),
+  betActions:   $id('bet-actions'),
+  playActions:  $id('play-actions'),
+  nextActions:  $id('next-actions'),
+  btnDeal:      $id('btn-deal'),
+  btnClear:     $id('btn-clear'),
+  btnRebet:     $id('btn-rebet'),
+  btnDouble:    $id('btn-double'),
+  btnSplit:     $id('btn-split'),
+  btnRebetOnly: $id('btn-rebet-only'),
+  btnRebetDeal: $id('btn-rebet-deal'),
+  btnRebet2x:   $id('btn-rebet-2x'),
+  insurancePrompt: $id('insurance-prompt'),
+  confirmPrompt:   $id('confirm-prompt'),
+  confirmLabel:    $id('confirm-label'),
+  modalVeil:    $id('modal-veil'),
+  chipRack:     document.querySelector('.chip-rack'),
+  chips:        Array.from(document.querySelectorAll('.chip')),
+  circles:      Array.from(document.querySelectorAll('.bet-circle')),
+  chipByValue:  {},
+  circleByKey:  {},
+  amounts:      [$id('main-amount-0'), $id('main-amount-1'), $id('main-amount-2')],
+};
+UI.chips.forEach(c => { UI.chipByValue[c.dataset.value] = c; });
+UI.circles.forEach(c => { UI.circleByKey[c.dataset.bet] = c; });
+
+/* Gold flash on wins, quick dim on losses. One class-swap + one reflow per
+   round outcome — not a hot path. */
+function flashFelt(kind) {
+  const el = UI.feltFlash;
+  if (!el) return;
+  el.className = 'felt-flash ' + kind;
+  void el.offsetWidth; // restart the animation
+  el.classList.add('flash');
+}
 
 /* ============================================================
    CARDS & SHOE

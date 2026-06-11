@@ -3779,7 +3779,7 @@ function buildWheelSVG(wheelName) {
 /* Spin a wheel to a target slice index. Returns when settled. */
 async function spinWheel(wheelName, sliceIdx) {
   const wState = wheelState[wheelName];
-  const svg = document.getElementById(wState.svgId);
+  const svg = $id(wState.svgId);
   const sliceCount = wState.slices.length;
   const sliceWidth = 360 / sliceCount;
   const spins = 5 + Math.floor(Math.random() * 3);
@@ -3800,7 +3800,7 @@ async function spinWheel(wheelName, sliceIdx) {
   }
 
   // outcome label updates
-  const outEl = document.getElementById(wState.outcomeEl);
+  const outEl = $id(wState.outcomeEl);
   if (outEl) {
     outEl.textContent = '...';
     outEl.classList.remove('land');
@@ -3958,7 +3958,7 @@ function setBonusStatus(text) {
 }
 
 function flashRespins() {
-  const rv = document.getElementById('respins-value');
+  const rv = $id('respins-value');
   rv.classList.remove('flash'); void rv.offsetWidth; rv.classList.add('flash');
   rv.textContent = BonusState.respins;
 }
@@ -3966,16 +3966,16 @@ function flashRespins() {
 /* ---------- HARPOON / CANNON VISUALS ---------- */
 async function fireHarpoon() {
   Audio.harpoonFly();
-  const board = document.getElementById('bonus-board');
+  const board = $id('bonus-board');
   // Pick a random row
   const row = Math.floor(Math.random() * BONUS_ROWS);
   // Position harpoon roughly at the row's vertical center
-  const cells = Array.from(document.querySelectorAll('.cell')).filter((_, i) => Math.floor(i / BONUS_COLS) === row);
-  if (cells.length === 0) return;
+  const firstCell = bonusCellEls[row * BONUS_COLS];
+  if (!firstCell) return;
   const harp = document.createElement('div');
   harp.className = 'harpoon';
   const boardRect = board.getBoundingClientRect();
-  const rowRect = cells[0].getBoundingClientRect();
+  const rowRect = firstCell.getBoundingClientRect();
   harp.style.top = (rowRect.top - boardRect.top + rowRect.height/2 - 6) + 'px';
   harp.style.height = '12px';
   board.appendChild(harp);
@@ -4008,7 +4008,7 @@ async function fireHarpoon() {
 /* Single laser beam from outside the board to a target cell. Used for ×2 Spyglass. */
 async function fireMultBeam(targetIdx) {
   const cellEl = bonusCellEls[targetIdx];
-  const board = document.getElementById('bonus-board');
+  const board = $id('bonus-board');
   if (!cellEl || !board) return;
   const boardRect = board.getBoundingClientRect();
   const cellRect = cellEl.getBoundingClientRect();
@@ -4233,26 +4233,28 @@ async function startBonus() {
   const stage = document.getElementById('bonus-stage');
   if (stage) stage.classList.remove('revealing');
 
-  const board = document.getElementById('bonus-board');
+  const board = $id('bonus-board');
   board.innerHTML = '';
+  bonusCellEls = [];
   for (let i = 0; i < BONUS_TOTAL; i++) {
     const cell = document.createElement('div');
     cell.className = 'cell';
     cell.dataset.idx = i;
     board.appendChild(cell);
+    bonusCellEls.push(cell);
   }
 
   // reset wheel UI
-  document.getElementById('compass-outcome').textContent = '—';
-  document.getElementById('spyglass-outcome').textContent = '—';
-  document.getElementById('compass-outcome').classList.remove('land');
-  document.getElementById('spyglass-outcome').classList.remove('land');
+  $id('compass-outcome').textContent = '—';
+  $id('spyglass-outcome').textContent = '—';
+  $id('compass-outcome').classList.remove('land');
+  $id('spyglass-outcome').classList.remove('land');
 
-  document.getElementById('respins-value').textContent = BonusState.respins;
-  document.getElementById('ships-count').textContent = `0 / ${BONUS_TOTAL}`;
-  document.getElementById('bonus-total').textContent = '???';
-  document.getElementById('bonus-final').classList.remove('show');
-  document.getElementById('bonus-stage').classList.add('show');
+  $id('respins-value').textContent = BonusState.respins;
+  $id('ships-count').textContent = `0 / ${BONUS_TOTAL}`;
+  $id('bonus-total').textContent = '???';
+  $id('bonus-final').classList.remove('show');
+  $id('bonus-stage').classList.add('show');
   setBonusStatus('SHIPS RISING');
 
   await sleep(500);
@@ -4276,7 +4278,7 @@ async function placeSeedShips(count) {
     await sleep(240);
   }
   recalcBonusTotal();
-  document.getElementById('ships-count').textContent = `${count} / ${BONUS_TOTAL}`;
+  $id('ships-count').textContent = `${count} / ${BONUS_TOTAL}`;
 }
 
 async function runBonusLoop() {
@@ -4293,7 +4295,7 @@ async function runBonusLoop() {
 
     recalcBonusTotal();
     const filledCount = BonusState.cells.filter(c => c.ship).length;
-    document.getElementById('ships-count').textContent = `${filledCount} / ${BONUS_TOTAL}`;
+    $id('ships-count').textContent = `${filledCount} / ${BONUS_TOTAL}`;
 
     if (filledCount === BONUS_TOTAL) { awardKraken(); return; }
 
@@ -4471,7 +4473,7 @@ function awardKraken() {
   document.querySelectorAll('.jackpot[data-tier="KRAKEN"], .bonus-jp[data-tier="KRAKEN"]').forEach(el => {
     el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
   });
-  spawnCoinShower(document.getElementById('bonus-board'), 100);
+  spawnCoinShower($id('bonus-board'), 100);
   setTimeout(() => finishBonus(true), 1600);
 }
 
@@ -4481,7 +4483,7 @@ async function finishBonus(isGrand) {
 
   // Reveal each ship's value with a stagger
   BonusState.revealing = true;
-  const stage = document.getElementById('bonus-stage');
+  const stage = $id('bonus-stage');
   if (stage) stage.classList.add('revealing');
 
   const shipIdxs = BonusState.cells
@@ -4504,11 +4506,16 @@ async function finishBonus(isGrand) {
   await sleep(revealDur);
 
   recalcBonusTotal();
-  const fin = document.getElementById('bonus-final');
+  const fin = $id('bonus-final');
   fin.classList.add('show');
-  const finalEl = document.getElementById('final-amount');
+  const finalEl = $id('final-amount');
   finalEl.textContent = '0';
-  countUp(0, BonusState.total, 1800, v => { finalEl.textContent = fmt(v); });
+  // Final tally now ticks audibly as it climbs (was silent).
+  const tallyTicker = makeCountTicker(80);
+  countUp(0, BonusState.total, 1800, v => {
+    finalEl.textContent = fmt(v);
+    tallyTicker(BonusState.total > 0 ? v / BonusState.total : 1);
+  });
   if (isGrand) setTimeout(() => spawnCoinShower(fin, 70), 300);
 }
 
@@ -4527,7 +4534,7 @@ function collectBonus() {
     History.record('kraken', State.spinBet, net, note);
     State.spinBet = 0; State.spinLineWin = 0; State.spinNote = '';
   }
-  document.getElementById('bonus-stage').classList.remove('show');
+  $id('bonus-stage').classList.remove('show');
   State.inBonus = false;
   updateJackpotDisplay();
   updateBuyBonusButton();

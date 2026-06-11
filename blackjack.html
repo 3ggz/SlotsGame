@@ -2042,8 +2042,7 @@ function showPayTier(circle, text, cls = '') {
 
 async function revealDealerHole() {
   State.dealer.holeRevealed = true;
-  const cards = document.querySelectorAll('#dealer-cards .card');
-  const hole = cards[1];
+  const hole = UI.dealerCards.children[1];
   if (hole) {
     hole.classList.add('flipping');
     Audio.flip();
@@ -2074,8 +2073,7 @@ async function revealDealerHole() {
    then waits a beat so the player feels the suspense before either
    continuing the hand or revealing a dealer blackjack. */
 async function dealerPeek() {
-  const cards = document.querySelectorAll('#dealer-cards .card');
-  const hole = cards[1];
+  const hole = UI.dealerCards.children[1];
   if (!hole) return;
   setMessage('DEALER CHECKING...');
   await sleep(180);
@@ -2492,19 +2490,20 @@ async function payBlackjack() {
   const h = State.hands[0];
   const winnings = h.bet * 1.5;
   setBalance(State.balance + h.bet + winnings);
-  const circle = document.getElementById('bet-main');
+  const circle = UI.circleByKey.main;
   paintHandBadge(0, 'bj');
   showCircleResult(circle, 'bj', winnings);
   payWinChips(circle, h.bet + winnings);
   setMessage('BLACKJACK · +$' + fmt(winnings), 'bj');
   Audio.bj();
+  flashFelt('gold');
   spawnCoinShower();
 }
 
 async function pushMain(msg) {
   const h = State.hands[0];
   setBalance(State.balance + h.bet);
-  const circle = document.getElementById('bet-main');
+  const circle = UI.circleByKey.main;
   paintHandBadge(0, 'push');
   showCircleResult(circle, 'push', 0);
   setMessage(msg, 'push');
@@ -2514,12 +2513,13 @@ async function pushMain(msg) {
 
 async function loseMain(msg) {
   const h = State.hands[0];
-  const circle = document.getElementById('bet-main');
+  const circle = UI.circleByKey.main;
   paintHandBadge(0, 'lose');
   showCircleResult(circle, 'lose', h.bet);
   sweepLossChips(circle, h.bet);
   setMessage(msg, 'lose');
   Audio.lose();
+  flashFelt('dim');
 }
 
 function finishRound() {
@@ -2531,7 +2531,7 @@ function finishRound() {
     let note = State.handNote || '';
     if (!note) {
       // Derive a label from the message banner so the history shows what happened
-      const msg = (document.getElementById('message')?.textContent || '').toUpperCase();
+      const msg = (UI.message.textContent || '').toUpperCase();
       if (msg.includes('BLACKJACK')) note = 'BLACKJACK';
       else if (msg.includes('BUST')) note = 'BUST';
       else if (msg.includes('PUSH')) note = 'PUSH';
@@ -2608,9 +2608,10 @@ function spawnConfettiAt(targetEl) {
   const r = targetEl.getBoundingClientRect();
   const cx = r.left + r.width/2;
   const cy = r.top + r.height/2;
-  const layer = document.getElementById('particles');
+  const layer = UI.particles;
   const colors = ['#ff2e93','#22d3ee','#a855f7','#ffd24a','#5cffa1','#ffffff'];
-  for (let i = 0; i < 20; i++) {
+  const count = LOW_POWER ? 10 : 20;
+  for (let i = 0; i < count; i++) {
     const p = document.createElement('div');
     p.className = 'particle';
     p.style.left = cx + 'px';
@@ -2628,10 +2629,11 @@ function spawnConfettiAt(targetEl) {
 }
 
 function spawnCoinShower() {
-  const layer = document.getElementById('particles');
+  const layer = UI.particles;
   const cx = window.innerWidth / 2;
   const cy = window.innerHeight / 2;
-  for (let i = 0; i < 30; i++) {
+  const count = LOW_POWER ? 14 : 30;
+  for (let i = 0; i < count; i++) {
     const c = document.createElement('div');
     c.className = 'coin';
     c.style.left = cx + 'px';
@@ -2651,14 +2653,14 @@ function spawnCoinShower() {
    ADD FUNDS MODAL
    ============================================================ */
 function openAdd() {
-  document.getElementById('modal-veil').classList.add('show');
+  UI.modalVeil.classList.add('show');
   const inp = document.getElementById('amount-input');
   inp.value = '';
   setTimeout(() => inp.focus(), 100);
   Audio.click();
 }
 function closeAdd() {
-  document.getElementById('modal-veil').classList.remove('show');
+  UI.modalVeil.classList.remove('show');
   Audio.click();
 }
 function confirmAdd() {
@@ -2676,7 +2678,10 @@ function confirmAdd() {
 function init() {
   if (window.SettingsUI) SettingsUI.mount();
   if (window.Music) Music.init('Music/Blackjack%20Velvet.m4a');
-  document.getElementById('balance').textContent = fmt(State.balance);
+  UI.balance.textContent = fmt(State.balance);
+
+  // Responsive --chipH cache invalidation (see renderChipStacks)
+  window.addEventListener('resize', () => UI.circles.forEach(c => { c._chipH = null; }));
 
   // Eagerly preload SFX — decoding works while the audio context is suspended,
   // so by the time the user first interacts, buffers are ready and we just
@@ -2688,7 +2693,7 @@ function init() {
   window.addEventListener('touchstart',  sfxResume, { capture: true, passive: true });
 
   // Chips — picking a denomination
-  document.querySelectorAll('.chip').forEach(c => {
+  UI.chips.forEach(c => {
     c.addEventListener('click', () => {
       selectChip(parseInt(c.dataset.value, 10));
       c.classList.remove('poking');
@@ -2699,7 +2704,7 @@ function init() {
   });
 
   // Bet circles — left-click adds a chip, right-click removes the last one placed
-  document.querySelectorAll('.bet-circle').forEach(c => {
+  UI.circles.forEach(c => {
     c.addEventListener('click', () => addBet(c.dataset.bet));
     c.addEventListener('contextmenu', e => {
       e.preventDefault();
@@ -2726,7 +2731,7 @@ function init() {
     hideConfirm();
     Audio.click?.();
   });
-  document.getElementById('btn-next').addEventListener('click', newHand);
+  document.getElementById('btn-next').addEventListener('click', () => { Audio.click(); newHand(); });
   document.getElementById('btn-rebet-only').addEventListener('click', rebetOnly);
   document.getElementById('btn-rebet-deal').addEventListener('click', rebetAndDeal);
   document.getElementById('btn-rebet-2x').addEventListener('click', rebet2xAndDeal);
@@ -2757,7 +2762,7 @@ function init() {
 
   // Keyboard shortcuts
   window.addEventListener('keydown', e => {
-    if (document.getElementById('modal-veil').classList.contains('show')) return;
+    if (UI.modalVeil.classList.contains('show')) return;
     if (State.phase === 'PLAYER') {
       if (e.key === 'h' || e.key === 'H') hit();
       if (e.key === 's' || e.key === 'S') stand();

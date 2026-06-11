@@ -2157,6 +2157,11 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
         slide(180, 86, 0.26, 'sawtooth', 0.09, 0, -0.1);
         woodKnock(0.07, 0.12, 0.76);
       },
+      betLimit() {
+        // gentle dead-end knock when the bet stepper hits its rail
+        slide(220, 120, 0.11, 'triangle', 0.045);
+        woodKnock(0.01, 0, 0.3);
+      },
       addCash() {
         coinSpray(10, 0, 820, 0.54);
         [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.12, 'triangle', 0.08, i * 0.045, 0.014));
@@ -2198,6 +2203,11 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
       waysTick(step = 0) {
         const f = 640 + step * 28;
         brassPing(f, 0, (step % 5 - 2) * 0.12, 0.018);
+      },
+      coinTick(step = 0) {
+        // light coin tap that rises with the count-up
+        brassPing(700 + (step % 9) * 52, 0, ((step % 5) - 2) * 0.1, 0.02);
+        if (step % 4 === 0) noise(0.014, 0.008, 3200, 'bandpass', 0, 0, 7);
       },
       waysSlam() {
         woodKnock(0, 0, 0.82);
@@ -2588,11 +2598,17 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
 
   async function animateReelSpin() {
     const reels = Array.from(refs.reels.children);
-    reels.forEach((reel, index) => {
+    // Write: clear any leftover strips first…
+    reels.forEach(reel => {
       reel.querySelectorAll('.spin-strip').forEach(strip => strip.remove());
       reel.style.removeProperty('--spin-pad-y');
       reel.style.removeProperty('--spin-pad-x');
-      attachSpinStrip(reel, index);
+    });
+    // …read: measure all six reels off a single layout pass…
+    const metrics = reels.map(measureReel);
+    // …write: build all strips with no further layout reads.
+    reels.forEach((reel, index) => {
+      attachSpinStrip(reel, index, metrics[index]);
       reel.classList.add('spinning');
     });
     const totalMs = reels.reduce((max, reel) => {
@@ -2634,29 +2650,54 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
     }
   }
 
+  /* Gold pop on the balance panel when chips land. */
+  function flashBalance() {
+    const panel = refs.balance.parentElement; // .panel-value wrapping $ + amount
+    if (!panel) return;
+    panel.classList.remove('flash');
+    void panel.offsetWidth;
+    panel.classList.add('flash');
+  }
+
+  /* Quick opacity-only gold wash over the whole screen. */
+  function flashWinWash() {
+    refs.winFlash.classList.remove('show');
+    void refs.winFlash.offsetWidth;
+    refs.winFlash.classList.add('show');
+  }
+
   function celebrateWin(amount, bet) {
     const ratio = amount / Math.max(1, bet);
     const rect = refs.screen.getBoundingClientRect();
+    const coinScale = LOW_POWER ? 0.5 : 1;
     if (ratio >= 60 && !State.inBonus) {
       AudioFX.bigWin();
+      flashWinWash();
       showBigWin(amount, ratio >= 180 ? 'MEGA WIN' : 'BIG WIN');
-      spawnCoins(rect.left + rect.width / 2, rect.top + rect.height / 2, 54);
+      spawnCoins(rect.left + rect.width / 2, rect.top + rect.height / 2, Math.round(54 * coinScale));
     } else if (ratio >= 12) {
       AudioFX.mediumWin();
-      spawnCoins(rect.left + rect.width / 2, rect.top + rect.height / 2, 26);
+      flashWinWash();
+      spawnCoins(rect.left + rect.width / 2, rect.top + rect.height / 2, Math.round(26 * coinScale));
     } else if (amount > 0) {
       AudioFX.smallWin();
-      spawnCoins(rect.left + rect.width / 2, rect.top + rect.height / 2, 10);
+      spawnCoins(rect.left + rect.width / 2, rect.top + rect.height / 2, Math.round(10 * coinScale));
     }
   }
 
-  async function countUp(from, to, duration, render) {
+  async function countUp(from, to, duration, render, onTick) {
     const start = performance.now();
+    let lastTick = 0;
+    let tickStep = 0;
     return new Promise(resolve => {
       const tick = now => {
         const t = Math.min(1, (now - start) / duration);
         const eased = 1 - Math.pow(1 - t, 3);
         render(Core.round2(from + (to - from) * eased));
+        if (onTick && now - lastTick >= 85 && t < 1) {
+          lastTick = now;
+          onTick(tickStep++);
+        }
         if (t < 1) requestAnimationFrame(tick);
         else {
           render(Core.round2(to));
@@ -2683,10 +2724,10 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
       markPositions(result.positions, 'win');
       AudioFX.hitConfirm();
       updateStatus(bonus ? 'TUMBLE - ' + multiplier + 'X' : 'TUMBLE WIN');
-      await sleep(360);
+      await sleep(320);
       markPositions(result.positions, 'burst');
       AudioFX.tumble();
-      await sleep(280);
+      await sleep(240);
       working = Core.applyCascade(working, result.positions, Math.random, {
         scatterBoost: State.boost && !bonus ? 3 : 0,
       });
@@ -2767,8 +2808,9 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
     const cascades = await runCascadeSequence({ grid, bet, bonus: false });
     let totalWin = cascades.amount;
     if (totalWin > 0) {
-      await countUp(0, totalWin, 720, value => setWin(value));
+      await countUp(0, totalWin, 720, value => setWin(value), step => AudioFX.coinTick(step));
       setBalance(State.balance + totalWin);
+      flashBalance();
       celebrateWin(totalWin, bet);
     }
 
@@ -2851,7 +2893,7 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
           multiplier: BonusState.multiplier,
           total: BonusState.total,
         });
-        await countUp(State.lastWin, State.lastWin + cascade.amount, 540, value => setWin(value));
+        await countUp(State.lastWin, State.lastWin + cascade.amount, 540, value => setWin(value), step => AudioFX.coinTick(step));
         celebrateWin(cascade.amount, BonusState.betSnapshot);
       }
 
@@ -2899,7 +2941,8 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
     State.inBonus = false;
     refs.cabinet.classList.remove('feature');
     setBalance(State.balance + BonusState.total);
-    setWin(BonusState.total);
+    flashBalance();
+    setWin(BonusState.total, true);
     celebrateWin(BonusState.total, BonusState.betSnapshot);
     updateStatus('FEATURE PAID $' + fmt(BonusState.total));
     updateFeatureStrip({
@@ -2923,6 +2966,7 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
   }
 
   function closeBigWin() {
+    AudioFX.click();
     refs.bigwinStage.classList.remove('show');
     refs.cabinet.classList.remove('bigwin');
     State.bigWinShowing = false;
@@ -2964,6 +3008,7 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
   }
 
   function startAutoSpin(count) {
+    AudioFX.click();
     State.stopAtFeature = refs.stopAtFeature.checked;
     State.autoSpin = true;
     State.autoCount = count;
@@ -3079,6 +3124,8 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
       if (i < State.betSteps.length - 1) {
         setBet(State.betSteps[i + 1]);
         AudioFX.click();
+      } else {
+        AudioFX.betLimit();
       }
     });
     refs.betDown.addEventListener('click', () => {
@@ -3086,6 +3133,8 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
       if (i > 0) {
         setBet(State.betSteps[i - 1]);
         AudioFX.click();
+      } else {
+        AudioFX.betLimit();
       }
     });
     // add-chips button removed from games — use the lobby
@@ -3186,6 +3235,7 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
       bigwinAmount: $('bigwin-amount'),
       bigwinClose: $('bigwin-close'),
       particles: $('particles'),
+      winFlash: $('win-flash'),
       history: $('btn-history'),
     });
   }
