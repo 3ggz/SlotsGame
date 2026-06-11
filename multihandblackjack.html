@@ -2083,7 +2083,7 @@ function showCircleResult(circle, kind, amount) {
   circle.classList.remove('has-chips');
 }
 function clearAllCircleResults() {
-  document.querySelectorAll('.bet-circle').forEach(c => {
+  UI.circles.forEach(c => {
     c.classList.remove('resolved', 'win', 'lose', 'push', 'bj');
     const v = c.querySelector('.bet-value');
     if (v) v.classList.remove('result', 'win', 'lose', 'push', 'bj');
@@ -2133,7 +2133,7 @@ function sweepLossChips(circle, amount) {
 function payWinChips(circle, amount) {
   if (!circle) return;
   const r = circle.getBoundingClientRect();
-  const rack = document.querySelector('.chip-rack');
+  const rack = UI.chipRack;
   const rr = rack ? rack.getBoundingClientRect()
                   : { left: window.innerWidth/2 - 60, top: window.innerHeight - 80, width: 120, height: 60 };
   const denoms = pickChipBreakdown(amount, 5);
@@ -2161,8 +2161,7 @@ function showPayTier(circle, text, cls = '') {
 
 async function revealDealerHole() {
   State.dealer.holeRevealed = true;
-  const cards = document.querySelectorAll('#dealer-cards .card');
-  const hole = cards[1];
+  const hole = UI.dealerCards.children[1];
   if (hole) {
     hole.classList.add('flipping');
     Audio.flip();
@@ -2193,8 +2192,7 @@ async function revealDealerHole() {
    then waits a beat so the player feels the suspense before either
    continuing the hand or revealing a dealer blackjack. */
 async function dealerPeek() {
-  const cards = document.querySelectorAll('#dealer-cards .card');
-  const hole = cards[1];
+  const hole = UI.dealerCards.children[1];
   if (!hole) return;
   setMessage('DEALER CHECKING...');
   await sleep(180);
@@ -2210,10 +2208,11 @@ async function dealerPeek() {
 }
 
 function showInsurance() {
-  document.getElementById('insurance-prompt').classList.add('show');
+  UI.insurancePrompt.classList.add('show');
+  Audio.prompt();
 }
 function hideInsurance() {
-  document.getElementById('insurance-prompt').classList.remove('show');
+  UI.insurancePrompt.classList.remove('show');
 }
 
 async function takeInsurance(yes) {
@@ -2274,14 +2273,13 @@ async function takeInsurance(yes) {
 let _confirmPending = null;
 function showConfirm(label, onYes) {
   _confirmPending = onYes;
-  const el = document.getElementById('confirm-prompt');
-  document.getElementById('confirm-label').textContent = label;
-  el.classList.add('show');
-  Audio.click?.();
+  UI.confirmLabel.textContent = label;
+  UI.confirmPrompt.classList.add('show');
+  Audio.prompt();
 }
 function hideConfirm() {
   _confirmPending = null;
-  document.getElementById('confirm-prompt').classList.remove('show');
+  UI.confirmPrompt.classList.remove('show');
 }
 
 /* PLAYER ACTIONS */
@@ -2302,8 +2300,9 @@ async function hit(force = false) {
   if (t > 21) {
     h.busted = true;
     Audio.bust();
+    flashFelt('dim');
     setMessage(State.hands.length > 1 ? `HAND ${State.activeHandIdx+1} BUSTS` : 'BUST', 'lose');
-    await sleep(700);
+    await sleep(550);
     advanceHand();
   } else if (t === 21) {
     h.stood = true;
