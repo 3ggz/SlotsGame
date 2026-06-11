@@ -2467,7 +2467,10 @@ async function resolveAllHands() {
   if (losers.length) await sleep(180);
 
   // 3. Pay winners + pushes (left to right). Balance updates as chips fly.
+  // A blackjack hand gets the full fanfare the moment its chips are paid —
+  // but only once per round, so 2-3 naturals don't stack three fanfares.
   const winners = results.filter(r => r.kind !== 'lose');
+  let bjFanfared = false;
   for (const r of winners) {
     const circle = circleForHand(r.i);
     paintHandBadge(r.i, r.kind);
@@ -2477,7 +2480,8 @@ async function resolveAllHands() {
       Audio.push();
     } else {
       payWinChips(circle, r.payout);
-      Audio.chipPayout();
+      if (r.kind === 'bj' && !bjFanfared) { bjFanfared = true; Audio.bj(); }
+      else Audio.chipPayout();
     }
     await sleep(360);
   }
@@ -2495,17 +2499,20 @@ async function resolveAllHands() {
   let banner = '', cls = 'push';
   if (blackjacks && !losses && !pushes && !wins) {
     banner = `BLACKJACK · +$${fmt(totalWon)}`; cls = 'bj';
-    Audio.bj(); spawnCoinShower();
+    // fanfare already played when the BJ hand was paid above
+    flashFelt('gold'); spawnCoinShower();
   } else if (dealerBJ) {
     banner = pushes ? `DEALER BJ · ${pushes} PUSH` : 'DEALER BLACKJACK';
     cls = pushes && !losses ? 'push' : 'lose';
+    if (cls === 'lose') { Audio.lose(); flashFelt('dim'); }
+    else Audio.push();
   } else if (dealerBusted && wins + blackjacks > 0) {
     banner = `DEALER BUSTS · +$${fmt(totalWon)}`; cls = 'win';
-    Audio.bigWin(); spawnCoinShower();
+    Audio.bigWin(); flashFelt('gold'); spawnCoinShower();
   } else if (wins + blackjacks > 0 && losses === 0 && pushes === 0) {
-    banner = `WIN +$${fmt(totalWon)}`; cls = 'win'; Audio.win();
+    banner = `WIN +$${fmt(totalWon)}`; cls = 'win'; Audio.win(); flashFelt('gold');
   } else if (losses > 0 && wins + blackjacks === 0 && pushes === 0) {
-    banner = `DEALER WINS · ${dealerTotal}`; cls = 'lose'; Audio.lose();
+    banner = `DEALER WINS · ${dealerTotal}`; cls = 'lose'; Audio.lose(); flashFelt('dim');
   } else if (pushes > 0 && wins + blackjacks === 0 && losses === 0) {
     banner = `PUSH · ${dealerTotal}`; cls = 'push'; Audio.push();
   } else {
@@ -2515,8 +2522,8 @@ async function resolveAllHands() {
     if (pushes) parts.push(`${pushes}P`);
     banner = `${parts.join(' · ')}  ${net >= 0 ? '+' : '-'}$${fmt(Math.abs(net))}`;
     cls = net > 0 ? 'win' : (net < 0 ? 'lose' : 'push');
-    if (net > 0) Audio.win();
-    else if (net < 0) Audio.lose();
+    if (net > 0) { Audio.win(); flashFelt('gold'); }
+    else if (net < 0) { Audio.lose(); flashFelt('dim'); }
     else Audio.push();
   }
   setMessage(banner, cls);
@@ -2532,7 +2539,7 @@ function finishRound() {
     let note = State.handNote || '';
     if (!note) {
       // Derive a label from the message banner so the history shows what happened
-      const msg = (document.getElementById('message')?.textContent || '').toUpperCase();
+      const msg = (UI.message.textContent || '').toUpperCase();
       if (msg.includes('BLACKJACK')) note = 'BLACKJACK';
       else if (msg.includes('BUST')) note = 'BUST';
       else if (msg.includes('PUSH')) note = 'PUSH';
@@ -2605,9 +2612,10 @@ function spawnConfettiAt(targetEl) {
   const r = targetEl.getBoundingClientRect();
   const cx = r.left + r.width/2;
   const cy = r.top + r.height/2;
-  const layer = document.getElementById('particles');
+  const layer = UI.particles;
   const colors = ['#ff2e93','#22d3ee','#a855f7','#ffd24a','#5cffa1','#ffffff'];
-  for (let i = 0; i < 20; i++) {
+  const count = LOW_POWER ? 10 : 20;
+  for (let i = 0; i < count; i++) {
     const p = document.createElement('div');
     p.className = 'particle';
     p.style.left = cx + 'px';
@@ -2625,10 +2633,11 @@ function spawnConfettiAt(targetEl) {
 }
 
 function spawnCoinShower() {
-  const layer = document.getElementById('particles');
+  const layer = UI.particles;
   const cx = window.innerWidth / 2;
   const cy = window.innerHeight / 2;
-  for (let i = 0; i < 30; i++) {
+  const count = LOW_POWER ? 14 : 30;
+  for (let i = 0; i < count; i++) {
     const c = document.createElement('div');
     c.className = 'coin';
     c.style.left = cx + 'px';
@@ -2648,14 +2657,14 @@ function spawnCoinShower() {
    ADD FUNDS MODAL
    ============================================================ */
 function openAdd() {
-  document.getElementById('modal-veil').classList.add('show');
+  UI.modalVeil.classList.add('show');
   const inp = document.getElementById('amount-input');
   inp.value = '';
   setTimeout(() => inp.focus(), 100);
   Audio.click();
 }
 function closeAdd() {
-  document.getElementById('modal-veil').classList.remove('show');
+  UI.modalVeil.classList.remove('show');
   Audio.click();
 }
 function confirmAdd() {
@@ -2673,7 +2682,10 @@ function confirmAdd() {
 function init() {
   if (window.SettingsUI) SettingsUI.mount();
   if (window.Music) Music.init('Music/Blackjack%20Velvet.m4a');
-  document.getElementById('balance').textContent = fmt(State.balance);
+  UI.balance.textContent = fmt(State.balance);
+
+  // Responsive --chipH cache invalidation (see renderChipStacks)
+  window.addEventListener('resize', () => UI.circles.forEach(c => { c._chipH = null; }));
 
   // Eagerly preload SFX — decoding works while the audio context is suspended,
   // so by the time the user first interacts, buffers are ready and we just
@@ -2685,7 +2697,7 @@ function init() {
   window.addEventListener('touchstart',  sfxResume, { capture: true, passive: true });
 
   // Chips — picking a denomination
-  document.querySelectorAll('.chip').forEach(c => {
+  UI.chips.forEach(c => {
     c.addEventListener('click', () => {
       selectChip(parseInt(c.dataset.value, 10));
       c.classList.remove('poking');
@@ -2696,7 +2708,7 @@ function init() {
   });
 
   // Bet circles — left-click adds a chip, right-click removes the last one placed
-  document.querySelectorAll('.bet-circle').forEach(c => {
+  UI.circles.forEach(c => {
     c.addEventListener('click', () => addBet(c.dataset.bet));
     c.addEventListener('contextmenu', e => {
       e.preventDefault();
@@ -2723,7 +2735,7 @@ function init() {
     hideConfirm();
     Audio.click?.();
   });
-  document.getElementById('btn-next').addEventListener('click', newHand);
+  document.getElementById('btn-next').addEventListener('click', () => { Audio.click(); newHand(); });
   document.getElementById('btn-rebet-only').addEventListener('click', rebetOnly);
   document.getElementById('btn-rebet-deal').addEventListener('click', rebetAndDeal);
   document.getElementById('btn-rebet-2x').addEventListener('click', rebet2xAndDeal);
@@ -2754,7 +2766,7 @@ function init() {
 
   // Keyboard shortcuts
   window.addEventListener('keydown', e => {
-    if (document.getElementById('modal-veil').classList.contains('show')) return;
+    if (UI.modalVeil.classList.contains('show')) return;
     if (State.phase === 'PLAYER') {
       if (e.key === 'h' || e.key === 'H') hit();
       if (e.key === 's' || e.key === 'S') stand();
