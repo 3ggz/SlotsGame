@@ -176,7 +176,7 @@ button, input { font: inherit; }
 /* ---------- WHEELHOUSE (3D canvas) ---------- */
 .wheelhouse {
   position: relative;
-  width: min(620px, 94vw, 58vh);
+  width: min(720px, 96vw, 64vh);
   aspect-ratio: 1 / 1;
   border-radius: 26px;
   background:
@@ -603,35 +603,170 @@ function playSfx(name, gain) {
 }
 const CHIP_PLACE = ['chip_place_a', 'chip_place_b', 'chip_place_c'];
 
-/* WebAudio peg ticks — crisper than mp3 at rapid fire. */
-let actx = null;
-function ensureCtx() {
-  if (!actx) {
-    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+/* ============================================================
+   AudioFX — purpose-built WebAudio synth engine for the wheel.
+   Every voice composes from short-lived oscillators / shaped noise
+   bursts; nothing is sampled. The peg-tick path has NO time-based
+   throttle — when the wheel is at 80 pegs/sec, you get 80 ticks/sec.
+   A short reusable noise buffer keeps the noise voices cheap.
+   All gain feeds through a single master that tracks Settings.sfxVolume.
+   ============================================================ */
+const AudioFX = (function () {
+  let ctx = null;
+  let master = null;
+  let noiseBuf = null;
+  // Limiter on the master output so a fast peg train can't accidentally
+  // clip the speakers when 30 voices stack in one frame.
+  let limiter = null;
+
+  function ensure() {
+    if (!ctx) {
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return null;
+      try {
+        ctx = new Ctor();
+        master = ctx.createGain();
+        limiter = ctx.createDynamicsCompressor();
+        limiter.threshold.value = -6;
+        limiter.knee.value = 4;
+        limiter.ratio.value = 10;
+        limiter.attack.value = 0.002;
+        limiter.release.value = 0.06;
+        master.gain.value = (window.Settings ? Settings.sfxVolume() : 1);
+        master.connect(limiter).connect(ctx.destination);
+        // Build a ~0.4s of pink-ish noise once; voices read random offsets.
+        const N = Math.floor(ctx.sampleRate * 0.4);
+        noiseBuf = ctx.createBuffer(1, N, ctx.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        // simple shaped noise: white with a -1 ema for some weight
+        let last = 0;
+        for (let i = 0; i < N; i++) {
+          const w = Math.random() * 2 - 1;
+          last = (last * 0.6 + w * 0.4);
+          d[i] = last;
+        }
+        if (window.Settings && Settings.onChange) {
+          Settings.onChange(() => { if (master) master.gain.value = Settings.sfxVolume(); });
+        }
+      } catch (e) { ctx = null; }
+    }
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    return ctx;
   }
-  if (actx && actx.state === 'suspended') actx.resume().catch(() => {});
-}
-let lastTickAt = 0;
-function pegTick(speed) {
-  const now = performance.now();
-  if (now - lastTickAt < 45) return;
-  lastTickAt = now;
-  if (!actx) return;
-  try {
-    const vol = (window.Settings ? Settings.sfxVolume() : 1) * Math.min(0.22, 0.05 + speed * 0.012);
-    if (vol <= 0) return;
-    const t = actx.currentTime;
-    const osc = actx.createOscillator();
-    const g = actx.createGain();
-    osc.type = 'square';
-    osc.frequency.value = 1750 + Math.random() * 500;
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
-    osc.connect(g).connect(actx.destination);
-    osc.start(t);
-    osc.stop(t + 0.035);
-  } catch (e) {}
-}
+
+  function noiseSource(dur, hp, lp) {
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    src.loop = true;
+    src.playbackRate.value = 0.85 + Math.random() * 0.30;
+    // light filtering for a "clack" rather than "ssss"
+    const hpf = ctx.createBiquadFilter();
+    hpf.type = 'highpass';
+    hpf.frequency.value = hp;
+    const lpf = ctx.createBiquadFilter();
+    lpf.type = 'lowpass';
+    lpf.frequency.value = lp;
+    src.connect(hpf).connect(lpf);
+    const t = ctx.currentTime;
+    src.start(t + Math.random() * (noiseBuf.duration - dur - 0.01));
+    src.stop(t + dur + 0.02);
+    return lpf;
+  }
+
+  /* Single peg flapper strike. `pegsPerSec` drives both pitch and the
+     attack: at high speed it's a sharper, brighter "tak", at low speed
+     a meatier "thock" so the deceleration is audible. */
+  function pegTick(pegsPerSec) {
+    if (!ensure()) return;
+    const pps = Math.max(1, Math.min(120, pegsPerSec || 1));
+    const norm = Math.min(1, pps / 60);             // 0..1
+    const baseAmp = 0.10 + 0.20 * (1 - norm) + 0.05 * norm;  // meatier when slow, still audible when fast
+    const t = ctx.currentTime;
+
+    // BODY: woody transient (filtered noise burst)
+    const body = noiseSource(0.05, 600, 3200);
+    const bg = ctx.createGain();
+    bg.gain.setValueAtTime(0.0001, t);
+    bg.gain.exponentialRampToValueAtTime(baseAmp * 0.95, t + 0.0015);
+    bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.045 + 0.02 * (1 - norm));
+    body.connect(bg).connect(master);
+
+    // CLICK: bright tick at the front (higher with speed)
+    const click = ctx.createOscillator();
+    click.type = 'square';
+    click.frequency.value = 1700 + 900 * norm + Math.random() * 150;
+    const cg = ctx.createGain();
+    cg.gain.setValueAtTime(0.0001, t);
+    cg.gain.exponentialRampToValueAtTime(baseAmp * 0.45, t + 0.001);
+    cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.014);
+    click.connect(cg).connect(master);
+    click.start(t);
+    click.stop(t + 0.020);
+
+    // THUMP: low body that hits harder when slow (peg actually catching)
+    if (norm < 0.7) {
+      const tone = ctx.createOscillator();
+      tone.type = 'triangle';
+      tone.frequency.setValueAtTime(220 + Math.random() * 40, t);
+      tone.frequency.exponentialRampToValueAtTime(90, t + 0.06);
+      const tg = ctx.createGain();
+      tg.gain.setValueAtTime(0.0001, t);
+      tg.gain.exponentialRampToValueAtTime(baseAmp * 0.5 * (1 - norm), t + 0.002);
+      tg.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+      tone.connect(tg).connect(master);
+      tone.start(t);
+      tone.stop(t + 0.10);
+    }
+  }
+
+  /* Rising launch whoosh on SPIN press. */
+  function spinLaunch() {
+    if (!ensure()) return;
+    const t = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    src.loop = true;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 1.2;
+    bp.frequency.setValueAtTime(220, t);
+    bp.frequency.exponentialRampToValueAtTime(2400, t + 0.55);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.28, t + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.62);
+    src.connect(bp).connect(g).connect(master);
+    src.start(t);
+    src.stop(t + 0.70);
+  }
+
+  /* Final landing thunk when the wheel settles. */
+  function landThunk() {
+    if (!ensure()) return;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(170, t);
+    o.frequency.exponentialRampToValueAtTime(48, t + 0.20);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.45, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.30);
+    o.connect(g).connect(master);
+    o.start(t); o.stop(t + 0.35);
+
+    // a small noise tail for "leather on wood"
+    const n = noiseSource(0.10, 200, 1500);
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.0001, t);
+    ng.gain.exponentialRampToValueAtTime(0.18, t + 0.005);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    n.connect(ng).connect(master);
+  }
+
+  return { ensure, pegTick, spinLaunch, landThunk };
+})();
+function ensureCtx() { AudioFX.ensure(); }
 
 /* ---------- symbol look ---------- */
 const LOOK = {
@@ -695,32 +830,30 @@ function paintFace(size, withPegs) {
     ctx.stroke();
   }
 
-  // outer gold band
+  // outer gold band — the only ring; inner ring removed for clarity
   ring(ctx, R * 0.90, R * 0.955, '#8a6508', '#ffd24a', '#5c3d00');
-  // inner gold ring
-  ring(ctx, R * 0.30, R * 0.32, '#8a6508', '#ffe27a', '#5c3d00');
 
-  // labels
+  // Labels — pushed out near the rim (where a real big-six wheel
+  // puts them). One element per segment, plain and readable.
   for (let i = 0; i < 54; i++) {
     const sym = Core.SEGMENTS[i];
     const lk = LOOK[sym];
-    const ang = i * SEG; // wheel-local, clockwise from up
+    const ang = i * SEG;
     ctx.save();
-    ctx.rotate(ang); // canvas clockwise == our clockwise (y down)
+    ctx.rotate(ang);
     ctx.fillStyle = lk.text;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     if (lk.glyph) {
+      // JOKER / DIAMOND: single bold glyph at the rim
       ctx.shadowColor = lk.accent;
-      ctx.shadowBlur = size * 0.012;
-      ctx.font = `${Math.round(size * 0.052)}px Outfit, sans-serif`;
-      ctx.fillText(lk.glyph, 0, -R * 0.575);
+      ctx.shadowBlur = size * 0.014;
+      ctx.font = `${Math.round(size * 0.040)}px Outfit, sans-serif`;
+      ctx.fillText(lk.glyph, 0, -R * 0.82);
       ctx.shadowBlur = 0;
-      ctx.font = `800 ${Math.round(size * 0.018)}px Outfit, sans-serif`;
-      ctx.fillText(lk.label, 0, -R * 0.45);
     } else {
-      ctx.font = `800 ${Math.round(size * 0.042)}px Outfit, sans-serif`;
-      ctx.fillText(lk.label, 0, -R * 0.62);
+      ctx.font = `800 ${Math.round(size * 0.032)}px Geist Mono, monospace`;
+      ctx.fillText(lk.label, 0, -R * 0.82);
     }
     ctx.restore();
   }
@@ -832,9 +965,9 @@ function makeFallback2D() {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, W, H);
     const C = Math.min(W, H) / 2;
-    const R = C * 0.84;
+    const R = C * 0.92;
     const cx = W / 2;
-    const cy = H / 2 + C * 0.08;
+    const cy = H / 2 + C * 0.04;
 
     // ground halo so the wheel reads as floating off the felt
     const halo = ctx.createRadialGradient(cx, cy + R * 0.06, R * 0.4, cx, cy + R * 0.06, R * 1.4);
@@ -1277,6 +1410,7 @@ const Anim = {
   t0: 0,
   idx: 0,
   lastPeg: 0,
+  lastTickAt: 0,
   done: null,
 };
 const easeInOutSine = t => 0.5 - 0.5 * Math.cos(Math.PI * t);
@@ -1297,6 +1431,7 @@ function startSpinAnimation(targetRho, onDone) {
   Anim.idx = 0;
   Anim.t0 = performance.now();
   Anim.lastPeg = Math.floor((from + SEGA / 2) / SEGA);
+  Anim.lastTickAt = Anim.t0;
   Anim.done = onDone;
   ensureLoop();
 }
@@ -1320,14 +1455,27 @@ function tickAnim(now) {
   } else {
     State.rho = ph.from + (ph.to - ph.from) * ph.ease(t);
   }
-  // peg crossings -> flapper kicks + ticks (forward motion only)
+  // Peg crossings: tick the AudioFX once for EACH peg crossed since the
+  // last frame (was just once per frame — which dropped most ticks at
+  // high speed), and kick the flapper for each peg too. The peg count
+  // since last frame doubles as our pegs-per-second estimate when divided
+  // by dt, so the synth voice gets a realistic decel curve.
   const SEGA = Core.SEG;
   const pegNow = Math.floor((State.rho + SEGA / 2) / SEGA);
-  if (pegNow !== Anim.lastPeg) {
-    const speed = Math.abs(State.rho - prevRho) * 1000 / 16.7; // rad per ~frame
-    State.flapVel += Math.min(0.55, 0.18 + speed * 0.10);
+  const pegsCrossed = pegNow - Anim.lastPeg;
+  if (pegsCrossed > 0) {
+    const dtMs = Math.max(1, now - (Anim.lastTickAt || now));
+    const pegsPerSec = pegsCrossed / (dtMs / 1000);
+    // Fire one synth voice per peg, schedule them across the frame
+    // window so they don't all stack at t=0 when many crossed at once.
+    const stride = (dtMs / 1000) / pegsCrossed;
+    for (let k = 0; k < pegsCrossed; k++) {
+      // Slight per-tick variance keeps a fast train from sounding sterile.
+      setTimeout(() => AudioFX.pegTick(pegsPerSec), Math.round(k * stride * 1000));
+      State.flapVel += Math.min(0.55, 0.18 + (pegsPerSec / 100) * 0.10);
+    }
     Anim.lastPeg = pegNow;
-    pegTick(speed * 10);
+    Anim.lastTickAt = now;
   }
   return true;
 }
@@ -1394,7 +1542,9 @@ function spin() {
   for (const s of Core.SYMBOLS) spotEls[s].classList.remove('win', 'dud');
   updateActions();
   setMessage('NO MORE BETS');
-  playSfx('diamond_spin_normal', 0.7);
+  // Synth launch whoosh — the per-peg ticks take over once the wheel
+  // starts crossing pegs, and a thunk plays on settle.
+  AudioFX.spinLaunch();
 
   // RNG first — the animation is pure theater.
   const landedIndex = Core.pickLanding(Math.random());
@@ -1406,7 +1556,7 @@ function spin() {
 }
 
 function resolve(landedIndex) {
-  playSfx('stand_thump', 0.8);
+  AudioFX.landThunk();
   const result = Core.resolveSpin(landedIndex, State.bets);
   const lk = LOOK[result.symbol];
 
