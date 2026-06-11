@@ -915,7 +915,11 @@ async function make3D() {
     grad.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = grad;
     g.fillRect(0, 0, 256, 256);
-    return new THREE.CanvasTexture(c);
+    const t = new THREE.CanvasTexture(c);
+    t.generateMipmaps = false;
+    t.minFilter = THREE.LinearFilter;
+    t.magFilter = THREE.LinearFilter;
+    return t;
   })();
   const halo = new THREE.Mesh(
     new THREE.PlaneGeometry(3.4, 3.4),
@@ -931,9 +935,15 @@ async function make3D() {
   const wheel = new THREE.Group();
   tilt.add(wheel);
 
-  const faceTex = new THREE.CanvasTexture(paintFace(LOW_POWER ? 1024 : 2048, false));
+  const faceTex = new THREE.CanvasTexture(paintFace(LOW_POWER ? 1024 : 1280, false));
   faceTex.colorSpace = THREE.SRGBColorSpace;
-  faceTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  // NO mipmaps, NO anisotropy: several mobile GPUs generate garbage
+  // mip chains for canvas textures (radially-smeared rotation-invariant
+  // noise — exactly the bug report). Sample the base level only; the
+  // canvas is already sized close to display resolution.
+  faceTex.generateMipmaps = false;
+  faceTex.minFilter = THREE.LinearFilter;
+  faceTex.magFilter = THREE.LinearFilter;
   // Unlit: the painted art (with its baked sheen/vignette) IS the look.
   const face = new THREE.Mesh(
     new THREE.CircleGeometry(1, 108),
@@ -947,7 +957,7 @@ async function make3D() {
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(() => {
       try {
-        faceTex.image = paintFace(LOW_POWER ? 1024 : 2048, false);
+        faceTex.image = paintFace(LOW_POWER ? 1024 : 1280, false);
         faceTex.needsUpdate = true;
         renderOnce();
       } catch (e) {}
@@ -1433,6 +1443,9 @@ if (window.Music) Music.init(encodeURI('Music/Diamond Spin.m4a'));
     ]);
   } catch (e) {}
   try {
+    // ?2d escape hatch: force the Canvas2D renderer (debug + devices
+    // whose WebGL canvas-texture path misbehaves).
+    if (new URLSearchParams(location.search).has('2d')) throw new Error('forced 2d');
     if (!window.WebGLRenderingContext) throw new Error('no webgl');
     renderer = await make3D();
   } catch (e) {

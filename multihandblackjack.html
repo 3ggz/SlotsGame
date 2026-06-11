@@ -260,10 +260,14 @@ body::before {
 
 /* Multi-hand: the three hands sit side-by-side and can grow past the
    felt at narrow viewports. Allow horizontal scroll on every breakpoint
-   (felt has overflow:hidden so this is the only way cards aren't clipped)
-   while centering the group when it fits. */
+   (felt has overflow:hidden so this is the only way cards aren't clipped).
+   IMPORTANT: a scroll container must NOT use justify-content:center —
+   centered overflow clips the left edge unreachably. Instead the ::before/
+   ::after auto-margin spacers center the content when it fits and collapse
+   to zero when it scrolls. */
 #player-cards {
   width: 100%;
+  justify-content: flex-start;
   overflow-x: auto;
   overflow-y: visible;
   scroll-behavior: smooth;
@@ -273,15 +277,14 @@ body::before {
   -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
           mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
 }
+#player-cards::before, #player-cards::after { content: ''; margin: auto; }
 #player-cards::-webkit-scrollbar { display: none; }
 
 /* multi-hand container for splits */
 .hand-group {
   display: flex;
   align-items: flex-start;
-  gap: 18px;
-  justify-content: center;
-  margin: 0 auto;
+  gap: 26px;
 }
 .hand-group .hand-box {
   display: flex;
@@ -481,6 +484,8 @@ body::before {
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2);
 }
 .flying-chip span { position: relative; z-index: 1; }
+.flying-chip.lead { z-index: 81; }
+.flying-chip.lead span { font-size: 14px; letter-spacing: 0.02em; }
 
 /* Chip rack visual feedback when picking */
 .chip.poking {
@@ -1015,9 +1020,9 @@ html.low-power body::before { display: none; }
      Fix: tighter card overlap inside hand-groups (so each hand stays
      narrow even at 5+ cards) plus horizontal scroll on the player row
      as a safety net so cards are never fully hidden. */
-  .hand-group { gap: 8px; min-width: max-content; padding-bottom: 2px; }
+  .hand-group { gap: 14px; min-width: max-content; padding-bottom: 2px; }
   .hand-group .hand-box { padding: 4px 6px; }
-  .hand-group .hand-box .card { width: 50px; height: 72px; margin-left: -32px; }
+  .hand-group .hand-box .card { width: 50px; height: 72px; margin-left: -24px; }
   .hand-group .hand-box .card .corner .r { font-size: 12px; }
   .hand-group .hand-box .card .corner .s { font-size: 9px; }
   .hand-group .hand-box .card .center-suit { font-size: 26px; }
@@ -1055,9 +1060,9 @@ html.low-power body::before { display: none; }
 @media (max-width: 420px) {
   .card { width: 54px; height: 78px; margin-left: -18px; }
   .card .center-suit { font-size: 28px; }
-  .hand-group { gap: 6px; }
+  .hand-group { gap: 10px; }
   .hand-group .hand-box { padding: 4px 4px; }
-  .hand-group .hand-box .card { width: 44px; height: 64px; margin-left: -30px; }
+  .hand-group .hand-box .card { width: 44px; height: 64px; margin-left: -22px; }
   .hand-group .hand-box .card .corner .r { font-size: 11px; }
   .hand-group .hand-box .card .corner .s { font-size: 8px; }
   .hand-group .hand-box .card .center-suit { font-size: 22px; }
@@ -1697,9 +1702,11 @@ function renderPlayer() {
       group.appendChild(box);
     });
     row.appendChild(group);
-    // On mobile #player-cards scrolls horizontally so all three hands
-    // stay reachable when filled — keep the active hand in view.
-    if (State.phase === 'PLAYER') {
+    // #player-cards scrolls horizontally so all hands stay reachable —
+    // glide the active hand into view, but only when the TURN moves to
+    // a different hand. Scrolling on every card render janks the deal.
+    if (State.phase === 'PLAYER' && renderPlayer._lastScrolled !== State.activeHandIdx) {
+      renderPlayer._lastScrolled = State.activeHandIdx;
       const active = group.children[State.activeHandIdx];
       if (active && active.scrollIntoView) {
         active.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
@@ -1979,6 +1986,7 @@ async function dealHand() {
       isSplit: false, doubled: false, busted: false, stood: false, locked: false,
     }));
   State.activeHandIdx = 0;
+  renderPlayer._lastScrolled = -1;
   State.insurance = 0;
 
   Audio.click(); // instant press feedback — first card sound lands ~180ms later
@@ -2100,26 +2108,42 @@ function clearAllCircleResults() {
   });
   document.querySelectorAll('.result-badge').forEach(b => b.remove());
 }
-function pickChipBreakdown(amount, max = 5) {
-  const out = [];
-  let rem = Math.max(1, Math.round(amount));
-  for (const d of [1000, 500, 100, 25, 5, 1]) {
-    while (rem >= d && out.length < max) { out.push(d); rem -= d; }
-  }
-  if (out.length === 0) out.push(1);
+/* The lead chip carries the EXACT amount won/lost; the rest of the
+   flock is unlabeled color. Five capped denominations used to fly
+   here and routinely added up to less than the real payout — the
+   visual must never disagree with the math. */
+function chipTierClass(amount) {
+  if (amount >= 1000) return 'chip-1k';
+  if (amount >= 500)  return 'chip-500';
+  if (amount >= 100)  return 'chip-100';
+  if (amount >= 25)   return 'chip-25';
+  if (amount >= 5)    return 'chip-5';
+  return 'chip-1';
+}
+function fmtChipAmt(v) {
+  v = Math.round(v);
+  if (v >= 1e6) { const m = Math.round(v / 1e5) / 10; return '$' + (Number.isInteger(m) ? m : m.toFixed(1)) + 'M'; }
+  if (v >= 1000) { const k = Math.round(v / 100) / 10; return '$' + (Number.isInteger(k) ? k : k.toFixed(1)) + 'K'; }
+  return '$' + v;
+}
+function chipFlock(amount) {
+  const cls = chipTierClass(amount);
+  const n = amount >= 1000 ? 4 : amount >= 100 ? 3 : 2;
+  const out = [{ cls, label: fmtChipAmt(amount) }];
+  for (let i = 1; i < n; i++) out.push({ cls, label: '' });
   return out;
 }
-function _spawnFlyingChip(d, sx, sy, dx, dy, delay = 0) {
+function _spawnFlyingChip(cls, label, sx, sy, dx, dy, delay = 0) {
   const fly = document.createElement('div');
-  fly.className = 'flying-chip chip-' + (d === 1000 ? '1k' : d);
-  fly.innerHTML = `<span>$${d >= 1000 ? (d/1000)+'K' : d}</span>`;
+  fly.className = 'flying-chip ' + cls + (label ? ' lead' : '');
+  fly.innerHTML = `<span>${label || ''}</span>`;
   fly.style.left = sx + 'px';
   fly.style.top  = sy + 'px';
   fly.style.transform = 'translate(0,0) scale(1) rotate(0)';
   document.body.appendChild(fly);
   setTimeout(() => {
-    const rot = (Math.random()*220 - 110) | 0;
-    fly.style.transform = `translate(${dx}px, ${dy}px) scale(0.55) rotate(${rot}deg)`;
+    const rot = label ? 0 : (Math.random()*220 - 110) | 0; // lead chip stays readable
+    fly.style.transform = `translate(${dx}px, ${dy}px) scale(${label ? 0.8 : 0.55}) rotate(${rot}deg)`;
   }, delay + 10);
   setTimeout(() => { fly.style.opacity = '0'; }, delay + 320);
   setTimeout(() => fly.remove(), delay + 800);
@@ -2131,13 +2155,13 @@ function sweepLossChips(circle, amount) {
   if (stack) { stack.remove(); circle.classList.remove('has-chips'); }
   // Spawn flying chips that float UP and OUT toward the dealer area
   const r = circle.getBoundingClientRect();
-  const denoms = pickChipBreakdown(amount, 5);
+  const flock = chipFlock(amount);
   const sx = r.left + r.width/2 - 28;
   const sy = r.top  + r.height * 0.55 - 28;
-  denoms.forEach((d, i) => {
-    const dx = (i - denoms.length/2) * 16 + (Math.random()*30 - 15);
+  flock.forEach((c, i) => {
+    const dx = (i - flock.length/2) * 16 + (Math.random()*30 - 15);
     const dy = -(220 + Math.random()*60);
-    _spawnFlyingChip(d, sx, sy, dx, dy, i * 35);
+    _spawnFlyingChip(c.cls, c.label, sx, sy, dx, dy, i * 35);
   });
 }
 function payWinChips(circle, amount) {
@@ -2146,15 +2170,15 @@ function payWinChips(circle, amount) {
   const rack = UI.chipRack;
   const rr = rack ? rack.getBoundingClientRect()
                   : { left: window.innerWidth/2 - 60, top: window.innerHeight - 80, width: 120, height: 60 };
-  const denoms = pickChipBreakdown(amount, 5);
+  const flock = chipFlock(amount);
   const sx = r.left + r.width/2 - 28;
   const sy = r.top  + r.height * 0.55 - 28;
   const tx = rr.left + rr.width/2 - 28;
   const ty = rr.top  + rr.height/2 - 28;
-  denoms.forEach((d, i) => {
-    const dx = (tx - sx) + (i - denoms.length/2) * 14;
+  flock.forEach((c, i) => {
+    const dx = (tx - sx) + (i - flock.length/2) * 14;
     const dy = (ty - sy);
-    _spawnFlyingChip(d, sx, sy, dx, dy, i * 35);
+    _spawnFlyingChip(c.cls, c.label, sx, sy, dx, dy, i * 35);
   });
 }
 
@@ -2305,18 +2329,18 @@ async function hit(force = false) {
   hideConfirm();
   h.cards.push(drawCard());
   appendPlayerCard(State.activeHandIdx, h.cards.length - 1); Audio.cardHit();
-  await sleep(180);
+  await sleep(120);
   const t = handTotal(h.cards);
   if (t > 21) {
     h.busted = true;
     Audio.bust();
     flashFelt('dim');
     setMessage(State.hands.length > 1 ? `HAND ${State.activeHandIdx+1} BUSTS` : 'BUST', 'lose');
-    await sleep(550);
+    await sleep(400);
     advanceHand();
   } else if (t === 21) {
     h.stood = true;
-    await sleep(500);
+    await sleep(350);
     advanceHand();
   } else {
     updateActionButtons();
@@ -2346,14 +2370,22 @@ async function doubleDown() {
   State.handTotalWagered += h.bet;
   h.bet *= 2;
   h.doubled = true;
+  // Reflect the doubled wager on the circle IMMEDIATELY — don't make
+  // the player wait until resolution to see what they're in for.
+  const dCircle = circleForHand(State.activeHandIdx);
+  if (dCircle) {
+    const dVal = dCircle.querySelector('.bet-value');
+    if (dVal) { dVal.textContent = '$' + fmt(h.bet); dVal.classList.remove('zero'); }
+    if (dCircle.dataset.bet) bumpCircle(dCircle.dataset.bet);
+  }
   Audio.chip(true);
   h.cards.push(drawCard());
   appendPlayerCard(State.activeHandIdx, h.cards.length - 1); Audio.cardHit();
-  await sleep(300);
+  await sleep(180);
   const t = handTotal(h.cards);
   if (t > 21) { h.busted = true; Audio.bust(); flashFelt('dim'); }
   else h.stood = true;
-  await sleep(500);
+  await sleep(380);
   advanceHand();
 }
 
@@ -2573,6 +2605,7 @@ function newHand() {
   State.dealer = { cards: [], holeRevealed: false };
   State.hands = [];
   State.activeHandIdx = 0;
+  renderPlayer._lastScrolled = -1;
   State.insurance = 0;
   State.phase = 'BETTING';
   clearAllCircleResults();
