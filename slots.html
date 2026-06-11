@@ -4082,8 +4082,8 @@ function setAutoStatus(text) {
 async function doBonusRespin() {
   if (!BonusState.active) return;
 
-  const newDiamondChance = 0.022;
-  const upgradeChance    = 0.018;
+  const newDiamondChance = 0.014;
+  const upgradeChance    = 0.011;
   let eventsThisSpin = 0;
 
   // cells eligible for an event
@@ -4109,7 +4109,7 @@ async function doBonusRespin() {
   Audio.cellSpinStart();
 
   // Spin for a moment so the motion registers
-  await sleep(620);
+  await sleep(340);
 
   // Stop spinners in succession; hits reveal a gem or upgrade
   for (let i = 0; i < outcomes.length; i++) {
@@ -4133,9 +4133,9 @@ async function doBonusRespin() {
       eventsThisSpin++;
       const r = bonusCellEls[idx].getBoundingClientRect();
       spawnConfetti(r.left + r.width/2, r.top + r.height/2, 12);
-      await sleep(110);
+      await sleep(60);
     } else {
-      await sleep(38 + Math.random() * 22);
+      await sleep(16 + Math.random() * 12);
     }
   }
 

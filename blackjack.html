@@ -680,10 +680,9 @@ body::before {
   text-shadow: 0 1px 1px rgba(0,0,0,0.7);
   box-shadow: inset 0 0 0 2px rgba(255,255,255,0.92), inset 0 0 0 3px rgba(0,0,0,0.25), 0 2px 4px rgba(0,0,0,0.6);
 }
-.mini-chip.chip-1   { color: #111; text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
-.mini-chip.chip-1k  { color: #2a0a00; text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
-/* hide the denom on chips that aren't the top of the stack — keeps the side-view clean */
-.mini-chip:not(.top) { color: transparent; text-shadow: none; }
+/* Bet circles surface the total via .stack-total — keep mini-chips
+   silent so the denomination label doesn't compete with the $ total. */
+.mini-chip { color: transparent; text-shadow: none; }
 
 /* ACTION BUTTONS */
 .actions {

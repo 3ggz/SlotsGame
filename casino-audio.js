@@ -1256,6 +1256,130 @@
     return { mount, open, close };
   })();
 
+  /* ---------- NET INDICATOR ----------
+     Fixed-position pill that shows the running NET for the current
+     game session (since this page loaded). Resets on lobby return
+     because a fresh page load gives History a fresh sessionEntries
+     array. Bot bets are filtered out so the indicator only reflects
+     the player's own action. Auto-hidden on the lobby (detected the
+     same way casino-level.js does — via the centered .balance-bar). */
+  const NetIndicator = (function () {
+    let pillEl = null, valEl = null;
+    let lastNet = null;
+
+    const CSS = `
+.casino-net-indicator {
+  position: fixed;
+  top: 92px;
+  right: 14px;
+  z-index: 69;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 11px 4px 9px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(21,8,40,0.85), rgba(10,4,24,0.85));
+  border: 1px solid rgba(184,134,11,0.40);
+  box-shadow: inset 0 1px 0 rgba(255,210,74,0.12), 0 4px 12px rgba(0,0,0,0.40);
+  color: rgba(255,240,168,0.65);
+  font-family: 'Bungee', 'Outfit', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
+  transition: opacity 200ms, transform 200ms;
+}
+.casino-net-indicator .cni-val {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  transition: color 200ms;
+}
+.casino-net-indicator.cni-up   .cni-val { color: #5cffa1; text-shadow: 0 0 8px rgba(92,255,161,0.35); }
+.casino-net-indicator.cni-down .cni-val { color: #ff7a8f; text-shadow: 0 0 8px rgba(255,77,109,0.30); }
+.casino-net-indicator.cni-flat .cni-val { color: rgba(255,240,168,0.78); }
+.casino-net-indicator.cni-flash { animation: cniFlash 360ms ease-out; }
+@keyframes cniFlash { 0%{transform:scale(1);} 35%{transform:scale(1.06);} 100%{transform:scale(1);} }
+body.cl-on-lobby .casino-net-indicator { display: none; }
+@media (max-width: 720px) {
+  .casino-net-indicator { top: 76px; right: 8px; font-size: 8.5px; padding: 3px 9px 3px 8px; gap: 6px; }
+  .casino-net-indicator .cni-val { font-size: 10.5px; }
+}
+`;
+
+    function fmtMoney(v) {
+      const sign = v > 0 ? '+' : v < 0 ? '-' : '';
+      const abs = Math.abs(v);
+      const cents = Math.round(abs * 100) / 100;
+      const s = Number.isInteger(cents)
+        ? cents.toLocaleString('en-US')
+        : cents.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return sign + '$' + s;
+    }
+
+    function computeNet() {
+      let net = 0;
+      const session = History.getSession();
+      for (const e of session) {
+        if (!e) continue;
+        if (e.note && /^BOT\b/i.test(e.note)) continue;
+        net += Number(e.win) || 0;
+      }
+      return Math.round(net * 100) / 100;
+    }
+
+    function ensurePill() {
+      if (pillEl) return;
+      if (!document.body) return;
+      if (!document.getElementById('cni-style')) {
+        const s = document.createElement('style');
+        s.id = 'cni-style';
+        s.textContent = CSS;
+        document.head.appendChild(s);
+      }
+      pillEl = document.createElement('div');
+      pillEl.className = 'casino-net-indicator cni-flat';
+      pillEl.innerHTML = '<span>NET</span><span class="cni-val">$0</span>';
+      valEl = pillEl.querySelector('.cni-val');
+      document.body.appendChild(pillEl);
+    }
+
+    function render() {
+      ensurePill();
+      if (!pillEl) return;
+      const net = computeNet();
+      pillEl.classList.remove('cni-up', 'cni-down', 'cni-flat');
+      pillEl.classList.add(net > 0 ? 'cni-up' : net < 0 ? 'cni-down' : 'cni-flat');
+      valEl.textContent = fmtMoney(net);
+      if (lastNet !== null && net !== lastNet) {
+        pillEl.classList.remove('cni-flash');
+        void pillEl.offsetWidth;
+        pillEl.classList.add('cni-flash');
+      }
+      lastNet = net;
+    }
+
+    function start() {
+      // Skip the lobby entirely — the session would be empty anyway and
+      // the level bar already occupies our slot on that page.
+      if (document.querySelector('.balance-bar')) return;
+      ensurePill();
+      render();
+      History.onChange(render);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', start);
+    } else {
+      start();
+    }
+    return { render };
+  })();
+
   /* ---------- EXPORT ---------- */
   global.Settings = Settings;
   global.Music = Music;
@@ -1263,6 +1387,7 @@
   global.Loader = Loader;
   global.History = History;
   global.HistoryUI = HistoryUI;
+  global.NetIndicator = NetIndicator;
 })(window);
 
 /* ---------- SERVICE WORKER REGISTRATION ----------
