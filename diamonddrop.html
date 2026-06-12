@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Diamond Casino - Diamond Drop</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0a0418">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Diamond Casino">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Outfit:wght@400;600;800&family=Geist+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<!-- three + addons resolve through this map; rapier is dynamically imported.
+     All three are cross-origin runtime deps (like the Firebase SDK) — not
+     precached by the service worker. -->
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<style>
+:root {
+  --bg-0: #0a0418;
+  --bg-1: #150828;
+  --gold-0: #fff0a8;
+  --gold-1: #ffd24a;
+  --gold-2: #b8860b;
+  --gold-deep: #5c3d00;
+  --neon-pink: #ff2e93;
+  --neon-cyan: #22d3ee;
+  --neon-violet: #a855f7;
+  --neon-green: #5cffa1;
+  --danger: #ff4d6d;
+  --shadow-deep: 0 30px 60px -10px rgba(0,0,0,0.7), 0 18px 36px -18px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Outfit', sans-serif;
+  color: #fff;
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(168,85,247,0.20) 0%, transparent 50%),
+    radial-gradient(ellipse at 82% 18%, rgba(34,211,238,0.16) 0%, transparent 46%),
+    radial-gradient(ellipse at 50% 100%, rgba(255,46,147,0.13) 0%, transparent 58%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 58%, var(--bg-0));
+  background-attachment: fixed;
+  user-select: none;
+  -webkit-user-select: none;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>");
+}
+
+button, input { font: inherit; }
+
+/* ---------- TOP CHROME ---------- */
+.lobby-link, .history-btn {
+  position: fixed;
+  top: 12px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  text-decoration: none;
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  line-height: 1;
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(42,18,77,0.85), rgba(15,4,30,0.85));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.1s, filter 0.15s;
+}
+.lobby-link {
+  left: 12px;
+  color: var(--gold-1);
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 3px 0 rgba(0,0,0,0.5);
+}
+.history-btn {
+  left: 122px;
+  color: var(--neon-cyan);
+  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.4), 0 3px 0 rgba(0,0,0,0.5);
+}
+.lobby-link::before { content: '<'; font-size: 14px; line-height: 1; }
+.history-btn::before { content: '#'; font-size: 13px; line-height: 1; }
+.lobby-link:hover, .history-btn:hover { filter: brightness(1.15); }
+.lobby-link:active, .history-btn:active { transform: translateY(2px); }
+
+.balance-link {
+  position: fixed;
+  top: 12px;
+  right: 64px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px 8px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(42,18,77,0.85), rgba(15,4,30,0.85));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 3px 0 rgba(0,0,0,0.5);
+  color: #fff;
+}
+.balance-link .label {
+  font-family: 'Bungee', cursive;
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  color: rgba(255,210,74,0.78);
+}
+.balance-link .value {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.01em;
+}
+.balance-link .value.bump { animation: balBump 0.4s ease; }
+@keyframes balBump { 35% { transform: scale(1.08); color: var(--gold-1); } }
+
+/* ---------- STAGE ---------- */
+.stage {
+  position: relative;
+  z-index: 2;
+  width: min(900px, 100%);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 64px 14px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.game-header { text-align: center; }
+.pre {
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.55em;
+  color: rgba(34,211,238,0.78);
+  text-shadow: 0 0 10px rgba(34,211,238,0.45);
+  margin-bottom: 6px;
+}
+.title {
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(32px, 6vw, 58px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #fff7d1 0%, var(--gold-1) 45%, #b8860b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 4px 0 rgba(0,0,0,0.55)) drop-shadow(0 0 18px rgba(255,210,74,0.32));
+}
+.subtitle {
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  letter-spacing: 0.34em;
+  color: rgba(255,255,255,0.48);
+  margin-top: 6px;
+}
+
+/* ---------- BOARD ---------- */
+.boardhouse {
+  position: relative;
+  width: min(640px, 96vw, 72vh);
+  aspect-ratio: 9 / 10;
+  border-radius: 26px;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(168,85,247,0.20), transparent 62%),
+    linear-gradient(180deg, #1d0c3a, #0b0420);
+  box-shadow:
+    var(--shadow-deep),
+    inset 0 0 0 1.5px rgba(255,210,74,0.28),
+    inset 0 0 60px rgba(0,0,0,0.55);
+  overflow: hidden;
+}
+.boardhouse canvas { display: block; width: 100%; height: 100%; }
+.boardhouse.shake { animation: bhShake 0.4s linear; }
+@keyframes bhShake {
+  0%,100% { transform: translate(0,0); }
+  15% { transform: translate(-7px, 4px); }
+  30% { transform: translate(6px, -5px); }
+  45% { transform: translate(-5px, -3px); }
+  60% { transform: translate(4px, 4px); }
+  75% { transform: translate(-3px, 2px); }
+  90% { transform: translate(2px, -1px); }
+}
+
+/* DOM bucket labels, projected onto the canvas */
+.bucket-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  pointer-events: none;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  font-size: clamp(9px, 2.1vw, 14px);
+  letter-spacing: -0.02em;
+  color: var(--lbl, #fff0a8);
+  text-shadow: 0 0 8px var(--lbl-glow, rgba(255,210,74,0.5)), 0 1px 2px rgba(0,0,0,0.9);
+  transition: transform 0.18s;
+}
+.bucket-label.hit {
+  animation: lblHit 0.55s cubic-bezier(.18,.89,.32,1.4);
+}
+@keyframes lblHit { 30% { transform: translate(-50%, -50%) scale(1.7); } }
+
+.message {
+  min-height: 22px;
+  font-family: 'Bungee', cursive;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: rgba(255,255,255,0.78);
+  text-align: center;
+}
+.message.win  { color: var(--neon-green); text-shadow: 0 0 12px rgba(92,255,161,0.5); }
+.message.lose { color: var(--danger); }
+
+/* ---------- CONTROLS ---------- */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+}
+.risk-seg {
+  display: inline-flex;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.28), 0 4px 0 rgba(0,0,0,0.4);
+  background: linear-gradient(180deg, rgba(20,8,42,0.92), rgba(8,3,20,0.92));
+}
+.risk-btn {
+  border: 0;
+  cursor: pointer;
+  padding: 0 18px;
+  height: 50px;
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.55);
+  background: transparent;
+  transition: color 0.15s, background 0.15s, transform 0.08s;
+}
+.risk-btn:active { transform: translateY(1px); }
+.risk-btn.sel {
+  color: #120704;
+  background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 62%, var(--gold-2));
+}
+.risk-btn.sel.hi { background: linear-gradient(180deg, #ffc4dd, var(--neon-pink) 62%, #8a0f4d); color: #fff; }
+.risk-btn:disabled { opacity: 0.5; cursor: default; }
+
+.chip-rack { display: flex; gap: 8px; }
+.chip {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 0;
+  cursor: pointer;
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255,255,255,0.25), transparent 55%),
+    var(--chip-bg, #7a1024);
+  box-shadow:
+    inset 0 0 0 3px rgba(255,255,255,0.85),
+    inset 0 0 0 5px rgba(0,0,0,0.3),
+    0 4px 8px rgba(0,0,0,0.55);
+  transition: transform 0.12s, box-shadow 0.2s;
+}
+.chip.c1    { --chip-bg: #e8e4da; color: #222; text-shadow: 0 1px 0 rgba(255,255,255,0.5); }
+.chip.c5    { --chip-bg: #c01f2e; }
+.chip.c25   { --chip-bg: #1d9e55; }
+.chip.c100  { --chip-bg: #23242b; }
+.chip.c500  { --chip-bg: #6d28b8; }
+.chip.c1000 { --chip-bg: #b8860b; }
+.chip.selected {
+  transform: translateY(-6px);
+  box-shadow:
+    inset 0 0 0 3px var(--gold-1),
+    inset 0 0 0 5px rgba(0,0,0,0.3),
+    0 0 18px rgba(255,210,74,0.5),
+    0 7px 12px rgba(0,0,0,0.55);
+}
+.chip:active { transform: translateY(-2px); }
+
+.drop-btn {
+  border: 0;
+  cursor: pointer;
+  min-width: 170px;
+  height: 56px;
+  border-radius: 16px;
+  font-family: 'Bungee', cursive;
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  color: #120704;
+  background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 62%, var(--gold-2));
+  box-shadow: 0 6px 0 rgba(76,45,0,0.7), inset 0 1px 0 rgba(255,255,255,0.55), 0 0 26px rgba(255,210,74,0.25);
+  transition: transform 0.08s, filter 0.15s, opacity 0.2s;
+}
+.drop-btn:hover { filter: brightness(1.1); }
+.drop-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(76,45,0,0.7), inset 0 1px 0 rgba(255,255,255,0.55); }
+.drop-btn:disabled { opacity: 0.42; cursor: default; transform: none; }
+.drop-btn .sub {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  opacity: 0.7;
+}
+
+/* result pops, floating up from the bucket */
+.win-pop {
+  position: fixed;
+  z-index: 60;
+  transform: translate(-50%, 0);
+  font-family: 'Geist Mono', monospace;
+  font-weight: 800;
+  pointer-events: none;
+  text-shadow: 0 0 14px currentColor, 0 2px 4px rgba(0,0,0,0.8);
+  animation: winPop 1.1s ease-out forwards;
+}
+@keyframes winPop {
+  0%   { opacity: 0; transform: translate(-50%, 6px) scale(0.8); }
+  18%  { opacity: 1; transform: translate(-50%, -8px) scale(1.12); }
+  100% { opacity: 0; transform: translate(-50%, -64px) scale(1); }
+}
+
+.dd-confetti {
+  position: fixed;
+  width: 9px; height: 9px;
+  z-index: 59;
+  pointer-events: none;
+  border-radius: 2px;
+  animation: ddConf 1s ease-out forwards;
+}
+@keyframes ddConf {
+  to { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; }
+}
+
+.house-note {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .stage { padding: 92px 8px 26px; gap: 10px; }
+  .title { font-size: clamp(26px, 8.5vw, 40px); }
+  .lobby-link, .history-btn { top: 8px; height: 30px; padding: 0 11px; font-size: 9px; }
+  .lobby-link { left: 8px; }
+  .history-btn { left: 98px; }
+  .balance-link { top: 8px; right: 50px; padding: 8px 10px 7px; gap: 7px; }
+  .balance-link .label { display: none; }
+  .balance-link .value { font-size: 13px; }
+  .risk-btn { padding: 0 13px; height: 44px; font-size: 9.5px; }
+  .chip { width: 42px; height: 42px; font-size: 9px; }
+  .drop-btn { min-width: 140px; height: 50px; font-size: 13px; }
+}
+
+html.low-power body::before { display: none; }
+html.low-power .lobby-link,
+html.low-power .history-btn,
+html.low-power .balance-link {
+  background: linear-gradient(180deg, rgba(42,18,77,0.96), rgba(15,4,30,0.96));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .boardhouse.shake { animation: none; }
+}
+</style>
+</head>
+<body>
+<script src="casino-audio.js"></script>
+<script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
+<script src="casino-level.js"></script>
+<script>window.CB_BANNER_PLACEMENT = { anchor: '.boardhouse', position: 'before', gapTop: '8px', gapBottom: '8px' };</script>
+<script src="casino-bots.js"></script>
+<script src="casino-chat.js"></script>
+
+<a class="lobby-link" href="index.html">LOBBY</a>
+<button class="history-btn" id="btn-history" title="History">HISTORY</button>
+<div class="balance-link">
+  <span class="label">BAL</span>
+  <span class="value">$<span id="balance">0</span></span>
+</div>
+
+<main class="stage">
+  <header class="game-header">
+    <div class="pre">DIAMOND CASINO</div>
+    <h1 class="title">DIAMOND DROP</h1>
+    <div class="subtitle">REAL PHYSICS &middot; 12 ROWS &middot; UP TO 170X</div>
+  </header>
+
+  <div class="boardhouse" id="boardhouse"></div>
+
+  <div class="message" id="message">PICK A RISK &middot; SET YOUR BET &middot; DROP</div>
+
+  <div class="controls">
+    <div class="risk-seg" id="risk-seg">
+      <button class="risk-btn" data-risk="low">LOW</button>
+      <button class="risk-btn sel" data-risk="medium">MEDIUM</button>
+      <button class="risk-btn hi" data-risk="high">HIGH</button>
+    </div>
+    <div class="chip-rack" id="chip-rack"></div>
+    <button class="drop-btn" id="btn-drop">DROP<span class="sub" id="drop-sub">$25</span></button>
+  </div>
+
+  <div class="house-note">Ball physics are real &middot; payouts up to 170x on HIGH risk edges</div>
+</main>
+
+<script type="module">
+/* ============================================================
+   DIAMOND DROP — 3D physics Plinko.
+   three.js + Rapier load at runtime from CDNs (cross-origin,
+   like the Firebase SDK — not precached). If either fails, a
+   Canvas2D fallback plays the identical game.
+
+   FAIRNESS MODEL: the RNG picks the landing bucket from the
+   binomial(12) table FIRST. Real Rapier physics then searches
+   (headless, fixed timestep) for a genuine trajectory that
+   lands there, records it, and the recording is played back.
+   Every bounce you see really happened in the simulator; the
+   destination is exactly as fair as the table. The animation
+   can never change the result.
+   ============================================================ */
+
+/* CORE TESTABLE API START */
+(function () {
+  'use strict';
+  // Binomial(12, 0.5) landing distribution over 13 buckets.
+  const COUNTS = [1, 12, 66, 220, 495, 792, 924, 792, 495, 220, 66, 12, 1];
+  const TOTAL = 4096;
+  const PROBS = COUNTS.map(c => c / TOTAL);
+
+  // Per-risk multiplier tables (symmetric, 13 entries). RTP held in
+  // [0.97, 0.99] — exactly verified by the test suite:
+  //   low 0.9818 · medium 0.9849 · high 0.9811
+  const MULTS = {
+    low:    [8, 3, 1.6, 1.2, 1.1, 0.95, 0.65, 0.95, 1.1, 1.2, 1.6, 3, 8],
+    medium: [25, 6, 2.5, 1.4, 1.05, 0.85, 0.55, 0.85, 1.05, 1.4, 2.5, 6, 25],
+    high:   [170, 22, 5, 2, 0.8, 0.4, 0.2, 0.4, 0.8, 2, 5, 22, 170],
+  };
+  const RISKS = ['low', 'medium', 'high'];
+
+  // Map one rng value in [0,1) onto a bucket via the exact integer CDF.
+  function pickBucket(rngValue) {
+    let v = Math.floor((Number(rngValue) || 0) * TOTAL);
+    if (v < 0) v = 0;
+    if (v >= TOTAL) v = TOTAL - 1;
+    let acc = 0;
+    for (let i = 0; i < 13; i++) {
+      acc += COUNTS[i];
+      if (v < acc) return i;
+    }
+    return 12;
+  }
+
+  function payout(bucket, risk, bet) {
+    const table = MULTS[risk] || MULTS.medium;
+    const mult = table[Math.max(0, Math.min(12, bucket | 0))] || 0;
+    return Math.round(bet * mult * 100) / 100;
+  }
+
+  function rtp(risk) {
+    const table = MULTS[risk] || MULTS.medium;
+    return COUNTS.reduce((s, c, i) => s + c * table[i], 0) / TOTAL;
+  }
+
+  /* ---------- board geometry (shared physics/render/labels) ---------- */
+  const BOARD = {
+    rows: 12,
+    buckets: 13,
+    spacing: 1.0,
+    pegR: 0.12,
+    ballR: 0.32,
+    rowGap: 1.0,
+    topY: 0,           // row 0 y
+    spawnY: 1.9,
+    wallX: 6.85,
+    dividerTopY: -11.7,
+    floorY: -13.3,
+    dt: 1 / 120,
+    maxSteps: 1800,
+  };
+  // peg world positions (row i has 3+i pegs, centered, interleaved)
+  function pegPositions() {
+    const out = [];
+    for (let r = 0; r < BOARD.rows; r++) {
+      const count = 3 + r;
+      const y = BOARD.topY - r * BOARD.rowGap;
+      for (let j = 0; j < count; j++) {
+        out.push({ x: (j - (count - 1) / 2) * BOARD.spacing, y, row: r });
+      }
+    }
+    return out;
+  }
+  function bucketCenterX(b) { return (b - 6) * BOARD.spacing; }
+
+  /* ---------- physics simulation (RAPIER injected — DOM-free, so the
+        Node test can run the REAL search headlessly) ---------- */
+  function createPhysicsSim(RAPIER) {
+    const world = new RAPIER.World({ x: 0, y: -24, z: 0 });
+    world.timestep = BOARD.dt;
+
+    const pegHandles = new Map(); // collider handle -> peg index
+    const pegs = pegPositions();
+    pegs.forEach((p, i) => {
+      const c = world.createCollider(
+        RAPIER.ColliderDesc.ball(BOARD.pegR)
+          .setTranslation(p.x, p.y, 0)
+          .setRestitution(0.45)
+          .setFriction(0.05)
+      );
+      pegHandles.set(c.handle, i);
+    });
+
+    // outer walls
+    const wallH = (BOARD.spawnY - BOARD.floorY) / 2 + 1;
+    const wallMidY = (BOARD.spawnY + BOARD.floorY) / 2;
+    for (const sx of [-1, 1]) {
+      world.createCollider(
+        RAPIER.ColliderDesc.cuboid(0.15, wallH, 1)
+          .setTranslation(sx * BOARD.wallX, wallMidY, 0)
+          .setRestitution(0.3)
+      );
+    }
+    // bucket dividers: 14 thin walls under the last peg row
+    const divH = (BOARD.dividerTopY - BOARD.floorY) / 2;
+    const divMidY = (BOARD.dividerTopY + BOARD.floorY) / 2;
+    for (let k = 0; k <= 13; k++) {
+      const x = (k - 6.5) * BOARD.spacing;
+      world.createCollider(
+        RAPIER.ColliderDesc.cuboid(0.055, divH, 1)
+          .setTranslation(x, divMidY, 0)
+          .setRestitution(0.2)
+      );
+    }
+    // floor
+    world.createCollider(
+      RAPIER.ColliderDesc.cuboid(BOARD.wallX + 0.5, 0.2, 1)
+        .setTranslation(0, BOARD.floorY - 0.2, 0)
+        .setRestitution(0.25)
+    );
+
+    // the one dynamic ball, reused across attempts
+    const body = world.createRigidBody(
+      RAPIER.RigidBodyDesc.dynamic()
+        .setTranslation(0, BOARD.spawnY, 0)
+        .enabledTranslations(true, true, false)
+        .setCcdEnabled(true)
+    );
+    const ballCol = world.createCollider(
+      RAPIER.ColliderDesc.ball(BOARD.ballR)
+        .setRestitution(0.42)
+        .setFriction(0.08)
+        .setDensity(1.2),
+      body
+    );
+    ballCol.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+    const events = new RAPIER.EventQueue(true);
+
+    function simulate(x0) {
+      body.setTranslation({ x: x0, y: BOARD.spawnY, z: 0 }, true);
+      body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      body.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
+
+      const xs = new Float32Array(BOARD.maxSteps * 2);
+      const hits = [];
+      let n = 0;
+      let restCount = 0;
+      for (let s = 0; s < BOARD.maxSteps; s++) {
+        world.step(events);
+        const t = body.translation();
+        const v = body.linvel();
+        xs[n * 2] = t.x;
+        xs[n * 2 + 1] = t.y;
+        n++;
+        events.drainCollisionEvents((h1, h2, started) => {
+          if (!started) return;
+          const other = h1 === ballCol.handle ? h2 : (h2 === ballCol.handle ? h1 : null);
+          if (other == null) return;
+          const speed = Math.hypot(v.x, v.y);
+          const pegIdx = pegHandles.has(other) ? pegHandles.get(other) : -1;
+          hits.push({ step: s, peg: pegIdx, speed });
+        });
+        // settled in a bucket?
+        if (t.y < BOARD.dividerTopY - 0.3) {
+          if (Math.hypot(v.x, v.y) < 0.25) restCount++;
+          else restCount = 0;
+          if (restCount > 18) break;
+        }
+      }
+      const fx = xs[(n - 1) * 2];
+      const bucket = Math.max(0, Math.min(12, Math.round(fx / BOARD.spacing) + 6));
+      return { xs, n, hits, bucket };
+    }
+
+    /* Search for a real trajectory landing in `target`. mulberry-style
+       rng is injected so the search is reproducible in tests. */
+    function findTrajectory(target, rng) {
+      const tx = bucketCenterX(target);
+      let best = null;
+      for (let attempt = 0; attempt < 80; attempt++) {
+        // bias drop point toward the target column, widening jitter as
+        // attempts accumulate so stubborn targets eventually connect
+        const spread = 0.6 + attempt * 0.05;
+        let x0 = tx * (0.86 + rng() * 0.10) + (rng() - 0.5) * spread;
+        x0 = Math.max(-6.2, Math.min(6.2, x0));
+        const run = simulate(x0);
+        if (run.bucket === target) {
+          return { ...run, nudged: false, attempts: attempt + 1 };
+        }
+        if (!best || Math.abs(run.bucket - target) < Math.abs(best.bucket - target)) {
+          best = run;
+        }
+      }
+      // SAFETY NET: blend the tail of the closest run toward the target
+      // bucket so the result is guaranteed. Only the final descent into
+      // the buckets is adjusted — every peg bounce stays genuine.
+      const run = best;
+      let blendStart = run.n - 1;
+      for (let i = 0; i < run.n; i++) {
+        if (run.xs[i * 2 + 1] < BOARD.dividerTopY + 1.1) { blendStart = i; break; }
+      }
+      const span = Math.max(1, run.n - 1 - blendStart);
+      const endX = run.xs[(run.n - 1) * 2];
+      for (let i = blendStart; i < run.n; i++) {
+        const k = (i - blendStart) / span;
+        const ease = k * k * (3 - 2 * k); // smoothstep
+        run.xs[i * 2] += (tx - endX) * ease;
+      }
+      return { ...run, bucket: target, nudged: true, attempts: 80 };
+    }
+
+    return { findTrajectory, simulate, free() { world.free(); } };
+  }
+
+  const api = {
+    COUNTS, TOTAL, PROBS, MULTS, RISKS, BOARD,
+    pickBucket, payout, rtp, pegPositions, bucketCenterX, createPhysicsSim,
+  };
+  if (typeof globalThis !== 'undefined') globalThis.DiamondDropCore = api;
+  if (typeof window !== 'undefined') window.DiamondDropCore = api;
+})();
+/* CORE TESTABLE API END */
+
+const Core = window.DiamondDropCore;
+const B = Core.BOARD;
+
+/* ---------- low power ---------- */
+const REDUCED_MOTION = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const LOW_POWER = REDUCED_MOTION ||
+  (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+  Math.min(screen.width, screen.height) <= 720;
+if (LOW_POWER) document.documentElement.classList.add('low-power');
+
+/* ---------- shared balance ---------- */
+const BALANCE_KEY = 'casino.balance';
+function loadBalance() {
+  const v = parseFloat(localStorage.getItem(BALANCE_KEY));
+  return isNaN(v) || v < 0 ? 1000 : v;
+}
+function persistBalance(v) {
+  try { localStorage.setItem(BALANCE_KEY, String(v)); } catch (e) {}
+}
+const fmt = n => Math.round(n).toLocaleString('en-US');
+
+/* ============================================================
+   AudioFX — composed synth engine. The peg cascade is musical:
+   each row maps to a note of D-minor pentatonic, so a falling
+   ball literally plays a rising arpeggio run. Master gain
+   tracks Settings.sfxVolume through a limiter.
+   ============================================================ */
+const AudioFX = (function () {
+  let ctx = null, master = null, noiseBuf = null;
+  // D minor pentatonic, low to high — rows 0..11 walk up the scale.
+  const SCALE = [146.83, 174.61, 196.00, 220.00, 261.63,
+                 293.66, 349.23, 392.00, 440.00, 523.25, 587.33, 698.46];
+
+  function ensure() {
+    if (!ctx) {
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return null;
+      try {
+        ctx = new Ctor();
+        const limiter = ctx.createDynamicsCompressor();
+        limiter.threshold.value = -8;
+        limiter.knee.value = 5;
+        limiter.ratio.value = 12;
+        limiter.attack.value = 0.002;
+        limiter.release.value = 0.08;
+        master = ctx.createGain();
+        master.gain.value = (window.Settings ? Settings.sfxVolume() : 1);
+        master.connect(limiter).connect(ctx.destination);
+        const N = Math.floor(ctx.sampleRate * 0.4);
+        noiseBuf = ctx.createBuffer(1, N, ctx.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        let last = 0;
+        for (let i = 0; i < N; i++) {
+          const w = Math.random() * 2 - 1;
+          last = last * 0.6 + w * 0.4;
+          d[i] = last;
+        }
+        if (window.Settings && Settings.onChange) {
+          Settings.onChange(() => { if (master) master.gain.value = Settings.sfxVolume(); });
+        }
+      } catch (e) { ctx = null; }
+    }
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    return ctx;
+  }
+
+  function blip(freq, amp, dur, type, when) {
+    const t = (when || ctx.currentTime);
+    const o = ctx.createOscillator();
+    o.type = type || 'triangle';
+    o.frequency.value = freq;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = Math.min(4000, freq * 4);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(amp, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(lp).connect(g).connect(master);
+    o.start(t);
+    o.stop(t + dur + 0.02);
+  }
+  function noise(amp, dur, hp, lpf, when) {
+    const t = (when || ctx.currentTime);
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    src.loop = true;
+    src.playbackRate.value = 0.8 + Math.random() * 0.4;
+    const h = ctx.createBiquadFilter(); h.type = 'highpass'; h.frequency.value = hp;
+    const l = ctx.createBiquadFilter(); l.type = 'lowpass'; l.frequency.value = lpf;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(amp, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(h).connect(l).connect(g).connect(master);
+    src.start(t, Math.random() * (noiseBuf.duration - dur - 0.02));
+    src.stop(t + dur + 0.03);
+  }
+
+  /* Peg strike: musical plink keyed to the ROW (rising run as the
+     ball descends) + a woody noise transient. Speed drives level. */
+  function pegHit(row, speed) {
+    if (!ensure()) return;
+    const note = SCALE[Math.max(0, Math.min(SCALE.length - 1, row))];
+    const amp = Math.min(0.30, 0.07 + speed * 0.016);
+    blip(note * (1 + (Math.random() - 0.5) * 0.012), amp, 0.10, 'triangle');
+    noise(amp * 0.5, 0.03, 900, 2400);
+  }
+  function wallHit(speed) {
+    if (!ensure()) return;
+    blip(95, Math.min(0.2, 0.05 + speed * 0.012), 0.08, 'sine');
+  }
+  function dropStart() {
+    if (!ensure()) return;
+    const t = ctx.currentTime;
+    blip(330, 0.14, 0.07, 'square', t);
+    blip(495, 0.12, 0.07, 'square', t + 0.06);
+  }
+  function chipSelect() {
+    if (!ensure()) return;
+    blip(720, 0.10, 0.05, 'square');
+  }
+  function uiClick() {
+    if (!ensure()) return;
+    blip(440, 0.08, 0.045, 'square');
+  }
+  /* Land voices, tiered by multiplier. */
+  function land(mult) {
+    if (!ensure()) return;
+    const t = ctx.currentTime;
+    // sub thunk for every landing
+    blip(120, 0.22, 0.16, 'sine', t);
+    noise(0.12, 0.07, 150, 1200, t);
+    if (mult >= 10) {
+      // FANFARE: rising sawtooth arpeggio D F A D' + sparkle
+      [293.66, 349.23, 440.00, 587.33, 880.00].forEach((f, i) => {
+        blip(f, 0.20, 0.34, 'sawtooth', t + 0.05 + i * 0.07);
+      });
+      noise(0.10, 0.5, 2500, 8000, t + 0.1);
+      blip(73.4, 0.26, 0.4, 'sine', t + 0.05); // sub-bass bloom
+    } else if (mult >= 2) {
+      [293.66, 440.00, 587.33].forEach((f, i) => blip(f, 0.16, 0.22, 'triangle', t + 0.04 + i * 0.06));
+    } else if (mult >= 1) {
+      blip(440, 0.13, 0.16, 'triangle', t + 0.03);
+      blip(587.33, 0.11, 0.16, 'triangle', t + 0.09);
+    } else {
+      // loss: quiet, low, quick — no rubbing it in
+      blip(165, 0.09, 0.18, 'sine', t + 0.02);
+    }
+  }
+  return { ensure, pegHit, wallHit, dropStart, chipSelect, uiClick, land };
+})();
+
+/* ---------- game state ---------- */
+const els = {
+  balance: document.getElementById('balance'),
+  balanceWrap: document.querySelector('.balance-link .value'),
+  message: document.getElementById('message'),
+  house: document.getElementById('boardhouse'),
+  drop: document.getElementById('btn-drop'),
+  dropSub: document.getElementById('drop-sub'),
+  riskSeg: document.getElementById('risk-seg'),
+  rack: document.getElementById('chip-rack'),
+};
+
+const State = {
+  balance: loadBalance(),
+  bet: 25,
+  risk: 'medium',
+  inFlight: 0,        // concurrent balls
+  physicsReady: false,
+};
+const MAX_CONCURRENT = 4;
+
+function setBalance(v) {
+  State.balance = Math.round(v * 100) / 100;
+  persistBalance(State.balance);
+  els.balance.textContent = fmt(State.balance);
+  els.balanceWrap.classList.remove('bump');
+  void els.balanceWrap.offsetWidth;
+  els.balanceWrap.classList.add('bump');
+}
+function refreshBalance() {
+  State.balance = loadBalance();
+  els.balance.textContent = fmt(State.balance);
+}
+function setMessage(text, kind) {
+  els.message.textContent = text;
+  els.message.classList.toggle('win', kind === 'win');
+  els.message.classList.toggle('lose', kind === 'lose');
+}
+
+/* ---------- renderer plumbing (set up by 3D or 2D path) ---------- */
+let renderer = null;   // { resize, render, spawnBall, updateBall, removeBall, flashPeg, flashBucket, burst, labelAnchor }
+let sim = null;        // physics sim (3D path only)
+
+/* bucket tier color for labels + bucket meshes */
+function bucketTier(mult) {
+  if (mult >= 20) return { col: '#ff2e93', glow: 'rgba(255,46,147,0.6)' };
+  if (mult >= 4)  return { col: '#ffd24a', glow: 'rgba(255,210,74,0.6)' };
+  if (mult >= 1)  return { col: '#5cffa1', glow: 'rgba(92,255,161,0.5)' };
+  return { col: '#8d93b8', glow: 'rgba(141,147,184,0.35)' };
+}
+
+/* DOM bucket labels (projected by whichever renderer is live) */
+const labelEls = [];
+function buildLabels() {
+  const table = Core.MULTS[State.risk];
+  for (let i = 0; i < 13; i++) {
+    let el = labelEls[i];
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'bucket-label';
+      els.house.appendChild(el);
+      labelEls[i] = el;
+    }
+    const m = table[i];
+    const tier = bucketTier(m);
+    el.textContent = m >= 10 ? m + 'x' : m + 'x';
+    el.style.setProperty('--lbl', tier.col);
+    el.style.setProperty('--lbl-glow', tier.glow);
+  }
+  if (renderer) renderer.placeLabels(labelEls);
+}
+
+/* ---------- active replays (renderer-agnostic) ---------- */
+const replays = [];
+// Dynamic playback rate: long simulations play back faster so every
+// drop lands in roughly the same wall time (~2.6s), short ones keep a
+// natural minimum speed-up. Invisible to the player; physics unchanged.
+function replayRate(traj) {
+  return Math.max(1.85, (traj.n * B.dt) / 2.6);
+}
+function startReplay(traj, bet, risk) {
+  const rate = replayRate(traj);
+  const durMs = traj.n * B.dt * 1000 / rate;
+  const ballId = renderer.spawnBall();
+  const rec = {
+    traj, bet, risk, ballId, rate,
+    t0: performance.now(),
+    durMs,
+    hitIdx: 0,
+    done: false,
+  };
+  replays.push(rec);
+  ensureLoop();
+  // Resolution is wall-clock driven (NOT rAF) so payouts land even if
+  // the tab is hidden mid-flight.
+  setTimeout(() => resolveReplay(rec), durMs + 30);
+}
+
+function resolveReplay(rec) {
+  if (rec.done) return;
+  rec.done = true;
+  const bucket = rec.traj.bucket;
+  const mult = Core.MULTS[rec.risk][bucket];
+  const win = Core.payout(bucket, rec.risk, rec.bet);
+  const net = Math.round((win - rec.bet) * 100) / 100;
+  if (win > 0) setBalance(State.balance + win);
+  try { History.record('diamonddrop', rec.bet, net, null); } catch (e) {}
+
+  AudioFX.land(mult);
+  renderer.flashBucket(bucket, mult);
+  const lbl = labelEls[bucket];
+  if (lbl) {
+    lbl.classList.remove('hit');
+    void lbl.offsetWidth;
+    lbl.classList.add('hit');
+    winPopAt(lbl, win, mult);
+  }
+  if (mult >= 10) {
+    els.house.classList.remove('shake');
+    void els.house.offsetWidth;
+    els.house.classList.add('shake');
+    confettiBurst();
+    setMessage(`${mult}x — +$${fmt(win)}`, 'win');
+  } else if (mult >= 1) {
+    setMessage(`${mult}x — +$${fmt(win)}`, 'win');
+  } else {
+    setMessage(`${mult}x`, 'lose');
+  }
+
+  State.inFlight--;
+  updateControls();
+  // ball mesh is removed by the loop when its time runs out
+}
+
+function winPopAt(anchorEl, win, mult) {
+  const r = anchorEl.getBoundingClientRect();
+  const pop = document.createElement('div');
+  pop.className = 'win-pop';
+  pop.style.left = (r.left + r.width / 2) + 'px';
+  pop.style.top = (r.top - 8) + 'px';
+  pop.style.fontSize = mult >= 10 ? '26px' : mult >= 1 ? '18px' : '14px';
+  pop.style.color = bucketTier(mult).col;
+  pop.textContent = (mult >= 1 ? '+$' : '$') + fmt(win);
+  document.body.appendChild(pop);
+  setTimeout(() => pop.remove(), 1200);
+}
+
+function confettiBurst() {
+  if (LOW_POWER) return;
+  const r = els.house.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height * 0.75;
+  const colors = ['#ffd24a', '#ff2e93', '#22d3ee', '#5cffa1', '#a855f7'];
+  for (let i = 0; i < 20; i++) {
+    const d = document.createElement('div');
+    d.className = 'dd-confetti';
+    d.style.left = cx + 'px';
+    d.style.top = cy + 'px';
+    d.style.background = colors[i % colors.length];
+    const a = Math.random() * Math.PI * 2, dist = 90 + Math.random() * 200;
+    d.style.setProperty('--dx', Math.cos(a) * dist + 'px');
+    d.style.setProperty('--dy', (Math.sin(a) * dist - 120) + 'px');
+    d.style.setProperty('--rot', ((Math.random() * 540 - 270) | 0) + 'deg');
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 1100);
+  }
+}
+
+/* ---------- render loop (idles when nothing moves) ---------- */
+let rafId = 0, loopActive = false;
+function loop(now) {
+  let alive = renderer.tickEffects ? renderer.tickEffects() : false;
+  for (let i = replays.length - 1; i >= 0; i--) {
+    const r = replays[i];
+    const t = (now - r.t0) / 1000 * r.rate; // sim-seconds since start
+    const stepF = Math.min(r.traj.n - 1, t / B.dt);
+    const s0 = Math.floor(stepF);
+    const k = stepF - s0;
+    const x = r.traj.xs[s0 * 2] * (1 - k) + r.traj.xs[Math.min(r.traj.n - 1, s0 + 1) * 2] * k;
+    const y = r.traj.xs[s0 * 2 + 1] * (1 - k) + r.traj.xs[Math.min(r.traj.n - 1, s0 + 1) * 2 + 1] * k;
+    renderer.updateBall(r.ballId, x, y);
+    // fire any peg hits we passed
+    while (r.hitIdx < r.traj.hits.length && r.traj.hits[r.hitIdx].step <= stepF) {
+      const h = r.traj.hits[r.hitIdx++];
+      if (h.peg >= 0) {
+        AudioFX.pegHit(Core.pegPositions()[h.peg].row, h.speed);
+        renderer.flashPeg(h.peg, h.speed);
+      } else {
+        AudioFX.wallHit(h.speed);
+      }
+    }
+    if (stepF >= r.traj.n - 1) {
+      renderer.removeBall(r.ballId);
+      replays.splice(i, 1);
+      alive = true;
+    } else {
+      alive = true;
+    }
+  }
+  renderer.render();
+  if (alive || replays.length) {
+    rafId = requestAnimationFrame(loop);
+  } else {
+    loopActive = false;
+  }
+}
+function ensureLoop() {
+  if (loopActive || document.hidden || !renderer) return;
+  loopActive = true;
+  rafId = requestAnimationFrame(loop);
+}
+function renderOnce() {
+  if (renderer) renderer.render();
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    if (replays.length) ensureLoop();
+    else renderOnce();
+  } else if (rafId) {
+    cancelAnimationFrame(rafId);
+    loopActive = false;
+  }
+});
+let resizeT = 0;
+addEventListener('resize', () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => {
+    if (!renderer) return;
+    renderer.resize();
+    renderer.placeLabels(labelEls);
+    renderOnce();
+  }, 150);
+});
+
+/* ---------- drop flow ---------- */
+let rng = Math.random;
+function drop() {
+  if (State.inFlight >= MAX_CONCURRENT) return;
+  if (State.balance < State.bet) { setMessage('NOT ENOUGH CHIPS', 'lose'); return; }
+  AudioFX.ensure();
+  AudioFX.dropStart();
+  setBalance(State.balance - State.bet);
+  State.inFlight++;
+  updateControls();
+  setMessage('DROPPING…');
+
+  const bet = State.bet;
+  const risk = State.risk;
+  // RNG FIRST — fairness is decided here, before any physics runs.
+  const bucket = Core.pickBucket(rng());
+
+  // Search happens off the click task so the button press paints first.
+  setTimeout(() => {
+    let traj;
+    if (sim) {
+      traj = sim.findTrajectory(bucket, rng);
+    } else {
+      traj = scriptedTrajectory(bucket);  // 2D fallback path
+    }
+    startReplay(traj, bet, risk);
+  }, 0);
+}
+
+/* Scripted Galton path for the 2D fallback: 12 genuine-looking L/R
+   bounces that sum to the target bucket. Same recorded format. */
+function scriptedTrajectory(bucket) {
+  const steps = [];
+  const hits = [];
+  // choose L/R sequence with exactly `bucket` rights
+  const seq = [];
+  let rights = bucket;
+  for (let r = 12; r >= 1; r--) {
+    const need = rights / r;
+    const goRight = Math.random() < need;
+    seq.push(goRight);
+    if (goRight) rights--;
+  }
+  // walk: x starts 0, each row offsets ±0.5 spacing
+  let x = 0;
+  const pts = [{ x, y: B.spawnY }];
+  for (let r = 0; r < 12; r++) {
+    x += (seq[r] ? 0.5 : -0.5) * B.spacing;
+    pts.push({ x, y: B.topY - r * B.rowGap });
+  }
+  pts.push({ x: Core.bucketCenterX(bucket), y: B.dividerTopY - 0.8 });
+  pts.push({ x: Core.bucketCenterX(bucket), y: B.floorY + B.ballR + 0.05 });
+  // resample to fixed steps with ease-in fall + bounce flavor
+  const stepsPerSeg = 14;
+  const xs = new Float32Array((pts.length - 1) * stepsPerSeg * 2);
+  let n = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    for (let k = 0; k < stepsPerSeg; k++) {
+      const t = k / stepsPerSeg;
+      const e = t * t; // accelerate downward
+      xs[n * 2] = pts[i].x + (pts[i + 1].x - pts[i].x) * t;
+      xs[n * 2 + 1] = pts[i].y + (pts[i + 1].y - pts[i].y) * e;
+      n++;
+    }
+    if (i > 0 && i <= 12) {
+      // peg hit at the start of each row segment
+      const pegRow = i - 1;
+      hits.push({ step: i * stepsPerSeg, peg: nearestPegIndex(pts[i].x, pegRow), speed: 3 + pegRow * 0.4 });
+    }
+  }
+  return { xs, n, hits, bucket, nudged: false };
+}
+const PEGS = Core.pegPositions();
+function nearestPegIndex(x, row) {
+  let best = -1, bd = 1e9;
+  for (let i = 0; i < PEGS.length; i++) {
+    if (PEGS[i].row !== row) continue;
+    const d = Math.abs(PEGS[i].x - x);
+    if (d < bd) { bd = d; best = i; }
+  }
+  return best;
+}
+
+/* ---------- controls ---------- */
+function updateControls() {
+  els.drop.disabled = State.inFlight >= MAX_CONCURRENT || State.balance < State.bet || !renderer;
+  els.dropSub.textContent = '$' + fmt(State.bet);
+  els.riskSeg.querySelectorAll('.risk-btn').forEach(b => {
+    b.disabled = State.inFlight > 0;   // lock risk while balls are falling
+  });
+}
+function buildRack() {
+  const denoms = [1, 5, 25, 100, 500, 1000];
+  for (const d of denoms) {
+    const c = document.createElement('button');
+    c.className = 'chip c' + d + (d === State.bet ? ' selected' : '');
+    c.textContent = d >= 1000 ? '$1K' : '$' + d;
+    const pick = (e) => {
+      if (e && e.cancelable) e.preventDefault();
+      const nowT = performance.now();
+      if (c._pickedAt && nowT - c._pickedAt < 200) return;
+      c._pickedAt = nowT;
+      State.bet = d;
+      els.rack.querySelectorAll('.chip').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected');
+      AudioFX.chipSelect();
+      updateControls();
+    };
+    if (window.PointerEvent) c.addEventListener('pointerdown', e => { if (e.button === 0 || e.pointerType !== 'mouse') pick(e); });
+    c.addEventListener('click', pick);
+    els.rack.appendChild(c);
+  }
+}
+els.riskSeg.querySelectorAll('.risk-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    if (State.inFlight > 0) return;
+    State.risk = b.dataset.risk;
+    els.riskSeg.querySelectorAll('.risk-btn').forEach(x => x.classList.remove('sel'));
+    b.classList.add('sel');
+    AudioFX.uiClick();
+    buildLabels();
+    if (renderer && renderer.recolorBuckets) renderer.recolorBuckets();
+    renderOnce();
+  });
+});
+{
+  const fire = (e) => {
+    if (e && e.cancelable) e.preventDefault();
+    const nowT = performance.now();
+    if (els.drop._at && nowT - els.drop._at < 150) return;
+    els.drop._at = nowT;
+    drop();
+  };
+  if (window.PointerEvent) els.drop.addEventListener('pointerdown', e => { if (e.button === 0 || e.pointerType !== 'mouse') fire(e); });
+  els.drop.addEventListener('click', fire);
+}
+document.getElementById('btn-history').addEventListener('click', () => {
+  AudioFX.uiClick();
+  if (window.HistoryUI) HistoryUI.open({ scope: 'session', game: 'diamonddrop' });
+});
+buildRack();
+refreshBalance();
+addEventListener('focus', refreshBalance);
+addEventListener('pageshow', refreshBalance);
+document.addEventListener('jackpot-win', refreshBalance);
+if (window.SettingsUI) SettingsUI.mount();
+if (window.Music) Music.init(encodeURI('Music/Plinko Royale.m4a'));
+
+/* ============================================================
+   3D renderer (three + bloom). Geometry + emissive only — NO
+   canvas textures anywhere (Diamond Wheel post-mortem rule).
+   ============================================================ */
+async function make3D() {
+  const THREE = await import('three');
+  let composer = null, bloomPass = null;
+  const r3 = new THREE.WebGLRenderer({ antialias: !LOW_POWER, alpha: true });
+  r3.setPixelRatio(Math.min(devicePixelRatio || 1, LOW_POWER ? 1 : 2));
+  els.house.appendChild(r3.domElement);
+  r3.domElement.addEventListener('webglcontextlost', e => e.preventDefault());
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 60);
+  camera.position.set(0, -5.7, 17.6);
+  camera.lookAt(0, -5.7, 0);
+
+  scene.add(new THREE.AmbientLight(0xaaa0d8, 1.0));
+  const key = new THREE.DirectionalLight(0xffe9b0, 2.0);
+  key.position.set(4, 6, 9);
+  scene.add(key);
+  const cool = new THREE.DirectionalLight(0x22d3ee, 0.7);
+  cool.position.set(-5, -2, 6);
+  scene.add(cool);
+
+  const board = new THREE.Group();
+  board.rotation.x = -0.06;       // subtle backward lean
+  scene.add(board);
+
+  // felt backdrop
+  const felt = new THREE.Mesh(
+    new THREE.PlaneGeometry(40, 40),
+    new THREE.MeshStandardMaterial({ color: 0x150830, roughness: 1 })
+  );
+  felt.position.z = -1.2;
+  board.add(felt);
+
+  // gold frame rails (left/right)
+  const railMat = new THREE.MeshStandardMaterial({
+    color: 0xd4a017, roughness: 0.3, metalness: 0.9,
+    emissive: 0x553c00, emissiveIntensity: 0.3,
+  });
+  for (const sx of [-1, 1]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.28, B.spawnY - B.floorY + 1.6, 0.7), railMat);
+    rail.position.set(sx * B.wallX, (B.spawnY + B.floorY) / 2, 0);
+    board.add(rail);
+  }
+
+  // pegs: instanced spheres, per-instance color for flash
+  const pegGeo = new THREE.SphereGeometry(B.pegR * 1.18, 14, 12);
+  const pegMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.35, metalness: 0.65,
+    emissive: 0x8866ff, emissiveIntensity: 0.18,
+  });
+  const pegs = new THREE.InstancedMesh(pegGeo, pegMat, PEGS.length);
+  const baseCol = new THREE.Color(0xb9a8ff);
+  const m4 = new THREE.Matrix4();
+  PEGS.forEach((p, i) => {
+    m4.makeTranslation(p.x, p.y, 0);
+    pegs.setMatrixAt(i, m4);
+    pegs.setColorAt(i, baseCol);
+  });
+  pegs.instanceMatrix.needsUpdate = true;
+  if (pegs.instanceColor) pegs.instanceColor.needsUpdate = true;
+  board.add(pegs);
+  const pegFlash = new Float32Array(PEGS.length); // 0..1 flash energy
+
+  // bucket dividers + glow floors
+  const divMat = new THREE.MeshStandardMaterial({
+    color: 0xd4a017, roughness: 0.35, metalness: 0.85,
+    emissive: 0x553c00, emissiveIntensity: 0.25,
+  });
+  for (let k = 0; k <= 13; k++) {
+    const d = new THREE.Mesh(
+      new THREE.BoxGeometry(0.11, B.dividerTopY - B.floorY, 0.65), divMat);
+    d.position.set((k - 6.5) * B.spacing, (B.dividerTopY + B.floorY) / 2, 0);
+    board.add(d);
+  }
+  const bucketMats = [];
+  const bucketMeshes = [];
+  for (let i = 0; i < 13; i++) {
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x221045, roughness: 0.6, metalness: 0.2,
+      emissive: 0x000000, emissiveIntensity: 1,
+    });
+    const m = new THREE.Mesh(new THREE.BoxGeometry(B.spacing - 0.16, 0.3, 0.65), mat);
+    m.position.set(Core.bucketCenterX(i), B.floorY + 0.15, 0);
+    board.add(m);
+    bucketMats.push(mat);
+    bucketMeshes.push(m);
+  }
+  const bucketGlow = new Float32Array(13);
+  function recolorBuckets() {
+    const table = Core.MULTS[State.risk];
+    for (let i = 0; i < 13; i++) {
+      const t = bucketTier(table[i]);
+      bucketMats[i].emissive.set(t.col);
+      bucketMats[i].emissiveIntensity = 0.25;
+    }
+  }
+  recolorBuckets();
+
+  // ball pool
+  const ballGeo = new THREE.SphereGeometry(B.ballR, 22, 18);
+  const ballPool = [];
+  for (let i = 0; i < MAX_CONCURRENT; i++) {
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xffd24a, roughness: 0.18, metalness: 0.85,
+      emissive: 0xffd24a, emissiveIntensity: 0.55,
+    });
+    const m = new THREE.Mesh(ballGeo, mat);
+    m.visible = false;
+    board.add(m);
+    ballPool.push({ mesh: m, used: false, trail: [] });
+  }
+
+  // trail sprites (shared pool, additive)
+  const TRAIL_N = LOW_POWER ? 0 : 26;
+  const trailMat = new THREE.SpriteMaterial({
+    color: 0xffd24a, transparent: true, opacity: 0.5,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const trailPool = [];
+  for (let i = 0; i < TRAIL_N; i++) {
+    const s = new THREE.Sprite(trailMat.clone());
+    s.visible = false;
+    s.scale.setScalar(0.5);
+    board.add(s);
+    trailPool.push({ sprite: s, life: 0 });
+  }
+  let trailCursor = 0;
+
+  // spark sprites for peg hits
+  const SPARK_N = LOW_POWER ? 0 : 14;
+  const sparkPool = [];
+  for (let i = 0; i < SPARK_N; i++) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.9,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    s.visible = false;
+    board.add(s);
+    sparkPool.push({ sprite: s, life: 0 });
+  }
+  let sparkCursor = 0;
+
+  // bloom
+  if (!LOW_POWER) {
+    const { EffectComposer } = await import('three/addons/postprocessing/EffectComposer.js');
+    const { RenderPass } = await import('three/addons/postprocessing/RenderPass.js');
+    const { UnrealBloomPass } = await import('three/addons/postprocessing/UnrealBloomPass.js');
+    composer = new EffectComposer(r3);
+    composer.addPass(new RenderPass(scene, camera));
+    bloomPass = new UnrealBloomPass(new THREE.Vector2(640, 720), 0.85, 0.55, 0.62);
+    composer.addPass(bloomPass);
+  }
+
+  const tmpCol = new THREE.Color();
+  function resize() {
+    const r = els.house.getBoundingClientRect();
+    r3.setSize(r.width, r.height, false);
+    camera.aspect = r.width / r.height;
+    camera.updateProjectionMatrix();
+    if (composer) composer.setSize(r.width, r.height);
+  }
+  resize();
+
+  const proj = new THREE.Vector3();
+  function placeLabels(labels) {
+    const r = els.house.getBoundingClientRect();
+    for (let i = 0; i < 13; i++) {
+      proj.set(Core.bucketCenterX(i), B.floorY + 0.7, 0.4);
+      board.localToWorld(proj);
+      proj.project(camera);
+      const sx = (proj.x * 0.5 + 0.5) * r.width;
+      const sy = (-proj.y * 0.5 + 0.5) * r.height;
+      if (labels[i]) {
+        labels[i].style.left = sx + 'px';
+        labels[i].style.top = sy + 'px';
+      }
+    }
+  }
+
+  return {
+    is3D: true,
+    resize,
+    placeLabels,
+    recolorBuckets,
+    render() { if (composer) composer.render(); else r3.render(scene, camera); },
+    spawnBall() {
+      const slot = ballPool.find(b => !b.used) || ballPool[0];
+      slot.used = true;
+      slot.mesh.visible = true;
+      slot.mesh.position.set(0, B.spawnY, 0);
+      return ballPool.indexOf(slot);
+    },
+    updateBall(id, x, y) {
+      const slot = ballPool[id];
+      if (!slot) return;
+      slot.mesh.position.set(x, y, 0);
+      if (TRAIL_N) {
+        const t = trailPool[trailCursor = (trailCursor + 1) % TRAIL_N];
+        t.sprite.position.set(x, y, -0.1);
+        t.sprite.material.opacity = 0.4;
+        t.sprite.scale.setScalar(0.45);
+        t.sprite.visible = true;
+        t.life = 1;
+      }
+    },
+    removeBall(id) {
+      const slot = ballPool[id];
+      if (slot) { slot.used = false; slot.mesh.visible = false; }
+    },
+    flashPeg(i, speed) {
+      pegFlash[i] = Math.min(1, 0.6 + speed * 0.05);
+      if (SPARK_N) {
+        const s = sparkPool[sparkCursor = (sparkCursor + 1) % SPARK_N];
+        s.sprite.position.set(PEGS[i].x, PEGS[i].y, 0.15);
+        s.sprite.material.opacity = 0.85;
+        s.sprite.scale.setScalar(0.5 + Math.min(0.5, speed * 0.05));
+        s.sprite.visible = true;
+        s.life = 1;
+      }
+    },
+    flashBucket(i, mult) {
+      bucketGlow[i] = mult >= 10 ? 3.2 : mult >= 1 ? 2.0 : 1.0;
+    },
+    tickEffects() {
+      let alive = false;
+      // peg flash decay (instance colors)
+      let touched = false;
+      for (let i = 0; i < PEGS.length; i++) {
+        if (pegFlash[i] > 0.01) {
+          pegFlash[i] *= 0.86;
+          tmpCol.copy(baseCol).lerp(new THREE.Color(0xffffff), pegFlash[i]);
+          pegs.setColorAt(i, tmpCol);
+          touched = true;
+          alive = true;
+        }
+      }
+      if (touched && pegs.instanceColor) pegs.instanceColor.needsUpdate = true;
+      // bucket glow decay
+      for (let i = 0; i < 13; i++) {
+        if (bucketGlow[i] > 0.27) {
+          bucketGlow[i] *= 0.93;
+          bucketMats[i].emissiveIntensity = bucketGlow[i];
+          alive = true;
+        }
+      }
+      // trail fade
+      for (const t of trailPool) {
+        if (t.life > 0) {
+          t.life -= 0.06;
+          t.sprite.material.opacity = Math.max(0, t.life * 0.4);
+          t.sprite.scale.multiplyScalar(0.97);
+          if (t.life <= 0) t.sprite.visible = false;
+          else alive = true;
+        }
+      }
+      for (const s of sparkPool) {
+        if (s.life > 0) {
+          s.life -= 0.09;
+          s.sprite.material.opacity = Math.max(0, s.life * 0.85);
+          s.sprite.scale.multiplyScalar(1.06);
+          if (s.life <= 0) s.sprite.visible = false;
+          else alive = true;
+        }
+      }
+      return alive;
+    },
+  };
+}
+
+/* ============================================================
+   2D fallback renderer — same board, front view, no WebGL.
+   ============================================================ */
+function make2D() {
+  const canvas = document.createElement('canvas');
+  els.house.appendChild(canvas);
+  const ctx2 = canvas.getContext('2d');
+  let W = 0, H = 0, scale = 1, ox = 0, oy = 0;
+  const balls = new Map();
+  let nextId = 1;
+  const pegFlash = new Float32Array(PEGS.length);
+  const bucketGlow = new Float32Array(13);
+
+  function resize() {
+    const r = els.house.getBoundingClientRect();
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    W = canvas.width = Math.round(r.width * dpr);
+    H = canvas.height = Math.round(r.height * dpr);
+    // fit board: x ±7.1, y +2.2 .. -13.8
+    const bw = 14.6, bh = 16.4;
+    scale = Math.min(W / bw, H / bh);
+    ox = W / 2;
+    oy = 2.3 * scale; // world y=+2.3 maps to canvas top
+  }
+  const px = (x) => ox + x * scale;
+  const py = (y) => oy - y * scale + 0;
+
+  function render() {
+    ctx2.clearRect(0, 0, W, H);
+    const table = Core.MULTS[State.risk];
+    // rails
+    ctx2.fillStyle = '#8a6508';
+    ctx2.fillRect(px(-B.wallX) - 3, py(B.spawnY), 6, (B.spawnY - B.floorY) * scale);
+    ctx2.fillRect(px(B.wallX) - 3, py(B.spawnY), 6, (B.spawnY - B.floorY) * scale);
+    // pegs
+    for (let i = 0; i < PEGS.length; i++) {
+      const p = PEGS[i];
+      const f = pegFlash[i];
+      ctx2.fillStyle = f > 0.05 ? `rgba(255,255,255,${0.5 + f * 0.5})` : 'rgba(185,168,255,0.85)';
+      ctx2.beginPath();
+      ctx2.arc(px(p.x), py(p.y), Math.max(2, B.pegR * 1.3 * scale), 0, Math.PI * 2);
+      ctx2.fill();
+      if (f > 0.01) pegFlash[i] *= 0.86;
+    }
+    // dividers + buckets
+    for (let k = 0; k <= 13; k++) {
+      ctx2.fillStyle = '#b8860b';
+      const x = px((k - 6.5) * B.spacing);
+      ctx2.fillRect(x - 1.5, py(B.dividerTopY), 3, (B.dividerTopY - B.floorY) * scale);
+    }
+    for (let i = 0; i < 13; i++) {
+      const t = bucketTier(table[i]);
+      const g = bucketGlow[i];
+      ctx2.fillStyle = t.col;
+      ctx2.globalAlpha = 0.25 + Math.min(0.75, g);
+      ctx2.fillRect(px(Core.bucketCenterX(i)) - (B.spacing * 0.42) * scale,
+                    py(B.floorY + 0.32), B.spacing * 0.84 * scale, 0.3 * scale);
+      ctx2.globalAlpha = 1;
+      if (g > 0.02) bucketGlow[i] *= 0.93;
+    }
+    // balls
+    for (const b of balls.values()) {
+      const grad = ctx2.createRadialGradient(
+        px(b.x) - 3, py(b.y) - 3, 0, px(b.x), py(b.y), B.ballR * scale);
+      grad.addColorStop(0, '#fff7d1');
+      grad.addColorStop(1, '#b8860b');
+      ctx2.fillStyle = grad;
+      ctx2.beginPath();
+      ctx2.arc(px(b.x), py(b.y), B.ballR * scale, 0, Math.PI * 2);
+      ctx2.fill();
+    }
+  }
+  resize();
+
+  return {
+    is3D: false,
+    resize,
+    recolorBuckets() {},
+    placeLabels(labels) {
+      const r = els.house.getBoundingClientRect();
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      for (let i = 0; i < 13; i++) {
+        if (!labels[i]) continue;
+        labels[i].style.left = (px(Core.bucketCenterX(i)) / dpr) + 'px';
+        labels[i].style.top = ((py(B.floorY + 0.85)) / dpr) + 'px';
+      }
+    },
+    render,
+    spawnBall() { const id = nextId++; balls.set(id, { x: 0, y: B.spawnY }); return id; },
+    updateBall(id, x, y) { const b = balls.get(id); if (b) { b.x = x; b.y = y; } },
+    removeBall(id) { balls.delete(id); },
+    flashPeg(i) { pegFlash[i] = 1; },
+    flashBucket(i, mult) { bucketGlow[i] = mult >= 10 ? 1 : 0.7; },
+    tickEffects() {
+      let alive = false;
+      for (let i = 0; i < PEGS.length; i++) if (pegFlash[i] > 0.02) { alive = true; break; }
+      if (!alive) for (let i = 0; i < 13; i++) if (bucketGlow[i] > 0.03) { alive = true; break; }
+      return alive;
+    },
+  };
+}
+
+/* ---------- bootstrap ---------- */
+(async () => {
+  // 3D + physics, else 2D fallback. ?2d forces the fallback.
+  const force2d = new URLSearchParams(location.search).has('2d');
+  if (!force2d && window.WebGLRenderingContext) {
+    try {
+      const [r] = await Promise.all([make3D()]);
+      renderer = r;
+      // Rapier loads after the visuals so first paint is fast.
+      try {
+        const RAPIER = (await import('https://cdn.skypack.dev/@dimforge/rapier3d-compat@0.12.0')).default;
+        await RAPIER.init();
+        sim = Core.createPhysicsSim(RAPIER);
+        State.physicsReady = true;
+      } catch (e) {
+        // 3D visuals + scripted trajectories still play the same game.
+        console.warn('[diamonddrop] Rapier unavailable — scripted paths', e);
+      }
+    } catch (e) {
+      console.warn('[diamonddrop] 3D unavailable — 2D fallback', e);
+      renderer = null;
+    }
+  }
+  if (!renderer) {
+    try { renderer = make2D(); } catch (e) { renderer = null; }
+  }
+  if (renderer) {
+    renderer.resize();
+    buildLabels();
+    renderer.placeLabels(labelEls);
+    renderOnce();
+  }
+  updateControls();
+  if (window.Loader) Loader.hide();
+})();
+</script>
+</body>
+</html>

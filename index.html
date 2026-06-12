@@ -2210,6 +2210,83 @@ body::after {
   background: radial-gradient(circle at 35% 30%, #fff0a8, #b8860b);
 }
 
+/* DIAMOND DROP PREVIEW — neon peg field, falling gold ball, bucket strip */
+.preview.diamonddrop {
+  background:
+    radial-gradient(ellipse at 50% 12%, rgba(168,85,247,0.24), transparent 48%),
+    radial-gradient(ellipse at 50% 95%, rgba(255,46,147,0.16), transparent 50%),
+    linear-gradient(180deg, #190a33 0%, #0a0418 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.34), inset 0 -36px 58px rgba(0,0,0,0.42);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.preview.diamonddrop .dd-pegs {
+  position: absolute;
+  top: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.preview.diamonddrop .dd-pegs span {
+  width: 7px;
+  height: 7px;
+  margin: 7px 11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #e6dcff, #7a5cff);
+  box-shadow: 0 0 8px rgba(168,85,247,0.7);
+}
+.preview.diamonddrop .dd-ball {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  width: 13px;
+  height: 13px;
+  margin-left: -6.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff7d1, #b8860b);
+  box-shadow: 0 0 12px rgba(255,210,74,0.85);
+  animation: ddPrevFall 2.6s cubic-bezier(.45,.05,.6,1) infinite;
+}
+@keyframes ddPrevFall {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  6%   { opacity: 1; }
+  25%  { transform: translate(-9px, 28px); }
+  45%  { transform: translate(5px, 56px); }
+  65%  { transform: translate(-12px, 84px); }
+  82%  { transform: translate(-4px, 108px); opacity: 1; }
+  92%  { transform: translate(-4px, 118px); opacity: 0; }
+  100% { transform: translate(-4px, 118px); opacity: 0; }
+}
+.preview.diamonddrop .dd-slots {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+}
+.preview.diamonddrop .dd-slots i {
+  width: 22px;
+  height: 9px;
+  border-radius: 3px;
+  background: rgba(141,147,184,0.4);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+}
+.preview.diamonddrop .dd-slots i.mid {
+  background: rgba(92,255,161,0.5);
+  box-shadow: 0 0 8px rgba(92,255,161,0.4);
+}
+.preview.diamonddrop .dd-slots i.hot {
+  background: rgba(255,46,147,0.65);
+  box-shadow: 0 0 10px rgba(255,46,147,0.55);
+  animation: ddSlotPulse 2.6s ease-in-out infinite;
+}
+@keyframes ddSlotPulse { 50% { box-shadow: 0 0 16px rgba(255,46,147,0.9); } }
+
 /* card meta */
 .game-title {
   font-family: 'Bungee Shade', 'Bungee', cursive;
@@ -2778,6 +2855,28 @@ html.low-power .preview.dragontree .dt-coin.c2 {
       <div class="game-meta">
         <span class="meta-pill">54 SEGMENTS</span>
         <span class="meta-pill">45x TOP HIT</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="diamonddrop.html" data-game="diamonddrop">
+      <div class="preview diamonddrop">
+        <div class="dd-pegs">
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="dd-ball"></div>
+        <div class="dd-slots">
+          <i class="hot"></i><i></i><i class="mid"></i><i></i><i class="mid"></i><i></i><i class="hot"></i>
+        </div>
+      </div>
+      <div class="game-title">DIAMOND DROP</div>
+      <div class="game-tagline">REAL PHYSICS &middot; 3D PLINKO</div>
+      <div class="game-desc">A neon plinko tower running a true rigid-body simulation. Pick your risk, drop the golden ball, and chase the 170x edges.</div>
+      <div class="game-meta">
+        <span class="meta-pill">RAPIER PHYSICS</span>
+        <span class="meta-pill">170x EDGE</span>
       </div>
       <div class="play-cta">PLAY</div>
     </a>
