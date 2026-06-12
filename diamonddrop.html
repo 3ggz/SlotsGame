@@ -431,6 +431,11 @@ html.low-power .balance-link {
       <button class="risk-btn sel" data-risk="medium">MEDIUM</button>
       <button class="risk-btn hi" data-risk="high">HIGH</button>
     </div>
+    <div class="risk-seg auto-seg" id="auto-seg" title="Drops queued per click">
+      <button class="risk-btn sel" data-auto="0">×1</button>
+      <button class="risk-btn" data-auto="5">×5</button>
+      <button class="risk-btn" data-auto="25">×25</button>
+    </div>
     <div class="chip-rack" id="chip-rack"></div>
     <button class="drop-btn" id="btn-drop">DROP<span class="sub" id="drop-sub">$25</span></button>
   </div>
@@ -506,7 +511,10 @@ html.low-power .balance-link {
     rowGap: 1.0,
     topY: 0,           // row 0 y
     spawnY: 1.9,
-    wallX: 6.85,
+    wallX: 7.50,         // ample gap past the outermost peg (was 6.85,
+                         // which left a tunnel narrower than the ball —
+                         // Rapier could squeeze contact normals into a
+                         // lateral fling, "ball flew out the side")
     dividerTopY: -11.7,
     floorY: -13.3,
     dt: 1 / 120,
@@ -626,28 +634,31 @@ html.low-power .balance-link {
       return { xs, n, hits, bucket };
     }
 
-    /* Search for a real trajectory landing in `target`. mulberry-style
-       rng is injected so the search is reproducible in tests. */
-    function findTrajectory(target, rng) {
+    /* Attempt a single drop range. Returns either a landed trajectory
+       (with .attempts set) or { best, exhausted } so callers can keep
+       searching or finalize. */
+    function searchRange(target, rng, startAttempt, endAttempt, bestIn) {
       const tx = bucketCenterX(target);
-      let best = null;
-      for (let attempt = 0; attempt < 80; attempt++) {
-        // bias drop point toward the target column, widening jitter as
-        // attempts accumulate so stubborn targets eventually connect
+      let best = bestIn || null;
+      for (let attempt = startAttempt; attempt < endAttempt; attempt++) {
         const spread = 0.6 + attempt * 0.05;
         let x0 = tx * (0.86 + rng() * 0.10) + (rng() - 0.5) * spread;
         x0 = Math.max(-6.2, Math.min(6.2, x0));
         const run = simulate(x0);
         if (run.bucket === target) {
-          return { ...run, nudged: false, attempts: attempt + 1 };
+          return { run, attempts: attempt + 1 };
         }
         if (!best || Math.abs(run.bucket - target) < Math.abs(best.bucket - target)) {
           best = run;
         }
       }
-      // SAFETY NET: blend the tail of the closest run toward the target
-      // bucket so the result is guaranteed. Only the final descent into
-      // the buckets is adjusted — every peg bounce stays genuine.
+      return { best };
+    }
+    /* SAFETY NET — blend the tail of the closest run toward the target
+       bucket so the result is guaranteed. Only the final descent into
+       the buckets is adjusted; every peg bounce stays genuine. */
+    function finalizeFromBest(target, best) {
+      const tx = bucketCenterX(target);
       const run = best;
       let blendStart = run.n - 1;
       for (let i = 0; i < run.n; i++) {
@@ -662,8 +673,28 @@ html.low-power .balance-link {
       }
       return { ...run, bucket: target, nudged: true, attempts: 80 };
     }
+    /* Sync search — used by the headless unit test. */
+    function findTrajectory(target, rng) {
+      const r = searchRange(target, rng, 0, 80);
+      if (r.attempts) return { ...r.run, nudged: false, attempts: r.attempts };
+      return finalizeFromBest(target, r.best);
+    }
+    /* Async search — yields to the host BEFORE each attempt so the
+       click → "DROPPING…" paint happens before any sim runs. On a
+       weak phone a single 1800-step CCD sim can cost ~150ms; batching
+       was masking that latency. */
+    async function findTrajectoryAsync(target, rng, yieldFn) {
+      let best = null;
+      for (let attempt = 0; attempt < 80; attempt++) {
+        if (yieldFn) await yieldFn();
+        const r = searchRange(target, rng, attempt, attempt + 1, best);
+        if (r.attempts) return { ...r.run, nudged: false, attempts: r.attempts };
+        best = r.best;
+      }
+      return finalizeFromBest(target, best);
+    }
 
-    return { findTrajectory, simulate, free() { world.free(); } };
+    return { findTrajectory, findTrajectoryAsync, simulate, free() { world.free(); } };
   }
 
   const api = {
@@ -775,9 +806,17 @@ const AudioFX = (function () {
   }
 
   /* Peg strike: musical plink keyed to the ROW (rising run as the
-     ball descends) + a woody noise transient. Speed drives level. */
+     ball descends) + a woody noise transient. Speed drives level.
+     Throttled to ~35ms — Rapier sometimes reports a peg-contact start
+     event on consecutive simulation steps (sliding contact) or fires
+     two pegs in one step on glancing hits; those used to play as
+     multiple ticks even though the visible bounce was one. */
+  let _lastPegHitAt = 0;
   function pegHit(row, speed) {
     if (!ensure()) return;
+    const tw = performance.now();
+    if (tw - _lastPegHitAt < 35) return;
+    _lastPegHitAt = tw;
     const note = SCALE[Math.max(0, Math.min(SCALE.length - 1, row))];
     const amp = Math.min(0.30, 0.07 + speed * 0.016);
     blip(note * (1 + (Math.random() - 0.5) * 0.012), amp, 0.10, 'triangle');
@@ -837,6 +876,7 @@ const els = {
   drop: document.getElementById('btn-drop'),
   dropSub: document.getElementById('drop-sub'),
   riskSeg: document.getElementById('risk-seg'),
+  autoSeg: document.getElementById('auto-seg'),
   rack: document.getElementById('chip-rack'),
 };
 
@@ -844,10 +884,14 @@ const State = {
   balance: loadBalance(),
   bet: 25,
   risk: 'medium',
-  inFlight: 0,        // concurrent balls
+  inFlight: 0,        // balls currently animating
+  pendingAuto: 0,     // remaining drops queued by AUTO
+  autoTarget: 0,      // last AUTO chip selected (so STOP returns here)
+  dropPending: 0,     // physics searches in flight (blocks the click)
   physicsReady: false,
 };
-const MAX_CONCURRENT = 4;
+const MAX_CONCURRENT = 8;   // up from 4 — AUTO chains need headroom
+const AUTO_INTERVAL_MS = 260; // gap between AUTO drops
 
 function setBalance(v) {
   State.balance = Math.round(v * 100) / 100;
@@ -920,6 +964,9 @@ function startReplay(traj, bet, risk) {
     done: false,
   };
   replays.push(rec);
+  // Ball is now in flight on the visual side; resolveReplay decrements.
+  State.inFlight++;
+  updateControls();
   ensureLoop();
   // Resolution is wall-clock driven (NOT rAF) so payouts land even if
   // the tab is hidden mid-flight.
@@ -1063,31 +1110,98 @@ addEventListener('resize', () => {
 
 /* ---------- drop flow ---------- */
 let rng = Math.random;
-function drop() {
-  if (State.inFlight >= MAX_CONCURRENT) return;
-  if (State.balance < State.bet) { setMessage('NOT ENOUGH CHIPS', 'lose'); return; }
-  AudioFX.ensure();
-  AudioFX.dropStart();
+const yieldFrame = () => new Promise(r => requestAnimationFrame(r));
+
+/* Launch ONE drop. The button can call this with `viaAuto=true` to
+   skip the audio-on-click feedback. dropPending blocks a redundant
+   tap from queuing a second drop while the search is still running. */
+function drop(viaAuto) {
+  if (State.inFlight + State.dropPending >= MAX_CONCURRENT) return false;
+  if (State.balance < State.bet) {
+    setMessage('NOT ENOUGH CHIPS', 'lose');
+    stopAuto();
+    return false;
+  }
+  // The visual + accounting state changes go first so the next paint
+  // shows DROPPING… + the new balance. Audio is pushed to a
+  // microtask so an iOS AudioContext-resume can't block the frame.
   setBalance(State.balance - State.bet);
-  State.inFlight++;
+  State.dropPending++;
   updateControls();
   setMessage('DROPPING…');
+  if (typeof queueMicrotask === 'function') {
+    queueMicrotask(() => { AudioFX.ensure(); if (!viaAuto) AudioFX.dropStart(); });
+  } else {
+    setTimeout(() => { AudioFX.ensure(); if (!viaAuto) AudioFX.dropStart(); }, 0);
+  }
 
   const bet = State.bet;
   const risk = State.risk;
   // RNG FIRST — fairness is decided here, before any physics runs.
   const bucket = Core.pickBucket(rng());
 
-  // Search happens off the click task so the button press paints first.
-  setTimeout(() => {
-    let traj;
-    if (sim) {
-      traj = sim.findTrajectory(bucket, rng);
-    } else {
-      traj = scriptedTrajectory(bucket);  // 2D fallback path
-    }
+  const launch = (traj) => {
+    State.dropPending = Math.max(0, State.dropPending - 1);
     startReplay(traj, bet, risk);
-  }, 0);
+  };
+  if (sim) {
+    // Async physics search that yields to rAF every 4 attempts so the
+    // main thread can paint the button-press + DROPPING… message
+    // before consuming time. THIS is the lag fix: previously the whole
+    // search ran inside a setTimeout(0) callback as one synchronous
+    // block, freezing the UI for ~100-300ms on weak phones.
+    sim.findTrajectoryAsync(bucket, rng, yieldFrame).then(launch).catch(() => {
+      // physics blew up — fall back to a scripted path so the bet
+      // resolves rather than vanishing
+      launch(scriptedTrajectory(bucket));
+    });
+  } else {
+    // 2D fallback path: scripted, sync, but fast.
+    Promise.resolve().then(() => launch(scriptedTrajectory(bucket)));
+  }
+  return true;
+}
+
+/* AUTO chain: kick off a drop and arm the next one to fire when both
+   the current physics search has launched and the AUTO_INTERVAL has
+   elapsed. Stops when balance runs dry, MAX_CONCURRENT is saturated,
+   or the player flips AUTO back to ×1 / STOPs. */
+let autoTimer = 0;
+function scheduleNextAuto() {
+  if (autoTimer) clearTimeout(autoTimer);
+  autoTimer = setTimeout(tickAuto, AUTO_INTERVAL_MS);
+}
+function tickAuto() {
+  autoTimer = 0;
+  if (State.pendingAuto <= 0) { stopAuto(false); return; }
+  if (State.balance < State.bet) { stopAuto(); return; }
+  if (State.inFlight + State.dropPending >= MAX_CONCURRENT) {
+    scheduleNextAuto();
+    return;
+  }
+  if (drop(true)) State.pendingAuto--;
+  if (State.pendingAuto > 0) scheduleNextAuto();
+  else stopAuto(false);
+  updateControls();
+}
+function startAuto(count) {
+  if (count <= 0) return;
+  State.autoTarget = count;
+  State.pendingAuto = count;
+  updateControls();
+  tickAuto();
+}
+function stopAuto(snapBack) {
+  State.pendingAuto = 0;
+  if (autoTimer) { clearTimeout(autoTimer); autoTimer = 0; }
+  if (snapBack !== false) {
+    // return the AUTO segmented control to ×1 visually
+    els.autoSeg.querySelectorAll('.risk-btn').forEach(b => {
+      b.classList.toggle('sel', b.dataset.auto === '0');
+    });
+    State.autoTarget = 0;
+  }
+  updateControls();
 }
 
 /* Scripted Galton path for the 2D fallback: 12 genuine-looking L/R
@@ -1146,11 +1260,28 @@ function nearestPegIndex(x, row) {
 
 /* ---------- controls ---------- */
 function updateControls() {
-  els.drop.disabled = State.inFlight >= MAX_CONCURRENT || State.balance < State.bet || !renderer;
-  els.dropSub.textContent = '$' + fmt(State.bet);
-  els.riskSeg.querySelectorAll('.risk-btn').forEach(b => {
-    b.disabled = State.inFlight > 0;   // lock risk while balls are falling
-  });
+  const saturated = State.inFlight + State.dropPending >= MAX_CONCURRENT;
+  const lowFunds = State.balance < State.bet;
+  els.drop.disabled = saturated || lowFunds || !renderer;
+  // Label morphs with AUTO state so the player always knows what the
+  // button is about to do.
+  if (State.pendingAuto > 0) {
+    els.drop.firstChild.nodeValue = 'STOP AUTO';
+    els.dropSub.textContent = State.pendingAuto + ' LEFT';
+    els.drop.disabled = false; // STOP is always allowed
+  } else if (State.autoTarget > 0) {
+    els.drop.firstChild.nodeValue = 'DROP';
+    els.dropSub.textContent = '×' + State.autoTarget + ' · $' + fmt(State.bet);
+  } else {
+    els.drop.firstChild.nodeValue = 'DROP';
+    els.dropSub.textContent = '$' + fmt(State.bet);
+  }
+  // Risk + AUTO lock only while there's NO chain running. With AUTO
+  // active we still allow STOP, so the buttons stay tappable; risk
+  // toggles lock so the chain doesn't switch payout tables mid-flight.
+  const lockBoard = State.inFlight > 0 || State.pendingAuto > 0;
+  els.riskSeg.querySelectorAll('.risk-btn').forEach(b => { b.disabled = lockBoard; });
+  els.autoSeg.querySelectorAll('.risk-btn').forEach(b => { b.disabled = State.pendingAuto > 0; });
 }
 function buildRack() {
   const denoms = [1, 5, 25, 100, 500, 1000];
@@ -1186,12 +1317,34 @@ els.riskSeg.querySelectorAll('.risk-btn').forEach(b => {
     renderOnce();
   });
 });
+/* AUTO segmented control: ×1 (off), ×5, ×25 — sets autoTarget. The
+   chain doesn't actually start until DROP is pressed, so the player
+   can stage a strategy and commit when ready. */
+els.autoSeg.querySelectorAll('.risk-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    if (State.pendingAuto > 0) return; // can't change mid-chain
+    State.autoTarget = parseInt(b.dataset.auto, 10) || 0;
+    els.autoSeg.querySelectorAll('.risk-btn').forEach(x => x.classList.remove('sel'));
+    b.classList.add('sel');
+    AudioFX.uiClick();
+    updateControls();
+  });
+});
+
+/* DROP button: with autoTarget=0 it fires one ball; with autoTarget>0
+   it kicks off an AUTO chain; while a chain is running it acts as STOP.
+   The dedup guard goes UP to 400ms because the search yields to rAF
+   between batches — a too-eager tap would otherwise queue a phantom
+   second drop while the first one is still being searched (the bug:
+   "sometimes 2 balls drop after a lag spike"). */
 {
   const fire = (e) => {
     if (e && e.cancelable) e.preventDefault();
     const nowT = performance.now();
-    if (els.drop._at && nowT - els.drop._at < 150) return;
+    if (els.drop._at && nowT - els.drop._at < 400) return;
     els.drop._at = nowT;
+    if (State.pendingAuto > 0) { stopAuto(); return; }
+    if (State.autoTarget > 0) { startAuto(State.autoTarget); return; }
     drop();
   };
   if (window.PointerEvent) els.drop.addEventListener('pointerdown', e => { if (e.button === 0 || e.pointerType !== 'mouse') fire(e); });
@@ -1203,6 +1356,15 @@ document.getElementById('btn-history').addEventListener('click', () => {
 });
 buildRack();
 refreshBalance();
+// Warm AudioFX on any first interaction (long before DROP fires) so
+// the iOS AudioContext-resume tax is paid quietly in the background.
+function warmAudio() {
+  AudioFX.ensure();
+  document.removeEventListener('pointerdown', warmAudio, true);
+  document.removeEventListener('keydown', warmAudio, true);
+}
+document.addEventListener('pointerdown', warmAudio, { capture: true, once: true });
+document.addEventListener('keydown', warmAudio, { capture: true, once: true });
 addEventListener('focus', refreshBalance);
 addEventListener('pageshow', refreshBalance);
 document.addEventListener('jackpot-win', refreshBalance);
@@ -1222,8 +1384,12 @@ async function make3D() {
   r3.domElement.addEventListener('webglcontextlost', e => e.preventDefault());
 
   const scene = new THREE.Scene();
+  // Camera pulled back from z=17.6 -> 19.8 so the edge buckets, their
+  // 170x/2x labels, and the outermost pegs of the bottom row all sit
+  // safely inside the boardhouse rim (which has overflow:hidden for
+  // the rounded gold border).
   const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 60);
-  camera.position.set(0, -5.7, 17.6);
+  camera.position.set(0, -5.7, 19.8);
   camera.lookAt(0, -5.7, 0);
 
   scene.add(new THREE.AmbientLight(0xaaa0d8, 1.0));
@@ -1500,8 +1666,8 @@ function make2D() {
     const dpr = Math.min(devicePixelRatio || 1, 2);
     W = canvas.width = Math.round(r.width * dpr);
     H = canvas.height = Math.round(r.height * dpr);
-    // fit board: x ±7.1, y +2.2 .. -13.8
-    const bw = 14.6, bh = 16.4;
+    // fit board: x ±7.5 + label margin, y +2.2 .. -13.8
+    const bw = 17.0, bh = 17.6;
     scale = Math.min(W / bw, H / bh);
     ox = W / 2;
     oy = 2.3 * scale; // world y=+2.3 maps to canvas top

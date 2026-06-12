@@ -184,5 +184,22 @@ run('board geometry: 102 pegs in 12 rows, buckets aligned', () => {
     sim.free();
   });
 
+  await runAsync('async search produces the same outcome as sync (yielding does not bias results)', async () => {
+    const sim = core.createPhysicsSim(RAPIER);
+    // SAME starting seed for both runs — async search must produce the
+    // same trajectory in the same attempt count so the UI yield can't
+    // accidentally change the physics outcome.
+    for (const target of [0, 6, 12]) {
+      const rngS = mulberry32(target + 100);
+      const rngA = mulberry32(target + 100);
+      const syncRun = sim.findTrajectory(target, rngS);
+      const asyncRun = await sim.findTrajectoryAsync(target, rngA, () => Promise.resolve());
+      assert.strictEqual(asyncRun.bucket, syncRun.bucket, `${target}: bucket`);
+      assert.strictEqual(asyncRun.attempts, syncRun.attempts, `${target}: attempts`);
+      assert.strictEqual(asyncRun.n, syncRun.n, `${target}: trajectory length`);
+    }
+    sim.free();
+  });
+
   console.log('Diamond Drop core tests complete');
 })();
