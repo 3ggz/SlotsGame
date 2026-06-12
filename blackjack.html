@@ -1739,15 +1739,20 @@ function addBet(key) {
   const wasEmpty = State.bets[key] === 0;
   setBalance(State.balance - chip);
   State.bets[key] += chip;
-  // Repaint the bet immediately so the number reflects the click without
-  // waiting for the chip-fly to land — that's purely visual flair.
   refreshBets();
-  Audio.chipPick();
+  updateActionButtons();
+  // Launch the chip-fly IMMEDIATELY in the same task as the tap so
+  // the WAAPI animation kicks off on the next compositor frame.
   flyChipToCircle(chip, key, () => {
     Audio.chip(!wasEmpty);
     bumpCircle(key);
   });
-  updateActionButtons();
+  // Audio is pushed off the click path — on iOS the first chip-place
+  // tap is also when AudioContext resumes, which can stall the main
+  // thread for ~50-200ms. queueMicrotask lets the WAAPI animation
+  // claim the current frame first.
+  if (typeof queueMicrotask === 'function') queueMicrotask(() => Audio.chipPick());
+  else setTimeout(() => Audio.chipPick(), 0);
 }
 
 /* Right-click on a bet circle removes a chip. Prefer the currently
@@ -1816,7 +1821,7 @@ function flyChipToCircle(value, key, onLand) {
   const circle   = UI.circleByKey[key];
   if (!rackChip || !circle) { onLand && onLand(); return; }
 
-  // poke the source chip up
+  // Source chip "poke" — visible the instant the finger lifts.
   rackChip.classList.remove('poking');
   void rackChip.offsetWidth;
   rackChip.classList.add('poking');
@@ -1836,22 +1841,28 @@ function flyChipToCircle(value, key, onLand) {
   fly.innerHTML = `<span>${label}</span>`;
   fly.style.left = (fromCx - 28) + 'px';
   fly.style.top  = (fromCy - 28) + 'px';
-  fly.style.transform = 'translate(0,0) scale(1) rotate(0)';
+  fly.style.willChange = 'transform, opacity';
   document.body.appendChild(fly);
 
-  // Force layout then animate
-  requestAnimationFrame(() => {
-    const dx = toCx - fromCx;
-    const dy = toCy - fromCy;
-    const rot = (Math.random() * 200 - 100) | 0;
-    fly.style.transform = `translate(${dx}px, ${dy}px) scale(0.55) rotate(${rot}deg)`;
-  });
+  const dx = toCx - fromCx;
+  const dy = toCy - fromCy;
+  const rot = (Math.random() * 200 - 100) | 0;
 
-  setTimeout(() => {
-    fly.style.opacity = '0';
-    onLand && onLand();
-  }, 220);
-  setTimeout(() => fly.remove(), 360);
+  // Web Animations API — explicit start AND end keyframes, runs on the
+  // compositor, can't be coalesced into a one-frame snap the way a
+  // CSS transition can when the start state isn't observed in time.
+  const anim = fly.animate(
+    [
+      { transform: 'translate(0,0) scale(1) rotate(0)', opacity: 1, offset: 0 },
+      { transform: `translate(${dx}px, ${dy}px) scale(0.6) rotate(${rot}deg)`, opacity: 1, offset: 0.85 },
+      { transform: `translate(${dx}px, ${dy}px) scale(0.55) rotate(${rot}deg)`, opacity: 0, offset: 1 },
+    ],
+    { duration: 280, easing: 'cubic-bezier(.25,.6,.3,1.15)', fill: 'forwards' }
+  );
+  anim.onfinish = () => { fly.remove(); onLand && onLand(); };
+  // Safety net — if the browser bails out of the WAAPI animation for
+  // any reason, make sure onLand still fires and the node is cleaned.
+  setTimeout(() => { if (fly.isConnected) { fly.remove(); onLand && onLand(); } }, 600);
 }
 
 function updateActionButtons() {
@@ -2718,20 +2729,46 @@ function init() {
   window.addEventListener('keydown',     sfxResume, { capture: true });
   window.addEventListener('touchstart',  sfxResume, { capture: true, passive: true });
 
-  // Chips — picking a denomination
+  // Chips — picking a denomination (pointerdown for instant feel)
+  const _selectedAt = new WeakMap();
+  function selectChipFast(c, e) {
+    const now = performance.now();
+    const last = _selectedAt.get(c) || 0;
+    if (now - last < 200) return;
+    _selectedAt.set(c, now);
+    if (e && e.cancelable) e.preventDefault();
+    selectChip(parseInt(c.dataset.value, 10));
+    c.classList.remove('poking');
+    void c.offsetWidth;
+    c.classList.add('poking');
+    if (typeof queueMicrotask === 'function') queueMicrotask(() => Audio.chipSelect());
+    else setTimeout(() => Audio.chipSelect(), 0);
+  }
   UI.chips.forEach(c => {
-    c.addEventListener('click', () => {
-      selectChip(parseInt(c.dataset.value, 10));
-      c.classList.remove('poking');
-      void c.offsetWidth;
-      c.classList.add('poking');
-      Audio.chipSelect();
-    });
+    if (window.PointerEvent) {
+      c.addEventListener('pointerdown', e => { if (e.button === 0 || e.pointerType !== 'mouse') selectChipFast(c, e); });
+    }
+    c.addEventListener('click', e => selectChipFast(c, e));
   });
 
-  // Bet circles — left-click adds a chip, right-click removes the last one placed
+  // Bet circles — pointerdown for instant tap response on mobile
+  // (a click event waits for touchend + an OS grace period before
+  // firing, which is what reads as "laggy" on a chip placement).
+  // A small dedup guard suppresses the synthetic click that follows.
+  const _placedAt = new WeakMap();
+  function placeChip(c, e) {
+    const now = performance.now();
+    const last = _placedAt.get(c) || 0;
+    if (now - last < 200) return; // dedup synthetic click after pointerdown
+    _placedAt.set(c, now);
+    if (e && e.cancelable) e.preventDefault();
+    addBet(c.dataset.bet);
+  }
   UI.circles.forEach(c => {
-    c.addEventListener('click', () => addBet(c.dataset.bet));
+    if (window.PointerEvent) {
+      c.addEventListener('pointerdown', e => { if (e.button === 0 || e.pointerType !== 'mouse') placeChip(c, e); });
+    }
+    c.addEventListener('click', e => placeChip(c, e));
     c.addEventListener('contextmenu', e => {
       e.preventDefault();
       removeBet(c.dataset.bet);
