@@ -597,6 +597,17 @@ html.low-power .balance-link {
     ballCol.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
     const events = new RAPIER.EventQueue(true);
 
+    /* Half-width of the peg triangle at world-height y (the band the
+       ball must stay within), plus ball radius + margin. Shared by the
+       escape check and the nudge clamp so a nudged ball can never be
+       shown outside the triangle. Above the apex / below the last row
+       it relaxes to the full board width. */
+    function envAt(y) {
+      if (y > BOARD.spawnY + 0.1 || y < BOARD.dividerTopY) return BOARD.wallX;
+      const row = Math.max(0, Math.min(11, (BOARD.topY - y) / BOARD.rowGap));
+      return (2 + row) / 2 * BOARD.spacing + BOARD.ballR + 0.7;
+    }
+
     /* Drop the ball from the APEX (x0 within the top peg span) with an
        initial horizontal velocity vx0 that steers it toward the target.
        This is the fix for "balls spawn outside the triangle": the old
@@ -614,6 +625,8 @@ html.low-power .balance-link {
       const hits = [];
       let n = 0;
       let restCount = 0;
+      let outside = false;        // did the ball ever leave the peg triangle?
+      let deepestRow = -1, lastHitStep = -99;
       for (let s = 0; s < BOARD.maxSteps; s++) {
         world.step(events);
         const t = body.translation();
@@ -621,12 +634,30 @@ html.low-power .balance-link {
         xs[n * 2] = t.x;
         xs[n * 2 + 1] = t.y;
         n++;
+        // Triangle-envelope guard: in the peg region the ball must stay
+        // within the widening triangle (+ball +margin). A high sideways
+        // velocity that outruns the triangle's widening would skate down
+        // the side gap — that's the "falls off to the side" the player
+        // sees. We flag it so the search rejects this path entirely.
+        if (Math.abs(t.x) > envAt(t.y)) outside = true;
         events.drainCollisionEvents((h1, h2, started) => {
           if (!started) return;
           const other = h1 === ballCol.handle ? h2 : (h2 === ballCol.handle ? h1 : null);
           if (other == null) return;
           const speed = Math.hypot(v.x, v.y);
           const pegIdx = pegHandles.has(other) ? pegHandles.get(other) : -1;
+          // Sound a row only the FIRST time the ball reaches it on the
+          // way down (monotonic deepest-row). A real plinko ball makes
+          // ~25 micro-contacts pinballing — and bouncing back UP then
+          // re-descending double-counted rows, which is what kept the
+          // audio spammy. One strike per row first-reached caps it at
+          // ~12 clean, evenly descending notes — exactly the intended
+          // rising pentatonic run (note is keyed to the row).
+          if (speed < 1.4) return;
+          const row = Math.round((BOARD.topY - t.y) / BOARD.rowGap);
+          if (row <= deepestRow) return;
+          if (s - lastHitStep < 6) return;
+          deepestRow = row; lastHitStep = s;
           hits.push({ step: s, peg: pegIdx, speed });
         });
         // settled in a bucket?
@@ -638,48 +669,62 @@ html.low-power .balance-link {
       }
       const fx = xs[(n - 1) * 2];
       const bucket = Math.max(0, Math.min(12, Math.round(fx / BOARD.spacing) + 6));
-      return { xs, n, hits, bucket };
+      return { xs, n, hits, bucket, outside };
     }
 
-    const SEARCH_MAX = 200;  // headless sims are cheap; edges need budget
-    /* One drop range. x0 stays in the apex; vx0 is a GENTLE bias toward
-       the target column so the ball bounces its way across the pegs
-       rather than line-driving to the edge (which looked unnatural and
-       barely touched a peg). Lower scale = more genuine pegging; the
-       widening jitter + larger budget reach the rare edges. */
+    const SEARCH_MAX = 48;   // keep the visible ball responsive; the
+                             // gradual clamped nudge covers what search misses
+    const VX_CAP = 3.2;      // max steering velocity — above this the ball
+                             // outruns the triangle and skates off the side
+    /* One drop range. x0 stays in the apex; vx0 is a GENTLE, CAPPED bias
+       toward the target so the ball bounces its way across the pegs and
+       never flies out the side. Runs that escape the triangle (outside)
+       are rejected outright. */
     function searchRange(target, rng, startAttempt, endAttempt, bestIn) {
       const drift = bucketCenterX(target);     // where we want to end up
       let best = bestIn || null;
       for (let attempt = startAttempt; attempt < endAttempt; attempt++) {
-        const x0 = Math.max(-0.85, Math.min(0.85, drift * 0.08)) + (rng() - 0.5) * 1.1;
-        const vSpread = 1.4 + attempt * 0.14;                 // widen the kick over time
-        const vx0 = drift * 0.85 + (rng() - 0.5) * vSpread;   // gentle steer
+        const x0 = Math.max(-0.85, Math.min(0.85, drift * 0.08)) + (rng() - 0.5) * 1.0;
+        const vSpread = 1.2 + attempt * 0.10;
+        let vx0 = drift * 0.80 + (rng() - 0.5) * vSpread;
+        vx0 = Math.max(-VX_CAP, Math.min(VX_CAP, vx0));       // never outrun the triangle
         const run = simulate(x0, vx0);
-        if (run.bucket === target) {
+        if (run.bucket === target && !run.outside) {
           return { run, attempts: attempt + 1 };
         }
-        if (!best || Math.abs(run.bucket - target) < Math.abs(best.bucket - target)) {
+        // Only consider inside runs as fallback candidates.
+        if (!run.outside && (!best || Math.abs(run.bucket - target) < Math.abs(best.bucket - target))) {
           best = run;
         }
       }
       return { best };
     }
-    /* SAFETY NET — blend the tail of the closest run toward the target
-       bucket so the result is guaranteed. Only the final descent into
-       the buckets is adjusted; every peg bounce stays genuine. */
+    /* SAFETY NET — guide the closest run into the target bucket. The
+       correction is spread across the WHOLE lower half of the descent
+       with a smoothstep ramp (so it reads as gradual drift, not a
+       bottom teleport) and every point is CLAMPED to the triangle
+       envelope, so a nudged ball can never appear outside the pegs.
+       Used only when the search budget didn't find a natural inside
+       path (mostly the rare edge buckets). */
     function finalizeFromBest(target, best) {
       const tx = bucketCenterX(target);
-      const run = best;
-      let blendStart = run.n - 1;
+      const run = best || simulate(0, Math.max(-VX_CAP, Math.min(VX_CAP, tx * 0.5)));
+      // Begin the correction around the vertical midpoint of the peg
+      // field so it has many rows to spread over.
+      const midY = (BOARD.topY + BOARD.dividerTopY) / 2;
+      let blendStart = 0;
       for (let i = 0; i < run.n; i++) {
-        if (run.xs[i * 2 + 1] < BOARD.dividerTopY + 1.1) { blendStart = i; break; }
+        if (run.xs[i * 2 + 1] < midY) { blendStart = i; break; }
       }
       const span = Math.max(1, run.n - 1 - blendStart);
       const endX = run.xs[(run.n - 1) * 2];
+      const delta = tx - endX;
       for (let i = blendStart; i < run.n; i++) {
         const k = (i - blendStart) / span;
         const ease = k * k * (3 - 2 * k); // smoothstep
-        run.xs[i * 2] += (tx - endX) * ease;
+        let x = run.xs[i * 2] + delta * ease;
+        const env = envAt(run.xs[i * 2 + 1]);   // keep it inside the triangle
+        run.xs[i * 2] = Math.max(-env, Math.min(env, x));
       }
       return { ...run, bucket: target, nudged: true, attempts: SEARCH_MAX };
     }
@@ -868,7 +913,7 @@ const AudioFX = (function () {
   function pegHit(row, speed) {
     if (!ensure()) return;
     const tw = performance.now();
-    if (tw - _lastPegHitAt < 35) return;
+    if (tw - _lastPegHitAt < 50) return;   // global cap so multi-ball can't spam
     _lastPegHitAt = tw;
     const note = SCALE[Math.max(0, Math.min(SCALE.length - 1, row))];
     const amp = Math.min(0.30, 0.07 + speed * 0.016);
@@ -1114,6 +1159,7 @@ function loop(now) {
       if (h.peg >= 0) {
         AudioFX.pegHit(Core.pegPositions()[h.peg].row, h.speed);
         renderer.flashPeg(h.peg, h.speed);
+        renderer.pulseBall(r.ballId, h.speed);   // ball flares on every peg strike
       } else {
         AudioFX.wallHit(h.speed);
       }
@@ -1555,8 +1601,11 @@ async function make3D() {
     const m = new THREE.Mesh(ballGeo, mat);
     m.visible = false;
     board.add(m);
-    ballPool.push({ mesh: m, used: false, halo: null });
+    // glow: 0..1 flare energy, decays each frame; drives ball emissive
+    // intensity + halo brightness/scale so the ball pops on each peg hit.
+    ballPool.push({ mesh: m, used: false, halo: null, glow: 0 });
   }
+  const BALL_BASE_EMISSIVE = 1.0, BALL_FLARE_EMISSIVE = 2.6;
 
   // Soft round particle texture (static, NO mipmaps) so sprites render
   // as gentle glows instead of hard squares. Built once, shared.
@@ -1703,8 +1752,28 @@ async function make3D() {
     flashBucket(i, mult) {
       bucketGlow[i] = mult >= 10 ? 2.4 : mult >= 1 ? 1.6 : 0.9;
     },
+    pulseBall(id, speed) {
+      const slot = ballPool[id];
+      if (slot) slot.glow = Math.min(1, 0.7 + (speed || 0) * 0.05);
+    },
     tickEffects() {
       let alive = false;
+      // ball flare decay — pops the ball brighter + bigger halo on hit
+      for (const slot of ballPool) {
+        if (slot.glow > 0.02) {
+          slot.glow *= 0.82;
+          slot.mesh.material.emissiveIntensity = BALL_BASE_EMISSIVE + (BALL_FLARE_EMISSIVE - BALL_BASE_EMISSIVE) * slot.glow;
+          if (slot.halo) {
+            slot.halo.material.opacity = 0.7 + 0.3 * slot.glow;
+            slot.halo.scale.setScalar(1.05 + 0.7 * slot.glow);
+          }
+          if (slot.used) alive = true;
+        } else if (slot.glow !== 0) {
+          slot.glow = 0;
+          slot.mesh.material.emissiveIntensity = BALL_BASE_EMISSIVE;
+          if (slot.halo) { slot.halo.material.opacity = 0.85; slot.halo.scale.setScalar(1.05); }
+        }
+      }
       // bucket glow decay (cheap — 13 materials, no buffer uploads)
       for (let i = 0; i < 13; i++) {
         if (bucketGlow[i] > 0.27) {
@@ -1830,6 +1899,7 @@ function make2D() {
     updateBall(id, x, y) { const b = balls.get(id); if (b) { b.x = x; b.y = y; } },
     removeBall(id) { balls.delete(id); },
     flashPeg(i) { pegFlash[i] = 1; },
+    pulseBall() {},
     flashBucket(i, mult) { bucketGlow[i] = mult >= 10 ? 1 : 0.7; },
     tickEffects() {
       let alive = false;
