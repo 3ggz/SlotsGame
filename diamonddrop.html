@@ -597,9 +597,16 @@ html.low-power .balance-link {
     ballCol.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
     const events = new RAPIER.EventQueue(true);
 
-    function simulate(x0) {
+    /* Drop the ball from the APEX (x0 within the top peg span) with an
+       initial horizontal velocity vx0 that steers it toward the target.
+       This is the fix for "balls spawn outside the triangle": the old
+       search spawned the ball at the target column's x (up to ±5.4 for
+       edges), so edge-bound balls fell straight down OUTSIDE the peg
+       field. Now every ball enters between the top three pegs and the
+       sideways momentum walks it across — a real plinko drop. */
+    function simulate(x0, vx0) {
       body.setTranslation({ x: x0, y: BOARD.spawnY, z: 0 }, true);
-      body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      body.setLinvel({ x: vx0 || 0, y: 0, z: 0 }, true);
       body.setAngvel({ x: 0, y: 0, z: 0 }, true);
       body.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
 
@@ -634,17 +641,20 @@ html.low-power .balance-link {
       return { xs, n, hits, bucket };
     }
 
-    /* Attempt a single drop range. Returns either a landed trajectory
-       (with .attempts set) or { best, exhausted } so callers can keep
-       searching or finalize. */
+    const SEARCH_MAX = 200;  // headless sims are cheap; edges need budget
+    /* One drop range. x0 stays in the apex; vx0 is a GENTLE bias toward
+       the target column so the ball bounces its way across the pegs
+       rather than line-driving to the edge (which looked unnatural and
+       barely touched a peg). Lower scale = more genuine pegging; the
+       widening jitter + larger budget reach the rare edges. */
     function searchRange(target, rng, startAttempt, endAttempt, bestIn) {
-      const tx = bucketCenterX(target);
+      const drift = bucketCenterX(target);     // where we want to end up
       let best = bestIn || null;
       for (let attempt = startAttempt; attempt < endAttempt; attempt++) {
-        const spread = 0.6 + attempt * 0.05;
-        let x0 = tx * (0.86 + rng() * 0.10) + (rng() - 0.5) * spread;
-        x0 = Math.max(-6.2, Math.min(6.2, x0));
-        const run = simulate(x0);
+        const x0 = Math.max(-0.85, Math.min(0.85, drift * 0.08)) + (rng() - 0.5) * 1.1;
+        const vSpread = 1.4 + attempt * 0.14;                 // widen the kick over time
+        const vx0 = drift * 0.85 + (rng() - 0.5) * vSpread;   // gentle steer
+        const run = simulate(x0, vx0);
         if (run.bucket === target) {
           return { run, attempts: attempt + 1 };
         }
@@ -671,21 +681,20 @@ html.low-power .balance-link {
         const ease = k * k * (3 - 2 * k); // smoothstep
         run.xs[i * 2] += (tx - endX) * ease;
       }
-      return { ...run, bucket: target, nudged: true, attempts: 80 };
+      return { ...run, bucket: target, nudged: true, attempts: SEARCH_MAX };
     }
     /* Sync search — used by the headless unit test. */
     function findTrajectory(target, rng) {
-      const r = searchRange(target, rng, 0, 80);
+      const r = searchRange(target, rng, 0, SEARCH_MAX);
       if (r.attempts) return { ...r.run, nudged: false, attempts: r.attempts };
       return finalizeFromBest(target, r.best);
     }
     /* Async search — yields to the host BEFORE each attempt so the
        click → "DROPPING…" paint happens before any sim runs. On a
-       weak phone a single 1800-step CCD sim can cost ~150ms; batching
-       was masking that latency. */
+       weak phone a single 1800-step CCD sim can cost ~150ms. */
     async function findTrajectoryAsync(target, rng, yieldFn) {
       let best = null;
-      for (let attempt = 0; attempt < 80; attempt++) {
+      for (let attempt = 0; attempt < SEARCH_MAX; attempt++) {
         if (yieldFn) await yieldFn();
         const r = searchRange(target, rng, attempt, attempt + 1, best);
         if (r.attempts) return { ...r.run, nudged: false, attempts: r.attempts };
@@ -734,10 +743,54 @@ const fmt = n => Math.round(n).toLocaleString('en-US');
    tracks Settings.sfxVolume through a limiter.
    ============================================================ */
 const AudioFX = (function () {
-  let ctx = null, master = null, noiseBuf = null;
+  let ctx = null, master = null, noiseBuf = null, silentEl = null;
   // D minor pentatonic, low to high — rows 0..11 walk up the scale.
   const SCALE = [146.83, 174.61, 196.00, 220.00, 261.63,
                  293.66, 349.23, 392.00, 440.00, 523.25, 587.33, 698.46];
+
+  /* A few ms of digital silence as a looping <audio> element. Keeping
+     an HTMLMediaElement playing flips iOS Safari into MEDIA-playback
+     routing, which is what lets the WebAudio synth play through the
+     media channel (volume buttons) instead of the RINGER channel —
+     where it is silenced by the hardware mute switch. This is the most
+     common reason a pure-WebAudio game is silent on iPhone while the
+     <audio>-based music still plays. */
+  function makeSilentLoop() {
+    const sr = 8000, len = 800;
+    const buf = new ArrayBuffer(44 + len);
+    const v = new DataView(buf);
+    const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + len, true); w(8, 'WAVE'); w(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    w(36, 'data'); v.setUint32(40, len, true);
+    for (let i = 0; i < len; i++) v.setUint8(44 + i, 128); // 8-bit unsigned silence
+    const a = document.createElement('audio');
+    a.loop = true; a.preload = 'auto'; a.volume = 0;
+    a.setAttribute('playsinline', '');
+    a.src = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+    return a;
+  }
+
+  /* Call from a user gesture: create+resume the context, ping it with a
+     silent buffer, and start the silent media loop. Idempotent. */
+  function unlock() {
+    ensure();
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    try {
+      if (ctx) {
+        const src = ctx.createBufferSource();
+        src.buffer = ctx.createBuffer(1, 1, 22050);
+        src.connect(ctx.destination);
+        src.start(0);
+      }
+    } catch (e) {}
+    if (!silentEl) {
+      try { silentEl = makeSilentLoop(); silentEl.play().catch(() => {}); } catch (e) {}
+    } else if (silentEl.paused) {
+      silentEl.play().catch(() => {});
+    }
+  }
 
   function ensure() {
     if (!ctx) {
@@ -864,7 +917,7 @@ const AudioFX = (function () {
       blip(165, 0.09, 0.18, 'sine', t + 0.02);
     }
   }
-  return { ensure, pegHit, wallHit, dropStart, chipSelect, uiClick, land };
+  return { ensure, unlock, pegHit, wallHit, dropStart, chipSelect, uiClick, land };
 })();
 
 /* ---------- game state ---------- */
@@ -1140,26 +1193,37 @@ function drop(viaAuto) {
   // RNG FIRST — fairness is decided here, before any physics runs.
   const bucket = Core.pickBucket(rng());
 
-  const launch = (traj) => {
+  // Queue the physics search. Searches run ONE AT A TIME (see
+  // pumpSearchQueue) so an AUTO chain can't stack several rAF-yielding
+  // searches that each consume a sim per frame — that was the multi-
+  // drop lag. Visual replays still overlap freely; only the headless
+  // search is serialized.
+  searchQueue.push({ bucket, bet, risk });
+  pumpSearchQueue();
+  return true;
+}
+
+const searchQueue = [];
+let searchBusy = false;
+function pumpSearchQueue() {
+  if (searchBusy) return;
+  const job = searchQueue.shift();
+  if (!job) return;
+  searchBusy = true;
+  const done = (traj) => {
     State.dropPending = Math.max(0, State.dropPending - 1);
-    startReplay(traj, bet, risk);
+    startReplay(traj, job.bet, job.risk);
+    searchBusy = false;
+    pumpSearchQueue();
   };
   if (sim) {
-    // Async physics search that yields to rAF every 4 attempts so the
-    // main thread can paint the button-press + DROPPING… message
-    // before consuming time. THIS is the lag fix: previously the whole
-    // search ran inside a setTimeout(0) callback as one synchronous
-    // block, freezing the UI for ~100-300ms on weak phones.
-    sim.findTrajectoryAsync(bucket, rng, yieldFrame).then(launch).catch(() => {
-      // physics blew up — fall back to a scripted path so the bet
-      // resolves rather than vanishing
-      launch(scriptedTrajectory(bucket));
-    });
+    sim.findTrajectoryAsync(job.bucket, rng, yieldFrame)
+      .then(done)
+      .catch(() => done(scriptedTrajectory(job.bucket)));
   } else {
-    // 2D fallback path: scripted, sync, but fast.
-    Promise.resolve().then(() => launch(scriptedTrajectory(bucket)));
+    // 2D fallback: scripted + sync, but still go through the queue.
+    Promise.resolve().then(() => done(scriptedTrajectory(job.bucket)));
   }
-  return true;
 }
 
 /* AUTO chain: kick off a drop and arm the next one to fire when both
@@ -1356,15 +1420,16 @@ document.getElementById('btn-history').addEventListener('click', () => {
 });
 buildRack();
 refreshBalance();
-// Warm AudioFX on any first interaction (long before DROP fires) so
-// the iOS AudioContext-resume tax is paid quietly in the background.
+// Unlock + warm AudioFX on the FIRST user interaction of any kind,
+// long before DROP fires. iOS only honours audio unlocked inside a
+// gesture, and only some gesture types count — so we listen broadly
+// (pointer/touch/mouse/key) and tear them all down once one fires.
+const UNLOCK_EVENTS = ['pointerdown', 'touchend', 'mousedown', 'keydown', 'click'];
 function warmAudio() {
-  AudioFX.ensure();
-  document.removeEventListener('pointerdown', warmAudio, true);
-  document.removeEventListener('keydown', warmAudio, true);
+  AudioFX.unlock();
+  UNLOCK_EVENTS.forEach(ev => document.removeEventListener(ev, warmAudio, true));
 }
-document.addEventListener('pointerdown', warmAudio, { capture: true, once: true });
-document.addEventListener('keydown', warmAudio, { capture: true, once: true });
+UNLOCK_EVENTS.forEach(ev => document.addEventListener(ev, warmAudio, { capture: true }));
 addEventListener('focus', refreshBalance);
 addEventListener('pageshow', refreshBalance);
 document.addEventListener('jackpot-win', refreshBalance);
@@ -1379,7 +1444,9 @@ async function make3D() {
   const THREE = await import('three');
   let composer = null, bloomPass = null;
   const r3 = new THREE.WebGLRenderer({ antialias: !LOW_POWER, alpha: true });
-  r3.setPixelRatio(Math.min(devicePixelRatio || 1, LOW_POWER ? 1 : 2));
+  // Cap at 1.5 (was 2) — biggest fill-rate win on retina phones, and
+  // without bloom the extra crispness wasn't buying much.
+  r3.setPixelRatio(Math.min(devicePixelRatio || 1, LOW_POWER ? 1 : 1.5));
   els.house.appendChild(r3.domElement);
   r3.domElement.addEventListener('webglcontextlost', e => e.preventDefault());
 
@@ -1426,8 +1493,8 @@ async function make3D() {
   // pegs: instanced spheres, per-instance color for flash
   const pegGeo = new THREE.SphereGeometry(B.pegR * 1.18, 14, 12);
   const pegMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff, roughness: 0.35, metalness: 0.65,
-    emissive: 0x8866ff, emissiveIntensity: 0.18,
+    color: 0xc9bcff, roughness: 0.35, metalness: 0.55,
+    emissive: 0x7a5cff, emissiveIntensity: 0.55,  // brighter — no bloom now
   });
   const pegs = new THREE.InstancedMesh(pegGeo, pegMat, PEGS.length);
   const baseCol = new THREE.Color(0xb9a8ff);
@@ -1483,36 +1550,71 @@ async function make3D() {
   for (let i = 0; i < MAX_CONCURRENT; i++) {
     const mat = new THREE.MeshStandardMaterial({
       color: 0xffd24a, roughness: 0.18, metalness: 0.85,
-      emissive: 0xffd24a, emissiveIntensity: 0.55,
+      emissive: 0xffd24a, emissiveIntensity: 1.0,  // self-lit gold, no bloom
     });
     const m = new THREE.Mesh(ballGeo, mat);
     m.visible = false;
     board.add(m);
-    ballPool.push({ mesh: m, used: false, trail: [] });
+    ballPool.push({ mesh: m, used: false, halo: null });
   }
 
-  // trail sprites (shared pool, additive)
-  const TRAIL_N = LOW_POWER ? 0 : 26;
-  const trailMat = new THREE.SpriteMaterial({
-    color: 0xffd24a, transparent: true, opacity: 0.5,
-    blending: THREE.AdditiveBlending, depthWrite: false,
+  // Soft round particle texture (static, NO mipmaps) so sprites render
+  // as gentle glows instead of hard squares. Built once, shared.
+  const softTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.35, 'rgba(255,255,255,0.55)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(32, 32, 32, 0, Math.PI * 2); g.fill();
+    const t = new THREE.CanvasTexture(c);
+    t.generateMipmaps = false;
+    t.minFilter = THREE.LinearFilter;
+    t.magFilter = THREE.LinearFilter;
+    return t;
+  })();
+
+  // Each ball carries a soft additive HALO sprite — this is the glow
+  // that replaces UnrealBloom (which was the main per-frame cost on
+  // mobile). One cheap textured quad per ball instead of a multi-pass
+  // blur over the whole frame.
+  ballPool.forEach(slot => {
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: softTex, color: 0xffe27a, transparent: true, opacity: 0.85,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    halo.scale.setScalar(1.05);
+    halo.visible = false;
+    halo.position.z = 0.2;
+    board.add(halo);
+    slot.halo = halo;
   });
+
+  // Trail sprites — small, soft, fewer. Capped emission when several
+  // balls are airborne so AUTO drops don't drown the board in glow.
+  const TRAIL_N = LOW_POWER ? 0 : 18;
   const trailPool = [];
   for (let i = 0; i < TRAIL_N; i++) {
-    const s = new THREE.Sprite(trailMat.clone());
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: softTex, color: 0xffd24a, transparent: true, opacity: 0.4,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
     s.visible = false;
-    s.scale.setScalar(0.5);
+    s.scale.setScalar(0.22);
     board.add(s);
     trailPool.push({ sprite: s, life: 0 });
   }
   let trailCursor = 0;
 
-  // spark sprites for peg hits
-  const SPARK_N = LOW_POWER ? 0 : 14;
+  // Peg-hit sparks — small soft pops.
+  const SPARK_N = LOW_POWER ? 0 : 12;
   const sparkPool = [];
   for (let i = 0; i < SPARK_N; i++) {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({
-      color: 0xffffff, transparent: true, opacity: 0.9,
+      map: softTex, color: 0xffffff, transparent: true, opacity: 0.9,
       blending: THREE.AdditiveBlending, depthWrite: false,
     }));
     s.visible = false;
@@ -1520,19 +1622,8 @@ async function make3D() {
     sparkPool.push({ sprite: s, life: 0 });
   }
   let sparkCursor = 0;
-
-  // bloom
-  if (!LOW_POWER) {
-    const { EffectComposer } = await import('three/addons/postprocessing/EffectComposer.js');
-    const { RenderPass } = await import('three/addons/postprocessing/RenderPass.js');
-    const { UnrealBloomPass } = await import('three/addons/postprocessing/UnrealBloomPass.js');
-    composer = new EffectComposer(r3);
-    composer.addPass(new RenderPass(scene, camera));
-    bloomPass = new UnrealBloomPass(new THREE.Vector2(640, 720), 0.85, 0.55, 0.62);
-    composer.addPass(bloomPass);
-  }
-
-  const tmpCol = new THREE.Color();
+  // No postprocessing — composer stays null, render() falls through to
+  // the direct renderer. (Removes 3 addon imports + a per-frame blur.)
   function resize() {
     const r = els.house.getBoundingClientRect();
     r3.setSize(r.width, r.height, false);
@@ -1569,54 +1660,52 @@ async function make3D() {
       slot.used = true;
       slot.mesh.visible = true;
       slot.mesh.position.set(0, B.spawnY, 0);
+      if (slot.halo) { slot.halo.visible = true; slot.halo.position.set(0, B.spawnY, 0.2); }
       return ballPool.indexOf(slot);
     },
     updateBall(id, x, y) {
       const slot = ballPool[id];
       if (!slot) return;
       slot.mesh.position.set(x, y, 0);
-      if (TRAIL_N) {
-        const t = trailPool[trailCursor = (trailCursor + 1) % TRAIL_N];
+      if (slot.halo) slot.halo.position.set(x, y, 0.2);
+      // Emit a trail point only every other frame, and skip entirely
+      // when 3+ balls are airborne so the board doesn't smear.
+      if (TRAIL_N && State.inFlight < 3 && (trailCursor & 1) === 0) {
+        const t = trailPool[trailCursor % TRAIL_N];
         t.sprite.position.set(x, y, -0.1);
-        t.sprite.material.opacity = 0.4;
-        t.sprite.scale.setScalar(0.45);
+        t.sprite.material.opacity = 0.34;
+        t.sprite.scale.setScalar(0.22);
         t.sprite.visible = true;
         t.life = 1;
       }
+      trailCursor++;
     },
     removeBall(id) {
       const slot = ballPool[id];
-      if (slot) { slot.used = false; slot.mesh.visible = false; }
+      if (slot) {
+        slot.used = false;
+        slot.mesh.visible = false;
+        if (slot.halo) slot.halo.visible = false;
+      }
     },
     flashPeg(i, speed) {
-      pegFlash[i] = Math.min(1, 0.6 + speed * 0.05);
-      if (SPARK_N) {
+      // Spark only — the per-frame instance recolor was a big cost and
+      // is gone; pegs stay a constant emissive violet.
+      if (SPARK_N && State.inFlight < 4) {
         const s = sparkPool[sparkCursor = (sparkCursor + 1) % SPARK_N];
         s.sprite.position.set(PEGS[i].x, PEGS[i].y, 0.15);
         s.sprite.material.opacity = 0.85;
-        s.sprite.scale.setScalar(0.5 + Math.min(0.5, speed * 0.05));
+        s.sprite.scale.setScalar(0.18 + Math.min(0.16, speed * 0.018));
         s.sprite.visible = true;
         s.life = 1;
       }
     },
     flashBucket(i, mult) {
-      bucketGlow[i] = mult >= 10 ? 3.2 : mult >= 1 ? 2.0 : 1.0;
+      bucketGlow[i] = mult >= 10 ? 2.4 : mult >= 1 ? 1.6 : 0.9;
     },
     tickEffects() {
       let alive = false;
-      // peg flash decay (instance colors)
-      let touched = false;
-      for (let i = 0; i < PEGS.length; i++) {
-        if (pegFlash[i] > 0.01) {
-          pegFlash[i] *= 0.86;
-          tmpCol.copy(baseCol).lerp(new THREE.Color(0xffffff), pegFlash[i]);
-          pegs.setColorAt(i, tmpCol);
-          touched = true;
-          alive = true;
-        }
-      }
-      if (touched && pegs.instanceColor) pegs.instanceColor.needsUpdate = true;
-      // bucket glow decay
+      // bucket glow decay (cheap — 13 materials, no buffer uploads)
       for (let i = 0; i < 13; i++) {
         if (bucketGlow[i] > 0.27) {
           bucketGlow[i] *= 0.93;
@@ -1627,18 +1716,19 @@ async function make3D() {
       // trail fade
       for (const t of trailPool) {
         if (t.life > 0) {
-          t.life -= 0.06;
-          t.sprite.material.opacity = Math.max(0, t.life * 0.4);
+          t.life -= 0.07;
+          t.sprite.material.opacity = Math.max(0, t.life * 0.34);
           t.sprite.scale.multiplyScalar(0.97);
           if (t.life <= 0) t.sprite.visible = false;
           else alive = true;
         }
       }
+      // spark fade
       for (const s of sparkPool) {
         if (s.life > 0) {
-          s.life -= 0.09;
+          s.life -= 0.11;
           s.sprite.material.opacity = Math.max(0, s.life * 0.85);
-          s.sprite.scale.multiplyScalar(1.06);
+          s.sprite.scale.multiplyScalar(1.05);
           if (s.life <= 0) s.sprite.visible = false;
           else alive = true;
         }
