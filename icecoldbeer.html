@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Diamond Casino - Ice Cold Beer</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0a0418">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Diamond Casino">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Outfit:wght@400;600;800&family=Geist+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<!-- three + addons resolve through this map; rapier is dynamically imported.
+     All cross-origin runtime deps (like the Firebase SDK) — not precached. -->
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<style>
+:root {
+  --bg-0: #0a0418;
+  --bg-1: #150828;
+  --gold-0: #fff0a8;
+  --gold-1: #ffd24a;
+  --gold-2: #b8860b;
+  --gold-deep: #5c3d00;
+  --neon-pink: #ff2e93;
+  --neon-cyan: #22d3ee;
+  --neon-violet: #a855f7;
+  --neon-green: #5cffa1;
+  --danger: #ff4d6d;
+  --shadow-deep: 0 30px 60px -10px rgba(0,0,0,0.7), 0 18px 36px -18px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Outfit', sans-serif;
+  color: #fff;
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(168,85,247,0.20) 0%, transparent 50%),
+    radial-gradient(ellipse at 82% 18%, rgba(34,211,238,0.16) 0%, transparent 46%),
+    radial-gradient(ellipse at 50% 100%, rgba(255,46,147,0.13) 0%, transparent 58%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 58%, var(--bg-0));
+  background-attachment: fixed;
+  user-select: none;
+  -webkit-user-select: none;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>");
+}
+
+button, input { font: inherit; }
+
+/* ---------- TOP CHROME ---------- */
+.lobby-link, .history-btn {
+  position: fixed;
+  top: 12px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  text-decoration: none;
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  line-height: 1;
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(42,18,77,0.85), rgba(15,4,30,0.85));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.1s, filter 0.15s;
+}
+.lobby-link { left: 12px; color: var(--gold-1); box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 3px 0 rgba(0,0,0,0.5); }
+.history-btn { left: 122px; color: var(--neon-cyan); box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.4), 0 3px 0 rgba(0,0,0,0.5); }
+.lobby-link::before { content: '<'; font-size: 14px; line-height: 1; }
+.history-btn::before { content: '#'; font-size: 13px; line-height: 1; }
+.lobby-link:hover, .history-btn:hover { filter: brightness(1.15); }
+.lobby-link:active, .history-btn:active { transform: translateY(2px); }
+
+.balance-link {
+  position: fixed;
+  top: 12px;
+  right: 64px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px 8px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(42,18,77,0.85), rgba(15,4,30,0.85));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 3px 0 rgba(0,0,0,0.5);
+  color: #fff;
+}
+.balance-link .label { font-family: 'Bungee', cursive; font-size: 9px; letter-spacing: 0.24em; color: rgba(255,210,74,0.78); }
+.balance-link .value { font-family: 'Geist Mono', monospace; font-weight: 800; font-size: 16px; letter-spacing: 0.01em; }
+.balance-link .value.bump { animation: balBump 0.4s ease; }
+@keyframes balBump { 35% { transform: scale(1.08); color: var(--gold-1); } }
+
+/* ---------- STAGE ---------- */
+.stage {
+  position: relative;
+  z-index: 2;
+  width: min(560px, 100%);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 60px 12px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.game-header { text-align: center; }
+.pre { font-family: 'Bungee', cursive; font-size: 10px; letter-spacing: 0.5em; color: rgba(34,211,238,0.78); text-shadow: 0 0 10px rgba(34,211,238,0.45); margin-bottom: 5px; }
+.title {
+  font-family: 'Bungee Shade', 'Bungee', cursive;
+  font-size: clamp(26px, 6vw, 48px);
+  line-height: 1;
+  letter-spacing: 0.03em;
+  background: linear-gradient(180deg, #fff7d1 0%, var(--gold-1) 45%, #b8860b 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 4px 0 rgba(0,0,0,0.55)) drop-shadow(0 0 18px rgba(255,210,74,0.32));
+}
+.subtitle { font-family: 'Bungee', cursive; font-size: 9px; letter-spacing: 0.3em; color: rgba(255,255,255,0.48); margin-top: 5px; }
+
+/* ---------- BOARD ---------- */
+.boardhouse {
+  position: relative;
+  width: min(440px, 92vw, 56vh);
+  aspect-ratio: 9 / 13;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 50% 8%, rgba(34,211,238,0.16), transparent 55%),
+    linear-gradient(180deg, #160a31, #08031a);
+  box-shadow: var(--shadow-deep), inset 0 0 0 1.5px rgba(255,210,74,0.28), inset 0 0 60px rgba(0,0,0,0.55);
+  overflow: hidden;
+}
+.boardhouse canvas { display: block; width: 100%; height: 100%; }
+.boardhouse.shake { animation: bhShake 0.45s linear; }
+@keyframes bhShake {
+  0%,100% { transform: translate(0,0); }
+  15% { transform: translate(-6px, 4px); }
+  30% { transform: translate(5px, -5px); }
+  45% { transform: translate(-5px, -3px); }
+  60% { transform: translate(4px, 4px); }
+  75% { transform: translate(-3px, 2px); }
+  90% { transform: translate(2px, -1px); }
+}
+.boardhouse.flash-good::after, .boardhouse.flash-bad::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+}
+.boardhouse.flash-good::after { background: radial-gradient(ellipse at center, rgba(92,255,161,0.30), transparent 70%); animation: bhFlash 0.55s ease-out forwards; }
+.boardhouse.flash-bad::after  { background: radial-gradient(ellipse at center, rgba(255,77,109,0.34), transparent 70%); animation: bhFlash 0.5s ease-out forwards; }
+@keyframes bhFlash { from { opacity: 1; } to { opacity: 0; } }
+
+/* ---------- HUD ---------- */
+.hud {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.78);
+}
+.hud .lvl { color: var(--neon-cyan); }
+.hud .cash {
+  font-family: 'Geist Mono', monospace; font-weight: 800; letter-spacing: 0;
+  color: var(--neon-green); text-shadow: 0 0 10px rgba(92,255,161,0.4);
+}
+.hud .cash.bump { animation: balBump 0.4s ease; }
+
+.message { min-height: 20px; font-family: 'Bungee', cursive; font-size: 11px; letter-spacing: 0.16em; color: rgba(255,255,255,0.78); text-align: center; }
+.message.win  { color: var(--neon-green); text-shadow: 0 0 12px rgba(92,255,161,0.5); }
+.message.lose { color: var(--danger); }
+
+/* ---------- ROD PAD (the two knobs) ---------- */
+.rodpad { display: flex; gap: 18px; justify-content: center; width: 100%; }
+.rodcol { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.rodlabel { font-family: 'Bungee', cursive; font-size: 8.5px; letter-spacing: 0.16em; color: rgba(255,210,74,0.7); }
+.rodcol.right .rodlabel { color: rgba(34,211,238,0.78); }
+.rodbtns { display: flex; gap: 8px; }
+.rodbtn {
+  width: 58px; height: 56px; border: 0; cursor: pointer; border-radius: 14px;
+  font-size: 22px; line-height: 1; color: #120704;
+  background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 62%, var(--gold-2));
+  box-shadow: 0 5px 0 rgba(76,45,0,0.7), inset 0 1px 0 rgba(255,255,255,0.5);
+  transition: transform 0.06s, filter 0.12s, box-shadow 0.1s;
+  touch-action: none;
+}
+.rodcol.right .rodbtn { background: linear-gradient(180deg, #bdf6ff, var(--neon-cyan) 62%, #0a7d92); box-shadow: 0 5px 0 rgba(0,60,72,0.7), inset 0 1px 0 rgba(255,255,255,0.5); }
+.rodbtn.held, .rodbtn:active { transform: translateY(4px); box-shadow: 0 1px 0 rgba(76,45,0,0.7), inset 0 1px 0 rgba(255,255,255,0.5); filter: brightness(1.08); }
+.rodcol.right .rodbtn.held, .rodcol.right .rodbtn:active { box-shadow: 0 1px 0 rgba(0,60,72,0.7), inset 0 1px 0 rgba(255,255,255,0.5); }
+.rodbtn:disabled { opacity: 0.4; cursor: default; transform: none; filter: grayscale(0.3); }
+
+/* ---------- CONTROLS (bet + action) ---------- */
+.controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; width: 100%; }
+.chip-rack { display: flex; gap: 7px; }
+.chip {
+  position: relative; width: 46px; height: 46px; border-radius: 50%; border: 0; cursor: pointer;
+  font-family: 'Bungee', cursive; font-size: 9.5px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  background: radial-gradient(circle at 50% 38%, rgba(255,255,255,0.25), transparent 55%), var(--chip-bg, #7a1024);
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,0.85), inset 0 0 0 5px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.55);
+  transition: transform 0.12s, box-shadow 0.2s;
+}
+.chip.c1 { --chip-bg: #e8e4da; color: #222; text-shadow: 0 1px 0 rgba(255,255,255,0.5); }
+.chip.c5 { --chip-bg: #c01f2e; }
+.chip.c25 { --chip-bg: #1d9e55; }
+.chip.c100 { --chip-bg: #23242b; }
+.chip.c500 { --chip-bg: #6d28b8; }
+.chip.c1000 { --chip-bg: #b8860b; }
+.chip.selected { transform: translateY(-6px); box-shadow: inset 0 0 0 3px var(--gold-1), inset 0 0 0 5px rgba(0,0,0,0.3), 0 0 18px rgba(255,210,74,0.5), 0 7px 12px rgba(0,0,0,0.55); }
+.chip:active { transform: translateY(-2px); }
+
+.action-btn {
+  border: 0; cursor: pointer; min-width: 160px; height: 54px; border-radius: 16px;
+  font-family: 'Bungee', cursive; font-size: 14px; letter-spacing: 0.16em; color: #05140d;
+  background: linear-gradient(180deg, #c4ffd9, var(--neon-green) 58%, #14b85a);
+  box-shadow: 0 6px 0 rgba(0,75,33,0.7), inset 0 1px 0 rgba(255,255,255,0.5), 0 0 24px rgba(92,255,161,0.25);
+  transition: transform 0.08s, filter 0.15s, opacity 0.2s;
+}
+.action-btn.cashout { color: #120704; background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 62%, var(--gold-2)); box-shadow: 0 6px 0 rgba(76,45,0,0.7), inset 0 1px 0 rgba(255,255,255,0.55), 0 0 24px rgba(255,210,74,0.25); }
+.action-btn:hover { filter: brightness(1.1); }
+.action-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(0,75,33,0.7), inset 0 1px 0 rgba(255,255,255,0.5); }
+.action-btn.cashout:active { box-shadow: 0 3px 0 rgba(76,45,0,0.7), inset 0 1px 0 rgba(255,255,255,0.55); }
+.action-btn:disabled { opacity: 0.42; cursor: default; transform: none; }
+.action-btn .sub { display: block; font-size: 9px; letter-spacing: 0.2em; opacity: 0.72; }
+
+.win-pop {
+  position: fixed; z-index: 60; transform: translate(-50%, 0);
+  font-family: 'Geist Mono', monospace; font-weight: 800; pointer-events: none;
+  text-shadow: 0 0 14px currentColor, 0 2px 4px rgba(0,0,0,0.8);
+  animation: winPop 1.1s ease-out forwards;
+}
+@keyframes winPop {
+  0%   { opacity: 0; transform: translate(-50%, 6px) scale(0.8); }
+  18%  { opacity: 1; transform: translate(-50%, -10px) scale(1.12); }
+  100% { opacity: 0; transform: translate(-50%, -70px) scale(1); }
+}
+.icb-confetti { position: fixed; width: 9px; height: 9px; z-index: 59; pointer-events: none; border-radius: 2px; animation: icbConf 1s ease-out forwards; }
+@keyframes icbConf { to { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
+
+.house-note { font-size: 10.5px; color: rgba(255,255,255,0.35); letter-spacing: 0.05em; text-align: center; max-width: 380px; }
+
+@media (max-width: 720px) {
+  .stage { padding: 86px 8px 22px; gap: 8px; }
+  .title { font-size: clamp(22px, 8vw, 36px); }
+  .lobby-link, .history-btn { top: 8px; height: 30px; padding: 0 11px; font-size: 9px; }
+  .lobby-link { left: 8px; }
+  .history-btn { left: 96px; }
+  .balance-link { top: 8px; right: 50px; padding: 8px 10px 7px; gap: 7px; }
+  .balance-link .label { display: none; }
+  .balance-link .value { font-size: 13px; }
+  .rodbtn { width: 52px; height: 50px; font-size: 19px; }
+  .chip { width: 40px; height: 40px; font-size: 8.5px; }
+  .action-btn { min-width: 134px; height: 48px; font-size: 12px; }
+}
+
+html.low-power body::before { display: none; }
+html.low-power .lobby-link, html.low-power .history-btn, html.low-power .balance-link {
+  background: linear-gradient(180deg, rgba(42,18,77,0.96), rgba(15,4,30,0.96)); backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+@media (prefers-reduced-motion: reduce) { .boardhouse.shake { animation: none; } }
+</style>
+</head>
+<body>
+<script src="casino-audio.js"></script>
+<script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
+<script src="casino-level.js"></script>
+<script>window.CB_BANNER_PLACEMENT = { anchor: '.boardhouse', position: 'before', gapTop: '8px', gapBottom: '8px' };</script>
+<script src="casino-bots.js"></script>
+<script src="casino-chat.js"></script>
+
+<a class="lobby-link" href="index.html">LOBBY</a>
+<button class="history-btn" id="btn-history" title="History">HISTORY</button>
+<div class="balance-link">
+  <span class="label">BAL</span>
+  <span class="value">$<span id="balance">0</span></span>
+</div>
+
+<main class="stage">
+  <header class="game-header">
+    <div class="pre">DIAMOND CASINO</div>
+    <h1 class="title">ICE COLD BEER</h1>
+    <div class="subtitle">STEADY HANDS &middot; 3D PHYSICS</div>
+  </header>
+
+  <div class="boardhouse" id="boardhouse"></div>
+
+  <div class="hud" id="hud">
+    LEVEL <span class="lvl"><b id="hud-lvl">0</b>/7</span> &middot; <span class="cash" id="hud-cash">CASH $0</span>
+  </div>
+
+  <div class="message" id="message">SET YOUR BET &middot; START &middot; GUIDE THE BALL TO THE LIT HOLE</div>
+
+  <div class="rodpad">
+    <div class="rodcol left">
+      <div class="rodlabel">LEFT &middot; W / S</div>
+      <div class="rodbtns">
+        <button class="rodbtn" data-end="left" data-dir="1" aria-label="left up">&#9650;</button>
+        <button class="rodbtn" data-end="left" data-dir="-1" aria-label="left down">&#9660;</button>
+      </div>
+    </div>
+    <div class="rodcol right">
+      <div class="rodlabel">RIGHT &middot; &uarr; / &darr;</div>
+      <div class="rodbtns">
+        <button class="rodbtn" data-end="right" data-dir="1" aria-label="right up">&#9650;</button>
+        <button class="rodbtn" data-end="right" data-dir="-1" aria-label="right down">&#9660;</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="chip-rack" id="chip-rack"></div>
+    <button class="action-btn" id="btn-action">START<span class="sub" id="action-sub">$25</span></button>
+  </div>
+
+  <div class="house-note">Tilt the rod with each knob to roll the golden ball up through the gaps into the lit hole. Bank a rung each hole, cash out anytime — drop in a dark hole and you bust.</div>
+</main>
+
+<script type="module">
+/* ============================================================
+   ICE COLD BEER — live 3D-physics arcade skill game.
+   three.js + Rapier load at runtime from CDNs (cross-origin,
+   like the Firebase SDK — not precached). WebGL/Rapier absent
+   falls back to a Canvas2D renderer driving the same physics.
+
+   SKILL game (not RNG): you control a tilting rod with two
+   knobs (left W/S, right Up/Down or the on-screen buttons) and
+   roll a ball up a hole-filled board into the LIT target hole.
+   Each target banks a multiplier rung; cash out anytime; falling
+   in any dark hole busts the bet. RTP is skill-dependent — the
+   testable core covers the ladder math + hole geometry, not RTP.
+   ============================================================ */
+
+/* CORE TESTABLE API START */
+(function () {
+  'use strict';
+
+  const BALL_R = 0.42, HOLE_VIS = 0.62;
+  // Hazards are strict (you must thread the gaps); the LIT target is
+  // forgiving (the goal should reward intent, not pixel-perfect aim) —
+  // otherwise the ball sails right past every hole, as testing showed.
+  const HAZARD_CAPTURE_R = 0.52, TARGET_CAPTURE_R = 0.95;
+  const CAPTURE_R = HAZARD_CAPTURE_R;   // back-comat for layout helpers
+  const HALF = 6.0;           // play half-width (rod end x)
+  const WALL_X = 6.35;        // wall x (ball center clamps near here)
+  const BOTTOM = -11.4, TOP = 8.6;
+  const BALL_START = { x: 0, y: -10.3 };
+  const ROD_START_Y = -11.1;  // both ends here at round start (flat, low)
+  const Y_MIN = -11.4, Y_MAX = 8.7;   // rod-end clamp
+  const ROD_SPEED = 8.5;      // units/sec a knob moves while held
+  const GRAVITY = -16;
+  const H = 1 / 120;          // fixed physics step
+
+  // Climbing zig-zag target checkpoints — exactly one is lit at a time.
+  const TARGETS = [
+    { x: -1.8, y: -7.8 }, { x: 2.2, y: -4.8 }, { x: -2.6, y: -1.6 },
+    { x: 2.8, y: 1.4 }, { x: -1.8, y: 4.2 }, { x: 1.8, y: 6.4 }, { x: 0.0, y: 8.2 },
+  ];
+  // Banked-rung multiplier ladder (bank k targets -> LADDER[k-1]).
+  const LADDER = [1.4, 2.0, 3.0, 4.6, 7.5, 13, 28];
+
+  // Hazard holes: a staggered grid, then carve a safe corridor along the
+  // path so a navigable lane always exists (the challenge is controlling
+  // the physics ball within it, not finding the path).
+  function buildHazards() {
+    const rowsY = [-9.6, -6.4, -3.4, -0.4, 2.6, 5.4, 7.4];
+    const evenX = [-5, -3.2, -1.4, 1.4, 3.2, 5];
+    const oddX = [-4.2, -2.4, 0, 2.4, 4.2];
+    const path = [{ x: 0, y: BOTTOM }, ...TARGETS];
+    const clearR = 1.95, corridorR = 1.75;
+    function distSeg(px, py, a, b) {
+      const vx = b.x - a.x, vy = b.y - a.y, wx = px - a.x, wy = py - a.y;
+      const L2 = vx * vx + vy * vy; let t = L2 ? (wx * vx + wy * vy) / L2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(px - (a.x + t * vx), py - (a.y + t * vy));
+    }
+    const nearPath = (px, py) => {
+      for (let i = 0; i < path.length - 1; i++) if (distSeg(px, py, path[i], path[i + 1]) < corridorR) return true;
+      return false;
+    };
+    const nearTarget = (px, py) => TARGETS.some(t => Math.hypot(px - t.x, py - t.y) < clearR);
+    const haz = [];
+    rowsY.forEach((y, ri) => {
+      (ri % 2 ? oddX : evenX).forEach(x => {
+        if (!nearPath(x, y) && !nearTarget(x, y)) haz.push({ x, y });
+      });
+    });
+    return haz;
+  }
+  const HAZARDS = buildHazards();
+
+  // Classify a ball-center position against the hole field.
+  // passedSet: indices of targets already banked (now safe).
+  // litTarget: index of the currently lit target (or -1).
+  // Returns { type:'target'|'hazard'|'none', index }.
+  function classify(x, y, litTarget, passedSet) {
+    // lit target first + forgiving radius (so reaching it always wins,
+    // even if a hazard edge is nearby on the final approach)
+    if (litTarget >= 0) {
+      const t = TARGETS[litTarget];
+      if (Math.hypot(x - t.x, y - t.y) < TARGET_CAPTURE_R) return { type: 'target', index: litTarget };
+    }
+    for (let i = 0; i < HAZARDS.length; i++) {
+      const h = HAZARDS[i];
+      if (Math.hypot(x - h.x, y - h.y) < HAZARD_CAPTURE_R) return { type: 'hazard', index: i };
+    }
+    return { type: 'none', index: -1 };
+  }
+
+  function payout(bet, banked) {
+    if (banked <= 0) return 0;
+    const m = LADDER[Math.min(banked, LADDER.length) - 1];
+    return Math.round(bet * m * 100) / 100;
+  }
+  function ladderAt(banked) { return banked <= 0 ? 0 : LADDER[Math.min(banked, LADDER.length) - 1]; }
+
+  // Live physics world. RAPIER injected so Node tests can drive it.
+  function createPhysicsSim(RAPIER) {
+    const ROD_HALF_X = HALF, ROD_HALF_Y = 0.16, ROD_HALF_Z = 0.55;
+    const world = new RAPIER.World({ x: 0, y: GRAVITY, z: 0 });
+    world.timestep = H;
+
+    const ballBody = world.createRigidBody(
+      RAPIER.RigidBodyDesc.dynamic()
+        .setTranslation(BALL_START.x, BALL_START.y, 0)
+        .enabledTranslations(true, true, false)
+        .setCcdEnabled(true)
+        .setLinearDamping(0.2)
+        .setAngularDamping(0.4)
+    );
+    world.createCollider(
+      RAPIER.ColliderDesc.ball(BALL_R).setRestitution(0.04).setFriction(0.9).setDensity(1.0),
+      ballBody
+    );
+
+    const rod = world.createRigidBody(
+      RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, ROD_START_Y, 0)
+    );
+    world.createCollider(
+      RAPIER.ColliderDesc.cuboid(ROD_HALF_X, ROD_HALF_Y, ROD_HALF_Z).setRestitution(0).setFriction(0.85),
+      rod
+    );
+
+    for (const sx of [-1, 1]) {
+      world.createCollider(
+        RAPIER.ColliderDesc.cuboid(0.25, (TOP - BOTTOM) / 2 + 3, 1)
+          .setTranslation(sx * WALL_X, (TOP + BOTTOM) / 2, 0).setRestitution(0.1).setFriction(0.4)
+      );
+    }
+
+    function setRod(leftY, rightY) {
+      // Rod's left end ends up at leftY, right at rightY — matches the
+      // visual rod exactly. Verified under GRADUAL tilt (how the game
+      // actually moves the knobs): raising the left end rolls the ball
+      // toward the lower right, the real Ice Cold Beer behaviour.
+      const ang = Math.atan2(rightY - leftY, ROD_HALF_X * 2);
+      rod.setNextKinematicTranslation({ x: 0, y: (leftY + rightY) / 2, z: 0 });
+      rod.setNextKinematicRotation({ x: 0, y: 0, z: Math.sin(ang / 2), w: Math.cos(ang / 2) });
+    }
+    function step(leftY, rightY) { setRod(leftY, rightY); world.step(); }
+    function getBall() { const t = ballBody.translation(), v = ballBody.linvel(); return { x: t.x, y: t.y, vx: v.x, vy: v.y }; }
+    function resetBall(x, y) {
+      ballBody.setTranslation({ x, y, z: 0 }, true);
+      ballBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      ballBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    }
+    function nudge(vx, vy) { const v = ballBody.linvel(); ballBody.setLinvel({ x: vx == null ? v.x : vx, y: vy == null ? v.y : vy, z: 0 }, true); }
+    return { step, getBall, resetBall, nudge, free() { world.free(); } };
+  }
+
+  const api = {
+    BALL_R, CAPTURE_R, HAZARD_CAPTURE_R, TARGET_CAPTURE_R, HOLE_VIS, HALF, WALL_X, BOTTOM, TOP, BALL_START,
+    ROD_START_Y, Y_MIN, Y_MAX, ROD_SPEED, GRAVITY, H,
+    TARGETS, LADDER, HAZARDS, classify, payout, ladderAt, createPhysicsSim,
+  };
+  if (typeof globalThis !== 'undefined') globalThis.IceColdBeerCore = api;
+  if (typeof window !== 'undefined') window.IceColdBeerCore = api;
+})();
+/* CORE TESTABLE API END */
+
+const Core = window.IceColdBeerCore;
+
+/* ---------- low power ---------- */
+const REDUCED_MOTION = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const LOW_POWER = REDUCED_MOTION ||
+  (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+  Math.min(screen.width, screen.height) <= 720;
+if (LOW_POWER) document.documentElement.classList.add('low-power');
+
+/* ---------- shared balance ---------- */
+const BALANCE_KEY = 'casino.balance';
+function loadBalance() { const v = parseFloat(localStorage.getItem(BALANCE_KEY)); return isNaN(v) || v < 0 ? 1000 : v; }
+function persistBalance(v) { try { localStorage.setItem(BALANCE_KEY, String(v)); } catch (e) {} }
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const fmtMult = m => (Number.isInteger(m) ? m : m.toFixed(1)) + 'x';
+
+/* ============================================================
+   AudioFX — composed synth engine (same skeleton as the other
+   3D games). Voices tuned for the arcade: a soft tick as a knob
+   moves, a rising chime per banked rung (pitch climbs with the
+   level), a thud + descend on bust, a fanfare on cash out.
+   ============================================================ */
+const AudioFX = (function () {
+  let ctx = null, master = null, noiseBuf = null, silentEl = null;
+  const SCALE = [196.00, 220.00, 261.63, 293.66, 349.23, 392.00, 440.00, 523.25];
+
+  function makeSilentLoop() {
+    const sr = 8000, len = 800;
+    const buf = new ArrayBuffer(44 + len);
+    const v = new DataView(buf);
+    const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + len, true); w(8, 'WAVE'); w(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    w(36, 'data'); v.setUint32(40, len, true);
+    for (let i = 0; i < len; i++) v.setUint8(44 + i, 128);
+    const a = document.createElement('audio');
+    a.loop = true; a.preload = 'auto'; a.volume = 0; a.setAttribute('playsinline', '');
+    a.src = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+    return a;
+  }
+  function unlock() {
+    ensure();
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    try { if (ctx) { const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(0); } } catch (e) {}
+    if (!silentEl) { try { silentEl = makeSilentLoop(); silentEl.play().catch(() => {}); } catch (e) {} }
+    else if (silentEl.paused) silentEl.play().catch(() => {});
+  }
+  function ensure() {
+    if (!ctx) {
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return null;
+      try {
+        ctx = new Ctor();
+        const lim = ctx.createDynamicsCompressor();
+        lim.threshold.value = -8; lim.knee.value = 5; lim.ratio.value = 12; lim.attack.value = 0.002; lim.release.value = 0.08;
+        master = ctx.createGain();
+        master.gain.value = (window.Settings ? Settings.sfxVolume() : 1);
+        master.connect(lim).connect(ctx.destination);
+        const N = Math.floor(ctx.sampleRate * 0.4);
+        noiseBuf = ctx.createBuffer(1, N, ctx.sampleRate);
+        const d = noiseBuf.getChannelData(0); let last = 0;
+        for (let i = 0; i < N; i++) { const wv = Math.random() * 2 - 1; last = last * 0.6 + wv * 0.4; d[i] = last; }
+        if (window.Settings && Settings.onChange) Settings.onChange(() => { if (master) master.gain.value = Settings.sfxVolume(); });
+      } catch (e) { ctx = null; }
+    }
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    return ctx;
+  }
+  function blip(freq, amp, dur, type, when) {
+    const t = (when || ctx.currentTime);
+    const o = ctx.createOscillator(); o.type = type || 'triangle'; o.frequency.value = freq;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.min(5000, freq * 4);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(amp, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(lp).connect(g).connect(master); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(amp, dur, hp, lpf, when) {
+    const t = (when || ctx.currentTime);
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true; src.playbackRate.value = 0.8 + Math.random() * 0.4;
+    const h = ctx.createBiquadFilter(); h.type = 'highpass'; h.frequency.value = hp;
+    const l = ctx.createBiquadFilter(); l.type = 'lowpass'; l.frequency.value = lpf;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(amp, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(h).connect(l).connect(g).connect(master);
+    // clamp the random read-offset to >= 0 (loop=true covers dur > buffer)
+    const off = Math.max(0, Math.random() * Math.max(0, noiseBuf.duration - dur - 0.02));
+    src.start(t, off); src.stop(t + dur + 0.03);
+  }
+  let _lastTick = 0;
+  function rodTick() {
+    if (!ensure()) return;
+    const tw = performance.now(); if (tw - _lastTick < 90) return; _lastTick = tw;
+    blip(150 + Math.random() * 30, 0.035, 0.04, 'square');
+  }
+  function uiClick() { if (!ensure()) return; blip(440, 0.08, 0.045, 'square'); }
+  function chipSelect() { if (!ensure()) return; blip(720, 0.10, 0.05, 'square'); }
+  function start() { if (!ensure()) return; const t = ctx.currentTime; blip(294, 0.14, 0.08, 'square', t); blip(440, 0.13, 0.1, 'square', t + 0.07); }
+  function bank(level) {
+    if (!ensure()) return;
+    const t = ctx.currentTime;
+    const note = SCALE[Math.max(0, Math.min(SCALE.length - 1, level))];
+    blip(note, 0.22, 0.18, 'triangle', t);
+    blip(note * 1.5, 0.16, 0.2, 'triangle', t + 0.05);
+    noise(0.08, 0.05, 2000, 7000, t);
+  }
+  function bust() {
+    if (!ensure()) return;
+    const t = ctx.currentTime;
+    blip(160, 0.26, 0.22, 'sine', t);
+    [330, 247, 175, 117].forEach((f, i) => blip(f, 0.16, 0.16, 'sawtooth', t + 0.05 + i * 0.06));
+    noise(0.16, 0.28, 120, 900, t);
+  }
+  function cashout(big) {
+    if (!ensure()) return;
+    const t = ctx.currentTime;
+    blip(110, 0.24, 0.4, 'sine', t);
+    const arp = big ? [392, 494, 587, 784, 988] : [392, 494, 587, 784];
+    arp.forEach((f, i) => blip(f, 0.2, 0.32, 'sawtooth', t + 0.05 + i * 0.07));
+    noise(0.1, 0.5, 2500, 8000, t + 0.1);
+  }
+  return { ensure, unlock, rodTick, uiClick, chipSelect, start, bank, bust, cashout };
+})();
+
+/* ============================================================
+   Game state + DOM
+   ============================================================ */
+const els = {
+  balance: document.getElementById('balance'),
+  balanceWrap: document.querySelector('.balance-link .value'),
+  message: document.getElementById('message'),
+  house: document.getElementById('boardhouse'),
+  hud: document.getElementById('hud'),
+  hudLvl: document.getElementById('hud-lvl'),
+  hudCash: document.getElementById('hud-cash'),
+  action: document.getElementById('btn-action'),
+  actionSub: document.getElementById('action-sub'),
+  rack: document.getElementById('chip-rack'),
+};
+
+const State = {
+  phase: 'BETTING',          // BETTING | PLAYING | BUST
+  balance: loadBalance(),
+  bet: 25,
+  leftY: Core.ROD_START_Y,
+  rightY: Core.ROD_START_Y,
+  leftDir: 0, rightDir: 0,   // -1/0/+1 from held inputs
+  banked: 0,
+  litTarget: 0,
+  sink: null,                // bust animation state
+};
+
+let renderer = null, sim = null;
+
+function setBalance(v) {
+  State.balance = Math.round(v * 100) / 100;
+  persistBalance(State.balance);
+  els.balance.textContent = fmt(State.balance);
+  els.balanceWrap.classList.remove('bump'); void els.balanceWrap.offsetWidth; els.balanceWrap.classList.add('bump');
+}
+function refreshBalance() { State.balance = loadBalance(); els.balance.textContent = fmt(State.balance); }
+function setMessage(text, kind) {
+  els.message.textContent = text;
+  els.message.classList.toggle('win', kind === 'win');
+  els.message.classList.toggle('lose', kind === 'lose');
+}
+function updateHud() {
+  els.hudLvl.textContent = State.banked;
+  const cash = Core.payout(State.bet, State.banked);
+  els.hudCash.textContent = State.banked > 0 ? ('CASH $' + fmt(cash) + ' · ' + fmtMult(Core.ladderAt(State.banked))) : 'CASH $0';
+  els.hudCash.classList.remove('bump'); void els.hudCash.offsetWidth; if (State.banked > 0) els.hudCash.classList.add('bump');
+}
+
+/* ---------- controls: keyboard + on-screen knobs ---------- */
+function setEndDir(end, dir) {
+  if (end === 'left') State.leftDir = dir; else State.rightDir = dir;
+  if (dir !== 0 && State.phase === 'PLAYING') AudioFX.rodTick();
+}
+const keyState = { w: 0, s: 0, up: 0, down: 0 };
+function applyKeys() {
+  setEndDir('left', keyState.w ? 1 : keyState.s ? -1 : 0);
+  setEndDir('right', keyState.up ? 1 : keyState.down ? -1 : 0);
+}
+addEventListener('keydown', e => {
+  let hit = true;
+  if (e.key === 'w' || e.key === 'W') keyState.w = 1;
+  else if (e.key === 's' || e.key === 'S') keyState.s = 1;
+  else if (e.key === 'ArrowUp') keyState.up = 1;
+  else if (e.key === 'ArrowDown') keyState.down = 1;
+  else hit = false;
+  if (hit) { e.preventDefault(); applyKeys(); }
+});
+addEventListener('keyup', e => {
+  let hit = true;
+  if (e.key === 'w' || e.key === 'W') keyState.w = 0;
+  else if (e.key === 's' || e.key === 'S') keyState.s = 0;
+  else if (e.key === 'ArrowUp') keyState.up = 0;
+  else if (e.key === 'ArrowDown') keyState.down = 0;
+  else hit = false;
+  if (hit) { e.preventDefault(); applyKeys(); }
+});
+const rodBtns = Array.from(document.querySelectorAll('.rodbtn'));
+rodBtns.forEach(btn => {
+  const end = btn.dataset.end, dir = parseInt(btn.dataset.dir, 10);
+  const press = e => { if (e && e.cancelable) e.preventDefault(); if (btn.disabled) return; btn.classList.add('held'); setEndDir(end, dir); };
+  const release = () => { btn.classList.remove('held'); if ((end === 'left' ? State.leftDir : State.rightDir) === dir) setEndDir(end, 0); };
+  btn.addEventListener('pointerdown', press);
+  btn.addEventListener('pointerup', release);
+  btn.addEventListener('pointerleave', release);
+  btn.addEventListener('pointercancel', release);
+});
+function setControlsEnabled(on) {
+  rodBtns.forEach(b => { b.disabled = !on; if (!on) b.classList.remove('held'); });
+  if (!on) { State.leftDir = State.rightDir = 0; keyState.w = keyState.s = keyState.up = keyState.down = 0; }
+}
+
+/* ---------- live loop ---------- */
+let rafId = 0, loopActive = false, lastT = 0, acc = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - (lastT || now)) / 1000);
+  lastT = now;
+
+  if (State.phase === 'PLAYING') {
+    // move knobs from held inputs
+    if (State.leftDir) State.leftY = clampY(State.leftY + State.leftDir * Core.ROD_SPEED * dt);
+    if (State.rightDir) State.rightY = clampY(State.rightY + State.rightDir * Core.ROD_SPEED * dt);
+    // step physics with a fixed-step accumulator for stability
+    if (sim) {
+      acc += dt;
+      let n = 0;
+      while (acc >= Core.H && n < 6) { sim.step(State.leftY, State.rightY); acc -= Core.H; n++; }
+      const b = sim.getBall();
+      // safety: if the ball somehow escaped below, re-seat it
+      if (b.y < Core.BOTTOM - 2 || Math.abs(b.x) > Core.WALL_X + 1) { sim.resetBall(0, Core.BALL_START.y); }
+      renderer.updateBall(b.x, b.y);
+      renderer.updateRod(State.leftY, State.rightY);
+      checkCapture(b);
+    }
+  } else if (State.phase === 'BUST' && State.sink) {
+    const k = Math.min(1, (now - State.sink.t0) / 520);
+    const e = k * k;
+    const x = State.sink.x0 + (State.sink.hx - State.sink.x0) * e;
+    const y = State.sink.y0 + (State.sink.hy - State.sink.y0) * e;
+    renderer.updateBall(x, y, 1 - 0.7 * k, -1.4 * k);
+    if (k >= 1) { State.sink = null; finishBust(); }
+  }
+
+  const fx = renderer.tickEffects ? renderer.tickEffects(dt) : false;
+  renderer.render();
+
+  if (State.phase === 'PLAYING' || State.phase === 'BUST' || fx) {
+    rafId = requestAnimationFrame(frame);
+  } else { loopActive = false; lastT = 0; }
+}
+function clampY(v) { return Math.max(Core.Y_MIN, Math.min(Core.Y_MAX, v)); }
+function ensureLoop() { if (loopActive || document.hidden || !renderer) return; loopActive = true; lastT = 0; acc = 0; rafId = requestAnimationFrame(frame); }
+function renderOnce() { if (renderer) renderer.render(); }
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) { if (State.phase !== 'BETTING') ensureLoop(); else renderOnce(); }
+  else if (rafId) { cancelAnimationFrame(rafId); loopActive = false; }
+});
+let resizeT = 0;
+addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (renderer) { renderer.resize(); renderOnce(); } }, 150); });
+
+/* ---------- round logic ---------- */
+let captureCooldown = 0;
+function checkCapture(b) {
+  if (captureCooldown > 0) { captureCooldown--; return; }
+  const c = Core.classify(b.x, b.y, State.litTarget, null);
+  if (c.type === 'target') bankRung();
+  else if (c.type === 'hazard') bust(Core.HAZARDS[c.index].x, Core.HAZARDS[c.index].y);
+}
+function bankRung() {
+  State.banked++;
+  AudioFX.bank(State.banked);
+  renderer.setHoleState('target', State.litTarget, 'passed');
+  flashBoard('good');
+  renderer.pulseBall();
+  const cash = Core.payout(State.bet, State.banked);
+  popText(Core.ladderAt(State.banked) + 'x  $' + fmt(cash), '#5cffa1', 24);
+  updateHud();
+  els.action.disabled = false;   // cash out now allowed
+  if (State.banked >= Core.TARGETS.length) { autoCashTop(); return; }
+  // light the next target
+  State.litTarget = State.banked;
+  renderer.setHoleState('target', State.litTarget, 'target');
+  // small upward nudge so the ball clears the just-banked (now safe) hole
+  if (sim) sim.nudge(null, Math.max(1.5, sim.getBall().vy));
+  captureCooldown = 14;        // ~brief grace so we don't re-trigger same frame
+  setMessage('LEVEL ' + State.banked + ' — KEEP CLIMBING OR CASH OUT', 'win');
+}
+function autoCashTop() {
+  setMessage('TOP OF THE BOARD! MAX PAYOUT', 'win');
+  doCashout(true);
+}
+function bust(hx, hy) {
+  State.phase = 'BUST';
+  setControlsEnabled(false);
+  AudioFX.bust();
+  flashBoard('bad');
+  shakeBoard();
+  const b = sim ? sim.getBall() : { x: hx, y: hy };
+  State.sink = { x0: b.x, y0: b.y, hx, hy, t0: performance.now() };
+  ensureLoop();
+}
+function finishBust() {
+  // bet was already debited at START; record the loss once
+  try { History.record('icecoldbeer', State.bet, -State.bet, null); } catch (e) {}
+  setMessage('BUSTED — DROPPED IN A DARK HOLE', 'lose');
+  endRound();
+}
+function doCashout(viaTop) {
+  if (State.banked <= 0) return;
+  const win = Core.payout(State.bet, State.banked);
+  const net = Math.round((win - State.bet) * 100) / 100;
+  setBalance(State.balance + win);
+  try { History.record('icecoldbeer', State.bet, net, null); } catch (e) {}
+  AudioFX.cashout(State.banked >= 4);
+  flashBoard('good');
+  if (State.banked >= 4 && !LOW_POWER) confettiBurst();
+  popText('+$' + fmt(win), '#ffd24a', 30);
+  if (!viaTop) setMessage('CASHED OUT — +$' + fmt(net >= 0 ? net : 0), 'win');
+  endRound();
+}
+function endRound() {
+  State.phase = 'BETTING';
+  setControlsEnabled(false);
+  // reset board to fresh state for the next round
+  State.banked = 0;
+  State.litTarget = 0;
+  State.leftY = State.rightY = Core.ROD_START_Y;
+  if (sim) sim.resetBall(Core.BALL_START.x, Core.BALL_START.y);
+  renderer.resetHoles(0);
+  renderer.updateRod(State.leftY, State.rightY);
+  renderer.updateBall(Core.BALL_START.x, Core.BALL_START.y, 1, 0);
+  updateHud();
+  renderActionButton();
+  // let the bust/cashout fx finish, then settle to a static frame
+  setTimeout(() => { if (State.phase === 'BETTING') renderOnce(); }, 700);
+}
+function startRound() {
+  if (State.phase !== 'BETTING') return;
+  if (State.balance < State.bet) { setMessage('NOT ENOUGH CHIPS', 'lose'); return; }
+  AudioFX.unlock(); AudioFX.start();
+  setBalance(State.balance - State.bet);
+  State.phase = 'PLAYING';
+  State.banked = 0;
+  State.litTarget = 0;
+  State.leftY = State.rightY = Core.ROD_START_Y;
+  if (sim) sim.resetBall(Core.BALL_START.x, Core.BALL_START.y);
+  renderer.resetHoles(0);
+  renderer.updateRod(State.leftY, State.rightY);
+  renderer.updateBall(Core.BALL_START.x, Core.BALL_START.y, 1, 0);
+  captureCooldown = 10;
+  setControlsEnabled(true);
+  updateHud();
+  renderActionButton();
+  setMessage('GUIDE THE BALL INTO THE LIT HOLE', null);
+  ensureLoop();
+}
+function renderActionButton() {
+  if (State.phase === 'PLAYING') {
+    els.action.firstChild.nodeValue = 'CASH OUT';
+    els.action.classList.add('cashout');
+    els.actionSub.textContent = State.banked > 0 ? ('$' + fmt(Core.payout(State.bet, State.banked))) : 'REACH A HOLE';
+    els.action.disabled = State.banked <= 0;
+  } else {
+    els.action.firstChild.nodeValue = 'START';
+    els.action.classList.remove('cashout');
+    els.actionSub.textContent = '$' + fmt(State.bet);
+    els.action.disabled = false;
+  }
+}
+
+/* ---------- fx helpers ---------- */
+function flashBoard(kind) {
+  const cls = kind === 'good' ? 'flash-good' : 'flash-bad';
+  els.house.classList.remove('flash-good', 'flash-bad'); void els.house.offsetWidth; els.house.classList.add(cls);
+}
+function shakeBoard() { if (LOW_POWER) return; els.house.classList.remove('shake'); void els.house.offsetWidth; els.house.classList.add('shake'); }
+function popText(text, color, size) {
+  const r = els.house.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'win-pop';
+  el.style.left = (r.left + r.width / 2) + 'px';
+  el.style.top = (r.top + r.height * 0.4) + 'px';
+  el.style.color = color; el.style.fontSize = size + 'px';
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1100);
+}
+function confettiBurst() {
+  const r = els.house.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height * 0.4;
+  const colors = ['#ffd24a', '#ff2e93', '#22d3ee', '#5cffa1', '#a855f7'];
+  for (let i = 0; i < 20; i++) {
+    const d = document.createElement('div'); d.className = 'icb-confetti';
+    d.style.left = cx + 'px'; d.style.top = cy + 'px'; d.style.background = colors[i % colors.length];
+    const a = Math.random() * Math.PI * 2, dist = 90 + Math.random() * 190;
+    d.style.setProperty('--dx', Math.cos(a) * dist + 'px');
+    d.style.setProperty('--dy', (Math.sin(a) * dist - 70) + 'px');
+    d.style.setProperty('--rot', ((Math.random() * 540 - 270) | 0) + 'deg');
+    document.body.appendChild(d); setTimeout(() => d.remove(), 1100);
+  }
+}
+
+/* ---------- bet rack + action wiring ---------- */
+function buildRack() {
+  const denoms = [1, 5, 25, 100, 500, 1000];
+  for (const dm of denoms) {
+    const c = document.createElement('button');
+    c.className = 'chip c' + dm + (dm === State.bet ? ' selected' : '');
+    c.textContent = dm >= 1000 ? '$1K' : '$' + dm;
+    const pick = e => {
+      if (e && e.cancelable) e.preventDefault();
+      if (State.phase !== 'BETTING') return;
+      const n = performance.now(); if (c._at && n - c._at < 200) return; c._at = n;
+      State.bet = dm;
+      els.rack.querySelectorAll('.chip').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected');
+      AudioFX.chipSelect(); renderActionButton(); updateHud();
+    };
+    if (window.PointerEvent) c.addEventListener('pointerdown', e => { if (e.button === 0 || e.pointerType !== 'mouse') pick(e); });
+    c.addEventListener('click', pick);
+    els.rack.appendChild(c);
+  }
+}
+{
+  const fire = e => {
+    if (e && e.cancelable) e.preventDefault();
+    const n = performance.now(); if (els.action._at && n - els.action._at < 250) return; els.action._at = n;
+    if (State.phase === 'PLAYING') doCashout(false);
+    else startRound();
+  };
+  if (window.PointerEvent) els.action.addEventListener('pointerdown', e => { if (e.button === 0 || e.pointerType !== 'mouse') fire(e); });
+  els.action.addEventListener('click', fire);
+}
+document.getElementById('btn-history').addEventListener('click', () => {
+  AudioFX.uiClick();
+  if (window.HistoryUI) HistoryUI.open({ scope: 'session', game: 'icecoldbeer' });
+});
+buildRack();
+refreshBalance();
+updateHud();
+renderActionButton();
+addEventListener('focus', refreshBalance);
+addEventListener('pageshow', refreshBalance);
+document.addEventListener('jackpot-win', refreshBalance);
+if (window.SettingsUI) SettingsUI.mount();
+if (window.Music) Music.init(encodeURI('Music/Crash Table.m4a'));
+
+// iOS audio unlock on first gesture (multiple event types)
+const UNLOCK_EVENTS = ['pointerdown', 'touchend', 'mousedown', 'keydown', 'click'];
+function warmAudio() { AudioFX.unlock(); UNLOCK_EVENTS.forEach(ev => document.removeEventListener(ev, warmAudio, true)); }
+UNLOCK_EVENTS.forEach(ev => document.addEventListener(ev, warmAudio, { capture: true }));
+
+/* ============================================================
+   3D renderer. Geometry + emissive only (no canvas textures on
+   moving meshes). Panel with recessed holes, a tilting metallic
+   rod + knobs, a glowing gold ball.
+   ============================================================ */
+function holeColor(state) {
+  if (state === 'target') return { c: 0xffd24a, e: 1.6 };
+  if (state === 'passed') return { c: 0x2bd06a, e: 0.9 };
+  return { c: 0x3a1d52, e: 0.25 };   // hazard (dark violet)
+}
+async function make3D() {
+  const THREE = await import('three');
+  const r3 = new THREE.WebGLRenderer({ antialias: !LOW_POWER, alpha: true });
+  r3.setPixelRatio(Math.min(devicePixelRatio || 1, LOW_POWER ? 1 : 1.5));
+  els.house.appendChild(r3.domElement);
+  r3.domElement.addEventListener('webglcontextlost', e => e.preventDefault());
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 80);
+  const CY = (Core.TOP + Core.BOTTOM) / 2;        // board vertical center
+  camera.position.set(0, CY, 27);
+  camera.lookAt(0, CY, 0);
+
+  scene.add(new THREE.AmbientLight(0x9f96cc, 0.95));
+  const key = new THREE.DirectionalLight(0xffe9b0, 2.0); key.position.set(3, 8, 10); scene.add(key);
+  const cool = new THREE.DirectionalLight(0x22d3ee, 0.7); cool.position.set(-6, -3, 7); scene.add(cool);
+
+  const board = new THREE.Group();
+  scene.add(board);
+
+  // back panel
+  const panel = new THREE.Mesh(
+    new THREE.BoxGeometry(Core.HALF * 2 + 1.2, Core.TOP - Core.BOTTOM + 2.0, 0.6),
+    new THREE.MeshStandardMaterial({ color: 0x180b34, roughness: 0.85, metalness: 0.1, emissive: 0x0a0420, emissiveIntensity: 0.5 })
+  );
+  panel.position.set(0, CY, -0.7);
+  board.add(panel);
+  // side rails
+  const railMat = new THREE.MeshStandardMaterial({ color: 0xd4a017, roughness: 0.3, metalness: 0.9, emissive: 0x553c00, emissiveIntensity: 0.3 });
+  for (const sx of [-1, 1]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.34, Core.TOP - Core.BOTTOM + 2.2, 0.9), railMat);
+    rail.position.set(sx * Core.WALL_X, CY, -0.2); board.add(rail);
+  }
+
+  // holes — each is a ring + a dark recessed disc; target/passed glow
+  const ringGeo = new THREE.TorusGeometry(Core.HOLE_VIS, 0.11, 12, 24);
+  const discGeo = new THREE.CircleGeometry(Core.HOLE_VIS, 24);
+  const holeMeshes = { target: [], hazard: [] };
+  function makeHole(x, y, kind) {
+    const col = holeColor(kind === 'targetslot' ? 'hazard' : 'hazard');
+    const mat = new THREE.MeshStandardMaterial({ color: col.c, roughness: 0.5, metalness: 0.4, emissive: col.c, emissiveIntensity: col.e });
+    const ring = new THREE.Mesh(ringGeo, mat); ring.position.set(x, y, -0.1);
+    const disc = new THREE.Mesh(discGeo, new THREE.MeshBasicMaterial({ color: 0x05020e }));
+    disc.position.set(x, y, -0.34);
+    board.add(disc); board.add(ring);
+    return { ring, mat, baseE: col.e, x, y, glow: 0 };
+  }
+  Core.HAZARDS.forEach(h => holeMeshes.hazard.push(makeHole(h.x, h.y, 'haz')));
+  Core.TARGETS.forEach(t => holeMeshes.target.push(makeHole(t.x, t.y, 'targetslot')));
+
+  function setHoleStateImpl(group, i, state) {
+    const arr = group === 'target' ? holeMeshes.target : holeMeshes.hazard;
+    const m = arr[i]; if (!m) return;
+    const col = holeColor(state);
+    m.mat.color.set(col.c); m.mat.emissive.set(col.c); m.mat.emissiveIntensity = col.e; m.baseE = col.e;
+    m.pulse = (state === 'target');
+  }
+  function resetHolesImpl(litIndex) {
+    holeMeshes.hazard.forEach((m, i) => setHoleStateImpl('hazard', i, 'hazard'));
+    holeMeshes.target.forEach((m, i) => setHoleStateImpl('target', i, i === litIndex ? 'target' : 'hazard'));
+  }
+  resetHolesImpl(0);
+
+  // rod: a metallic cylinder along X + two knob spheres
+  const rodGroup = new THREE.Group();
+  const rodMat = new THREE.MeshStandardMaterial({ color: 0xcfd6e6, roughness: 0.25, metalness: 0.95, emissive: 0x223044, emissiveIntensity: 0.25 });
+  const rodCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, Core.HALF * 2, 18), rodMat);
+  rodCyl.rotation.z = Math.PI / 2; rodGroup.add(rodCyl);
+  const knobMat = new THREE.MeshStandardMaterial({ color: 0xff5a7a, roughness: 0.3, metalness: 0.6, emissive: 0x6e0f24, emissiveIntensity: 0.5 });
+  const knobL = new THREE.Mesh(new THREE.SphereGeometry(0.4, 18, 14), knobMat); knobL.position.x = -Core.HALF; rodGroup.add(knobL);
+  const knobMatR = new THREE.MeshStandardMaterial({ color: 0x4ad6ee, roughness: 0.3, metalness: 0.6, emissive: 0x0a5566, emissiveIntensity: 0.5 });
+  const knobR = new THREE.Mesh(new THREE.SphereGeometry(0.4, 18, 14), knobMatR); knobR.position.x = Core.HALF; rodGroup.add(knobR);
+  rodGroup.position.z = 0.15;
+  board.add(rodGroup);
+
+  // ball + halo
+  const ballMat = new THREE.MeshStandardMaterial({ color: 0xffd24a, roughness: 0.18, metalness: 0.85, emissive: 0xffd24a, emissiveIntensity: 1.0 });
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(Core.BALL_R, 26, 20), ballMat);
+  ball.position.z = 0.35; board.add(ball);
+  const softTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.35, 'rgba(255,255,255,0.55)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad; g.beginPath(); g.arc(32, 32, 32, 0, Math.PI * 2); g.fill();
+    const t = new THREE.CanvasTexture(c); t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; return t;
+  })();
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex, color: 0xffe27a, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+  halo.scale.setScalar(1.5); halo.position.z = 0.45; board.add(halo);
+  let ballGlow = 0, pulseT = 0;
+
+  function resize() {
+    const rr = els.house.getBoundingClientRect();
+    r3.setSize(rr.width, rr.height, false);
+    camera.aspect = rr.width / rr.height; camera.updateProjectionMatrix();
+  }
+  resize();
+
+  return {
+    is3D: true,
+    resize,
+    render() { r3.render(scene, camera); },
+    updateRod(leftY, rightY) {
+      const ang = Math.atan2(rightY - leftY, Core.HALF * 2);
+      rodGroup.position.set(0, (leftY + rightY) / 2, 0.15);
+      rodGroup.rotation.z = ang;
+    },
+    updateBall(x, y, scale, zoff) {
+      ball.position.set(x, y, 0.35 + (zoff || 0));
+      ball.scale.setScalar(scale == null ? 1 : scale);
+      halo.position.set(x, y, 0.45 + (zoff || 0));
+      halo.visible = (scale == null || scale > 0.05);
+    },
+    setHoleState(group, i, state) { setHoleStateImpl(group, i, state); },
+    resetHoles(lit) { resetHolesImpl(lit); },
+    pulseBall() { ballGlow = 1; },
+    tickEffects(dt) {
+      let alive = false;
+      pulseT += (dt || 0.016);
+      // lit target breathes
+      const lit = holeMeshes.target.find(m => m.pulse);
+      if (lit) { lit.mat.emissiveIntensity = lit.baseE * (0.75 + 0.45 * (0.5 + 0.5 * Math.sin(pulseT * 4))); alive = true; }
+      if (ballGlow > 0.02) {
+        ballGlow *= 0.86;
+        ballMat.emissiveIntensity = 1.0 + 1.8 * ballGlow;
+        halo.material.opacity = 0.8 + 0.2 * ballGlow; halo.scale.setScalar(1.5 + 0.7 * ballGlow);
+        alive = true;
+      } else if (ballMat.emissiveIntensity !== 1.0) { ballMat.emissiveIntensity = 1.0; halo.material.opacity = 0.8; halo.scale.setScalar(1.5); }
+      return alive;
+    },
+  };
+}
+
+/* ============================================================
+   2D fallback renderer — front view, same physics drives it.
+   ============================================================ */
+function make2D() {
+  const canvas = document.createElement('canvas');
+  els.house.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  let W = 0, H = 0, scale = 1, ox = 0, oy = 0;
+  let leftY = Core.ROD_START_Y, rightY = Core.ROD_START_Y, bx = Core.BALL_START.x, by = Core.BALL_START.y, bscale = 1;
+  const targetState = Core.TARGETS.map(() => 'hazard'); targetState[0] = 'target';
+  let pulseT = 0;
+  function resize() {
+    const rr = els.house.getBoundingClientRect();
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    W = canvas.width = Math.round(rr.width * dpr); H = canvas.height = Math.round(rr.height * dpr);
+    const bw = Core.HALF * 2 + 2.2, bh = (Core.TOP - Core.BOTTOM) + 2.4;
+    scale = Math.min(W / bw, H / bh); ox = W / 2; oy = H / 2 + ((Core.TOP + Core.BOTTOM) / 2) * scale;
+  }
+  const px = x => ox + x * scale, py = y => oy - y * scale;
+  function disc(x, y, r, fill) { ctx.fillStyle = fill; ctx.beginPath(); ctx.arc(px(x), py(y), r * scale, 0, Math.PI * 2); ctx.fill(); }
+  function ring(x, y, r, stroke, w, glow) { if (glow) { ctx.shadowColor = stroke; ctx.shadowBlur = 16; } ctx.strokeStyle = stroke; ctx.lineWidth = w * scale; ctx.beginPath(); ctx.arc(px(x), py(y), r * scale, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0; }
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+    // rails
+    ctx.fillStyle = '#8a6508';
+    ctx.fillRect(px(-Core.WALL_X) - 4, py(Core.TOP + 1), 8, (Core.TOP - Core.BOTTOM + 2) * scale);
+    ctx.fillRect(px(Core.WALL_X) - 4, py(Core.TOP + 1), 8, (Core.TOP - Core.BOTTOM + 2) * scale);
+    // hazards
+    for (const h of Core.HAZARDS) { disc(h.x, h.y, Core.HOLE_VIS, '#05020e'); ring(h.x, h.y, Core.HOLE_VIS, 'rgba(120,80,160,0.6)', 0.10, false); }
+    // targets
+    Core.TARGETS.forEach((t, i) => {
+      disc(t.x, t.y, Core.HOLE_VIS, '#05020e');
+      const st = targetState[i];
+      if (st === 'target') { const a = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(pulseT * 4)); ring(t.x, t.y, Core.HOLE_VIS, 'rgba(255,210,74,' + a + ')', 0.16, true); }
+      else if (st === 'passed') ring(t.x, t.y, Core.HOLE_VIS, '#2bd06a', 0.14, true);
+      else ring(t.x, t.y, Core.HOLE_VIS, 'rgba(120,80,160,0.6)', 0.10, false);
+    });
+    // rod
+    ctx.strokeStyle = '#cfd6e6'; ctx.lineWidth = 0.34 * scale; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(px(-Core.HALF), py(leftY)); ctx.lineTo(px(Core.HALF), py(rightY)); ctx.stroke();
+    disc(-Core.HALF, leftY, 0.4, '#ff5a7a'); disc(Core.HALF, rightY, 0.4, '#4ad6ee');
+    // ball
+    if (bscale > 0.05) {
+      const g = ctx.createRadialGradient(px(bx) - 3, py(by) - 3, 0, px(bx), py(by), Core.BALL_R * scale * bscale);
+      g.addColorStop(0, '#fff7d1'); g.addColorStop(1, '#b8860b');
+      ctx.shadowColor = 'rgba(255,210,74,0.7)'; ctx.shadowBlur = 14;
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px(bx), py(by), Core.BALL_R * scale * bscale, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+    }
+  }
+  resize();
+  return {
+    is3D: false, resize, render,
+    updateRod(l, r) { leftY = l; rightY = r; },
+    updateBall(x, y, s) { bx = x; by = y; bscale = s == null ? 1 : s; },
+    setHoleState(group, i, state) { if (group === 'target') targetState[i] = state; },
+    resetHoles(lit) { for (let i = 0; i < targetState.length; i++) targetState[i] = (i === lit ? 'target' : 'hazard'); },
+    pulseBall() {},
+    tickEffects(dt) { pulseT += (dt || 0.016); return State.phase === 'PLAYING' || State.phase === 'BUST'; },
+  };
+}
+
+/* ---------- bootstrap ---------- */
+(async () => {
+  const force2d = new URLSearchParams(location.search).has('2d');
+  if (!force2d && window.WebGLRenderingContext) {
+    try {
+      renderer = await make3D();
+      try {
+        const RAPIER = (await import('https://cdn.skypack.dev/@dimforge/rapier3d-compat@0.12.0')).default;
+        await RAPIER.init();
+        sim = Core.createPhysicsSim(RAPIER);
+      } catch (e) { console.warn('[icb] Rapier unavailable — using 2D fallback', e); renderer = null; }
+    } catch (e) { console.warn('[icb] 3D unavailable', e); renderer = null; }
+  }
+  if (!renderer) {
+    // Without Rapier the game can't play; fall back to the 2D renderer
+    // only if we ALSO have a physics sim. If Rapier failed, try once more
+    // headlessly is pointless — so the 2D path also needs Rapier. Attempt
+    // Rapier independently for the 2D renderer.
+    try {
+      renderer = make2D();
+      if (!sim) {
+        const RAPIER = (await import('https://cdn.skypack.dev/@dimforge/rapier3d-compat@0.12.0')).default;
+        await RAPIER.init();
+        sim = Core.createPhysicsSim(RAPIER);
+      }
+    } catch (e) { console.warn('[icb] physics unavailable', e); }
+  }
+  if (renderer) {
+    renderer.resize();
+    renderer.updateRod(State.leftY, State.rightY);
+    renderer.updateBall(Core.BALL_START.x, Core.BALL_START.y, 1, 0);
+    renderOnce();
+  }
+  if (!sim) setMessage('PHYSICS FAILED TO LOAD — CHECK CONNECTION', 'lose');
+  if (window.Loader) Loader.hide();
+})();
+</script>
+</body>
+</html>

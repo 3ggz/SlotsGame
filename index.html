@@ -2333,6 +2333,88 @@ body::after {
   50% { box-shadow: 0 0 22px rgba(255,46,147,1), inset 0 0 0 1px rgba(255,46,147,0.85); }
 }
 
+/* ICE COLD BEER PREVIEW — hole-riddled board, a glowing target hole, a
+   see-sawing rod with two knobs, and a gold ball creeping up the lane.
+   (translateY in px, not %, so the ball actually travels.) */
+.preview.icecoldbeer {
+  background:
+    radial-gradient(ellipse at 50% 8%, rgba(34,211,238,0.16), transparent 52%),
+    radial-gradient(ellipse at 30% 86%, rgba(255,210,74,0.16), transparent 56%),
+    linear-gradient(180deg, #160a31, #08031a);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.34), inset 0 -40px 58px rgba(0,0,0,0.46);
+  overflow: hidden;
+}
+.preview.icecoldbeer .icb-tag {
+  position: absolute; top: 10px; right: 12px; z-index: 5;
+  padding: 3px 7px 2px; border-radius: 999px;
+  font-family: 'Bungee', cursive; font-size: 7px; letter-spacing: 0.24em; color: #1a0640;
+  background: linear-gradient(180deg, #fff7c4, var(--gold-1) 60%, #b8860b);
+  box-shadow: 0 0 12px rgba(255,210,74,0.6), inset 0 1px 0 rgba(255,255,255,0.55);
+}
+.preview.icecoldbeer .icb-field {
+  position: absolute; inset: 16px 22px 18px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 2px rgba(255,210,74,0.18);
+}
+.preview.icecoldbeer .icb-hole, .preview.icecoldbeer .icb-target {
+  position: absolute; width: 17px; height: 17px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, #05020e, #1a0d2e);
+  box-shadow: inset 0 2px 3px rgba(0,0,0,0.8), 0 0 0 1.5px rgba(120,80,160,0.4);
+}
+/* scattered hazard holes (percent positions of the field) */
+.preview.icecoldbeer .h0 { left: 8%;  top: 10%; }
+.preview.icecoldbeer .h1 { left: 44%; top: 8%; }
+.preview.icecoldbeer .h2 { left: 80%; top: 12%; }
+.preview.icecoldbeer .h3 { left: 24%; top: 32%; }
+.preview.icecoldbeer .h4 { left: 64%; top: 30%; }
+.preview.icecoldbeer .h5 { left: 10%; top: 54%; }
+.preview.icecoldbeer .h6 { left: 78%; top: 54%; }
+.preview.icecoldbeer .h7 { left: 40%; top: 70%; }
+.preview.icecoldbeer .h8 { left: 14%; top: 86%; }
+/* the lit target hole — glowing gold ring, pulsing */
+.preview.icecoldbeer .icb-target {
+  left: 62%; top: 16%;
+  background: radial-gradient(circle at 50% 40%, #1a0d2e, #05020e);
+  box-shadow: inset 0 2px 3px rgba(0,0,0,0.8), 0 0 0 2px var(--gold-1), 0 0 14px rgba(255,210,74,0.7);
+  animation: icbTarget 2.4s ease-in-out infinite;
+}
+@keyframes icbTarget {
+  50% { box-shadow: inset 0 2px 3px rgba(0,0,0,0.8), 0 0 0 2px #fff7c4, 0 0 22px rgba(255,210,74,1); }
+}
+/* the rod: a thin metallic bar that see-saws, with two knobs */
+.preview.icecoldbeer .icb-rod {
+  position: absolute; left: 0; right: 0; bottom: 30px; height: 4px;
+  background: linear-gradient(180deg, #eef2fb, #9aa3b8 60%, #5b6276);
+  border-radius: 3px; transform-origin: 50% 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  animation: icbSeesaw 3.2s ease-in-out infinite;
+}
+.preview.icecoldbeer .icb-knob {
+  position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translateY(-50%);
+}
+.preview.icecoldbeer .icb-knob.l { left: -6px; background: radial-gradient(circle at 38% 32%, #ffd2dd, #ff5a7a 60%, #6e0f24); box-shadow: 0 0 8px rgba(255,90,122,0.6); }
+.preview.icecoldbeer .icb-knob.r { right: -6px; background: radial-gradient(circle at 38% 32%, #bdf6ff, #4ad6ee 60%, #0a5566); box-shadow: 0 0 8px rgba(74,214,238,0.6); }
+@keyframes icbSeesaw {
+  0%, 100% { transform: rotate(-7deg); }
+  50% { transform: rotate(7deg); }
+}
+/* the gold ball: rides the rod, creeping up the lane while wobbling */
+.preview.icecoldbeer .icb-ball {
+  position: absolute; left: 50%; bottom: 30px; width: 14px; height: 14px; margin-left: -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #fff7c4 5%, #ffd24a 55%, #8a6508 100%);
+  box-shadow: 0 0 10px rgba(255,210,74,0.9), 0 0 20px rgba(255,210,74,0.45);
+  animation: icbBall 3.2s ease-in-out infinite;
+}
+@keyframes icbBall {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(13px, -18px); }
+  50%  { transform: translate(-2px, -36px); }
+  75%  { transform: translate(11px, -54px); }
+  92%  { transform: translate(15px, -66px); }
+  100% { transform: translate(0, 0); }
+}
+
 /* card meta */
 .game-title {
   font-family: 'Bungee Shade', 'Bungee', cursive;
@@ -2928,6 +3010,28 @@ html.low-power .preview.dragontree .dt-coin.c2 {
       <div class="game-meta">
         <span class="meta-pill">RAPIER PHYSICS</span>
         <span class="meta-pill">170x EDGE</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="icecoldbeer.html" data-game="icecoldbeer">
+      <div class="preview icecoldbeer">
+        <span class="icb-tag">3D</span>
+        <div class="icb-field">
+          <span class="icb-hole h0"></span><span class="icb-hole h1"></span><span class="icb-hole h2"></span>
+          <span class="icb-hole h3"></span><span class="icb-hole h4"></span><span class="icb-hole h5"></span>
+          <span class="icb-hole h6"></span><span class="icb-hole h7"></span><span class="icb-hole h8"></span>
+          <span class="icb-target"></span>
+          <span class="icb-ball"></span>
+          <span class="icb-rod"><i class="icb-knob l"></i><i class="icb-knob r"></i></span>
+        </div>
+      </div>
+      <div class="game-title">ICE COLD BEER</div>
+      <div class="game-tagline">STEADY HANDS &middot; 3D PHYSICS</div>
+      <div class="game-desc">Tilt a rod with two knobs to roll a golden ball up a hole-riddled board into the lit hole. Bank a rung each hole, cash out anytime — one slip and you bust.</div>
+      <div class="game-meta">
+        <span class="meta-pill">ROD BALANCE</span>
+        <span class="meta-pill">28x CLIMB</span>
       </div>
       <div class="play-cta">PLAY</div>
     </a>
