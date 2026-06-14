@@ -1973,6 +1973,22 @@ document.addEventListener('jackpot-win', () => {
   State.balance = loadBalance();
   renderHud();
 });
+/* Re-read the shared balance whenever the page comes back to the
+   foreground — including bfcache restores, tab switches, and refocus.
+   Without this the module-init State.balance is stuck at whatever it
+   was when the page first loaded. */
+function refreshBalanceFromStorage() {
+  const fresh = loadBalance();
+  if (fresh !== State.balance) {
+    State.balance = fresh;
+    renderHud();
+  }
+}
+window.addEventListener('pageshow', refreshBalanceFromStorage);
+window.addEventListener('focus', refreshBalanceFromStorage);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshBalanceFromStorage();
+});
 
 /* ============================================================
    AMBIENT EMBERS

@@ -3275,6 +3275,22 @@ html.fx-hidden .spin-btn.spinning { animation-play-state: paused; }
 
     // Global jackpot win — refresh balance from shared localStorage.
     document.addEventListener('jackpot-win', () => setBalance(loadBalance()));
+
+    // Re-read the shared balance whenever the page returns to the
+    // foreground (bfcache restore, refocus, visibility change) so the
+    // module-init State.balance can't stay stale after the lobby moved.
+    function refreshBalanceFromStorage() {
+      const fresh = loadBalance();
+      if (fresh !== State.balance) setBalance(fresh);
+    }
+    window.addEventListener('pageshow', refreshBalanceFromStorage);
+    window.addEventListener('focus', refreshBalanceFromStorage);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') refreshBalanceFromStorage();
+    });
+    window.addEventListener('storage', e => {
+      if (e.key === BALANCE_KEY) refreshBalanceFromStorage();
+    });
   }
 
   init();

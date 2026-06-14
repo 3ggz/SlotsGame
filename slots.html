@@ -4581,6 +4581,22 @@ function init() {
   // Global jackpot win — module credits shared localStorage, we
   // just refresh the in-memory copy + on-screen display.
   document.addEventListener('jackpot-win', () => setBalance(loadBalance()));
+
+  // Re-read the shared balance whenever the page returns to the
+  // foreground (bfcache restore, tab refocus, visibility change) so
+  // module-init State.balance can't stay stale after the lobby moved.
+  function refreshBalanceFromStorage() {
+    const fresh = loadBalance();
+    if (fresh !== State.balance) setBalance(fresh);
+  }
+  window.addEventListener('pageshow', refreshBalanceFromStorage);
+  window.addEventListener('focus', refreshBalanceFromStorage);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshBalanceFromStorage();
+  });
+  window.addEventListener('storage', e => {
+    if (e.key === BALANCE_KEY) refreshBalanceFromStorage();
+  });
 }
 
 init();
