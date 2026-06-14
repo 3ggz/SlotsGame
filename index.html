@@ -2284,16 +2284,22 @@ body::after {
     inset 0 -2px 3px rgba(0,0,0,0.35);
   animation: p3Drop 3.4s cubic-bezier(.5,.05,.55,1) infinite;
 }
+/* Drop is keyed in PIXELS, not %. % on a translateY refers to the
+   element's own height (13px) — which is why the ball used to bob
+   between the top two rows for the whole loop. The five row positions
+   inside .p3-board are at top: 0/22/44/66/88% of its ~115px height,
+   roughly 0/25/51/76/101 px from the apex; the ball lands in a bucket
+   about 25 px below the last row. */
 @keyframes p3Drop {
-  0%   { transform: translate(0, 0)        scale(0.85); opacity: 0; }
-  6%   { transform: translate(0, 0)        scale(1);    opacity: 1; }
-  22%  { transform: translate(-10px, 22%)  scale(1.06); }
-  38%  { transform: translate(7px, 44%)    scale(1); }
-  54%  { transform: translate(-8px, 66%)   scale(1.06); }
-  70%  { transform: translate(11px, 88%)   scale(1); }
-  82%  { transform: translate(6px, 110%)   scale(0.9);  opacity: 1; }
-  92%  { transform: translate(6px, 122%)   scale(0.78); opacity: 0; }
-  100% { transform: translate(6px, 122%)                opacity: 0; }
+  0%   { transform: translate(0,    0px) scale(0.85); opacity: 0; }
+  6%   { transform: translate(0,    0px) scale(1);    opacity: 1; }
+  22%  { transform: translate(-10px, 26px) scale(1.06); }
+  38%  { transform: translate(7px,   52px) scale(1); }
+  54%  { transform: translate(-8px,  78px) scale(1.06); }
+  70%  { transform: translate(11px, 104px) scale(1); }
+  82%  { transform: translate(6px,  126px) scale(0.9);  opacity: 1; }
+  92%  { transform: translate(6px,  140px) scale(0.78); opacity: 0; }
+  100% { transform: translate(6px,  140px);            opacity: 0; }
 }
 /* bucket strip: gradient cups, edges pulse hot pink */
 .preview.plinko3d .p3-buckets {
