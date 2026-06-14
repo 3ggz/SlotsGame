@@ -374,7 +374,8 @@ html.low-power .lobby-link, html.low-power .history-btn, html.low-power .balance
   const BALL_START = { x: 0, y: -10.3 };
   const ROD_START_Y = -11.1;  // both ends here at round start (flat, low)
   const Y_MIN = -11.4, Y_MAX = 8.7;   // rod-end clamp
-  const ROD_SPEED = 8.5;      // units/sec a knob moves while held
+  const ROD_SPEED = 6.5;      // units/sec a knob moves while held
+                              // (was 8.5 — slower gives finer control)
   const GRAVITY = -16;
   const H = 1 / 120;          // fixed physics step
 
@@ -452,11 +453,15 @@ html.low-power .lobby-link, html.low-power .history-btn, html.low-power .balance
         .setTranslation(BALL_START.x, BALL_START.y, 0)
         .enabledTranslations(true, true, false)
         .setCcdEnabled(true)
-        .setLinearDamping(0.2)
-        .setAngularDamping(0.4)
+        // Tuned for a GLUED feel: heavy linear+angular damping kills any
+        // bounce after rod contact (was 0.2 / 0.4 — ball flew on tilt),
+        // higher density grounds it, restitution 0 prevents the rod from
+        // catapulting it on a fast tilt.
+        .setLinearDamping(2.0)
+        .setAngularDamping(3.0)
     );
     world.createCollider(
-      RAPIER.ColliderDesc.ball(BALL_R).setRestitution(0.04).setFriction(0.9).setDensity(1.0),
+      RAPIER.ColliderDesc.ball(BALL_R).setRestitution(0).setFriction(1.4).setDensity(1.6),
       ballBody
     );
 
@@ -464,14 +469,16 @@ html.low-power .lobby-link, html.low-power .history-btn, html.low-power .balance
       RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, ROD_START_Y, 0)
     );
     world.createCollider(
-      RAPIER.ColliderDesc.cuboid(ROD_HALF_X, ROD_HALF_Y, ROD_HALF_Z).setRestitution(0).setFriction(0.85),
+      RAPIER.ColliderDesc.cuboid(ROD_HALF_X, ROD_HALF_Y, ROD_HALF_Z).setRestitution(0).setFriction(1.4),
       rod
     );
 
     for (const sx of [-1, 1]) {
       world.createCollider(
+        // Wall friction up + restitution to 0 so the ball doesn't pingpong
+        // off the sides when it nudges them at the rod ends.
         RAPIER.ColliderDesc.cuboid(0.25, (TOP - BOTTOM) / 2 + 3, 1)
-          .setTranslation(sx * WALL_X, (TOP + BOTTOM) / 2, 0).setRestitution(0.1).setFriction(0.4)
+          .setTranslation(sx * WALL_X, (TOP + BOTTOM) / 2, 0).setRestitution(0).setFriction(0.9)
       );
     }
 
@@ -728,14 +735,21 @@ function frame(now) {
   lastT = now;
 
   if (State.phase === 'PLAYING') {
-    // move knobs from held inputs
-    if (State.leftDir) State.leftY = clampY(State.leftY + State.leftDir * Core.ROD_SPEED * dt);
-    if (State.rightDir) State.rightY = clampY(State.rightY + State.rightDir * Core.ROD_SPEED * dt);
-    // step physics with a fixed-step accumulator for stability
+    // Advance the rod INSIDE the substep loop, not once per frame. The
+    // old per-frame teleport made the kinematic rod jump to a new
+    // position at the start of the first substep, which Rapier turned
+    // into a brief HUGE rod velocity → ball got catapulted on every
+    // tilt. Stepping the rod by (dir * ROD_SPEED * H) per substep makes
+    // the rod move at a constant, sane velocity — ball stays glued.
     if (sim) {
       acc += dt;
       let n = 0;
-      while (acc >= Core.H && n < 6) { sim.step(State.leftY, State.rightY); acc -= Core.H; n++; }
+      while (acc >= Core.H && n < 6) {
+        if (State.leftDir)  State.leftY  = clampY(State.leftY  + State.leftDir  * Core.ROD_SPEED * Core.H);
+        if (State.rightDir) State.rightY = clampY(State.rightY + State.rightDir * Core.ROD_SPEED * Core.H);
+        sim.step(State.leftY, State.rightY);
+        acc -= Core.H; n++;
+      }
       const b = sim.getBall();
       // safety: if the ball somehow escaped below, re-seat it
       if (b.y < Core.BOTTOM - 2 || Math.abs(b.x) > Core.WALL_X + 1) { sim.resetBall(0, Core.BALL_START.y); }
@@ -743,19 +757,31 @@ function frame(now) {
       renderer.updateRod(State.leftY, State.rightY);
       checkCapture(b);
     }
-  } else if (State.phase === 'BUST' && State.sink) {
+  } else if (State.sink) {
+    // SHARED sink animation — used for BANK (ball drops into the lit
+    // hole, then resets to start) and BUST (ball drops into a hazard,
+    // round ends). Type-dispatched on completion.
     const k = Math.min(1, (now - State.sink.t0) / 520);
     const e = k * k;
     const x = State.sink.x0 + (State.sink.hx - State.sink.x0) * e;
     const y = State.sink.y0 + (State.sink.hy - State.sink.y0) * e;
     renderer.updateBall(x, y, 1 - 0.7 * k, -1.4 * k);
-    if (k >= 1) { State.sink = null; finishBust(); }
+    if (k >= 1) {
+      const type = State.sink.type;
+      State.sink = null;
+      if (type === 'bust') finishBust();
+      else finishBank();
+    }
   }
 
   const fx = renderer.tickEffects ? renderer.tickEffects(dt) : false;
   renderer.render();
 
-  if (State.phase === 'PLAYING' || State.phase === 'BUST' || fx) {
+  // Keep ticking while playing OR while any sink animation is in flight
+  // (SINKING = banked-into-hole reset, BUST = dropped-in-hazard end).
+  // Forgetting SINKING here stalled the frame loop mid-animation, leaving
+  // banked rungs stuck in the lit hole instead of resetting to start.
+  if (State.phase === 'PLAYING' || State.sink || fx) {
     rafId = requestAnimationFrame(frame);
   } else { loopActive = false; lastT = 0; }
 }
@@ -784,17 +810,37 @@ function bankRung() {
   flashBoard('good');
   renderer.pulseBall();
   const cash = Core.payout(State.bet, State.banked);
-  popText(Core.ladderAt(State.banked) + 'x  $' + fmt(cash), '#5cffa1', 24);
+  popText('+' + (Number.isInteger(Core.ladderAt(State.banked)) ? Core.ladderAt(State.banked) : Core.ladderAt(State.banked).toFixed(1)) + 'x  $' + fmt(cash), '#5cffa1', 24);
   updateHud();
-  els.action.disabled = false;   // cash out now allowed
+  els.action.disabled = false;          // cash out now allowed
+  // Drop the ball INTO the hole visually, then reset back to the start
+  // (faithful to the arcade — each hole is a discrete segment, ball
+  // returns to position 1 between holes). State.phase=SINKING freezes
+  // the rod; the shared sink animation in frame() dispatches to
+  // finishBank() on completion.
+  setControlsEnabled(false);
+  State.phase = 'SINKING';
+  const t = Core.TARGETS[State.litTarget];
+  const b = sim ? sim.getBall() : { x: t.x, y: t.y };
+  // Zero ball motion so the rod doesn't push it off the sink path
+  if (sim) sim.nudge(0, 0);
+  State.sink = { type: 'bank', x0: b.x, y0: b.y, hx: t.x, hy: t.y, t0: performance.now() };
+  ensureLoop();
+}
+function finishBank() {
   if (State.banked >= Core.TARGETS.length) { autoCashTop(); return; }
-  // light the next target
+  // Light the next target
   State.litTarget = State.banked;
   renderer.setHoleState('target', State.litTarget, 'target');
-  // small upward nudge so the ball clears the just-banked (now safe) hole
-  if (sim) sim.nudge(null, Math.max(1.5, sim.getBall().vy));
-  captureCooldown = 14;        // ~brief grace so we don't re-trigger same frame
-  setMessage('LEVEL ' + State.banked + ' — KEEP CLIMBING OR CASH OUT', 'win');
+  // Reset ball + rod to the starting position for the next segment
+  State.leftY = State.rightY = Core.ROD_START_Y;
+  if (sim) sim.resetBall(Core.BALL_START.x, Core.BALL_START.y);
+  renderer.updateRod(State.leftY, State.rightY);
+  renderer.updateBall(Core.BALL_START.x, Core.BALL_START.y, 1, 0);
+  captureCooldown = 30;                  // small grace so we don't insta-snag
+  State.phase = 'PLAYING';
+  setControlsEnabled(true);
+  setMessage('LEVEL ' + State.banked + ' — NEXT HOLE OR CASH OUT', 'win');
 }
 function autoCashTop() {
   setMessage('TOP OF THE BOARD! MAX PAYOUT', 'win');
@@ -807,7 +853,7 @@ function bust(hx, hy) {
   flashBoard('bad');
   shakeBoard();
   const b = sim ? sim.getBall() : { x: hx, y: hy };
-  State.sink = { x0: b.x, y0: b.y, hx, hy, t0: performance.now() };
+  State.sink = { type: 'bust', x0: b.x, y0: b.y, hx, hy, t0: performance.now() };
   ensureLoop();
 }
 function finishBust() {
