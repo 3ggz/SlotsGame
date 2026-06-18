@@ -130,6 +130,15 @@ run('describeHand: pretty-prints categories', () => {
   assert.strictEqual(C.describeHand(C.evaluate7(H(['As','Ks','Qs','Js','Ts','2c','3d']))), 'Royal Flush');
   assert.match(C.describeHand(C.evaluate7(H(['Ks','Kh','Kd','5s','5h','2c','3d']))), /Kings full of Fives/);
   assert.match(C.describeHand(C.evaluate7(H(['Js','Jh','As','Ks','2d','3c','4c']))), /Pair of Jacks/);
+  // The 10 must read as "10" — NOT the engine shorthand "T" — in any
+  // text shown to the player. (User saw a "T of spades" on a card face;
+  // this nails that down.)
+  const tenHigh = C.describeHand(C.evaluate7(H(['Ts','9d','8h','7c','6s','2c','3d'])));
+  assert.strictEqual(tenHigh, '10-high Straight');
+  const tenFlush = C.describeHand(C.evaluate7(H(['Ts','8s','5s','3s','2s','Kd','Jc'])));
+  assert.strictEqual(tenFlush, '10-high Flush');
+  assert(!/T-high/.test(C.describeHand(C.evaluate7(H(['Ts','9d','8h','7c','6s','2c','3d'])))),
+    'describeHand must not render rank-10 as "T" in player-facing output');
 });
 
 // ---------------- Side pots ----------------

@@ -1327,7 +1327,9 @@ body {
       ks.push(Math.floor(rem / m));
       rem = rem % m;
     }
-    const R = i => RANK_CHARS[i];
+    // For player-facing labels we render rank 8 as "10" (not the engine's
+    // "T" shorthand) so "10-high Straight" reads naturally to humans.
+    const R = i => i === 8 ? '10' : RANK_CHARS[i];
     const Rname = i => ({0:'Twos',1:'Threes',2:'Fours',3:'Fives',4:'Sixes',5:'Sevens',6:'Eights',7:'Nines',8:'Tens',9:'Jacks',10:'Queens',11:'Kings',12:'Aces'}[i]);
     switch (cat) {
       case CAT.STRAIGHT_FLUSH:
@@ -2440,9 +2442,17 @@ body {
       const r2 = Core.RANK(hero.holeCards[1]);
       const s1 = Core.SUIT(hero.holeCards[0]);
       const s2 = Core.SUIT(hero.holeCards[1]);
-      const ranks = Core.RANK_CHARS[Math.max(r1, r2)] + Core.RANK_CHARS[Math.min(r1, r2)];
       const suited = (s1 === s2);
-      const tag = r1 === r2 ? 'POCKET ' + Core.RANK_CHARS[r1] + Core.RANK_CHARS[r1] : ranks + (suited ? ' SUITED' : ' OFFSUIT');
+      let tag;
+      if (r1 === r2) {
+        // Pocket pair: pluralize the rank name so "POCKET 1010" doesn't happen.
+        const names = ['TWOS','THREES','FOURS','FIVES','SIXES','SEVENS','EIGHTS','NINES','TENS','JACKS','QUEENS','KINGS','ACES'];
+        tag = 'POCKET ' + names[r1];
+      } else {
+        // Hi-lo with a hyphen so "109 OFFSUIT" reads as the 10 and 9 it is.
+        tag = rankLabel(Math.max(r1, r2)) + '-' + rankLabel(Math.min(r1, r2))
+            + (suited ? ' SUITED' : ' OFFSUIT');
+      }
       dom.heroHandStrength.textContent = tag;
       dom.heroHandStrength.classList.add('show');
       return;
@@ -2479,6 +2489,12 @@ body {
   }
 
   // ----- Card DOM helpers -----
+  // Engine stores ranks as a single char ('2'..'9','T','J','Q','K','A') —
+  // that's the standard poker shorthand we want in unit tests and the
+  // describeHand strings. But when we paint a card face the player should
+  // see "10", not "T". Single helper to translate just before render.
+  function rankLabel(r) { return r === 8 ? '10' : Core.RANK_CHARS[r]; }
+
   function buildCardEl(card, opts) {
     const el = document.createElement('div');
     el.className = 'card';
@@ -2487,7 +2503,7 @@ body {
     } else if (typeof card === 'number') {
       const r = Core.RANK(card), s = Core.SUIT(card);
       el.classList.add(Core.RED_SUITS.has(s) ? 'red' : 'black');
-      const ch = Core.RANK_CHARS[r];
+      const ch = rankLabel(r);
       const sg = Core.SUIT_GLYPH[s];
       el.innerHTML = `
         <div class="corner tl"><div class="r">${ch}</div><div class="s">${sg}</div></div>
@@ -2502,7 +2518,7 @@ body {
     const r = Core.RANK(card), s = Core.SUIT(card);
     el.classList.remove('red','black');
     el.classList.add(Core.RED_SUITS.has(s) ? 'red' : 'black');
-    const ch = Core.RANK_CHARS[r];
+    const ch = rankLabel(r);
     const sg = Core.SUIT_GLYPH[s];
     el.innerHTML = `
       <div class="corner tl"><div class="r">${ch}</div><div class="s">${sg}</div></div>
