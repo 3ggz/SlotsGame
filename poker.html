@@ -1519,15 +1519,19 @@ body {
     }
     if (seated.length < 2) return false; // need at least 2 to start
 
-    // Rotate button to next seated player
-    let bIdx = state.button;
-    if (!state.players[bIdx] || !state.players[bIdx].inHand) {
-      // first hand or button broken — pick first seated
-      bIdx = seated[0];
-    }
-    if (state.handNo > 0) {
-      // advance to next seated
-      bIdx = nextSeatWithCards(state, bIdx);
+    // Rotate button to next seated player.
+    //
+    // First hand: pick the lowest seated seat (seated[0]) and use as-is.
+    // Subsequent hands: walk one step forward from the PRIOR button —
+    // regardless of whether the prior seat is still occupied — so we
+    // never accidentally skip the seat just past a busted player.
+    let bIdx;
+    if (state.handNo === 0) {
+      bIdx = (state.players[state.button] && state.players[state.button].inHand)
+        ? state.button
+        : seated[0];
+    } else {
+      bIdx = nextSeatWithCards(state, state.button);
       if (bIdx < 0) bIdx = seated[0];
     }
     state.button = bIdx;
@@ -1670,9 +1674,12 @@ body {
         // But fresh players (haven't acted) still need to act
         // We simply DO NOT mass-reset needsToAct.
       }
-      state.currentBet = raiseTo;
+      // Short all-in's raiseTo may be BELOW the current bet level — keep
+      // currentBet as the max so legal-actions for not-yet-acted players
+      // still face the full prior amount.
+      state.currentBet = Math.max(state.currentBet, raiseTo);
       state.minRaise = state.lastRaiseSize;
-      state.lastAggressorIdx = i;
+      if (isFullRaise) state.lastAggressorIdx = i;
       p.needsToAct = false;
       state.events.push({ type: action.type, seat: i, raiseTo, paid: pay });
     } else if (action.type === 'allin') {
@@ -1803,19 +1810,13 @@ body {
   }
 
   function positionFactor(state, idx) {
-    // 0..0.10 bonus based on closeness to button (button = +0.10)
+    // 0..0.10 bonus based on closeness to button (button = +0.10).
+    // We count how many seats we'd need to walk FORWARD from idx to reach
+    // the button — small = late position (good), large = early position.
     const N = state.players.length;
-    // distance going forward from button to idx
-    let dist = 0;
-    while ((state.button + dist) % N !== idx) dist++;
-    // dist 0 = button itself; the bigger the dist, the earlier (UTG-ish)
-    // We want button-adjacent (large dist) to have high bonus? Actually:
-    // Acting LATE = small distance counting BACKWARD from button.
-    // Let's measure how far this seat is BEHIND button.
     let back = 0;
-    while ((idx + back) % N !== state.button) back++;
-    // back=0 means this seat IS button (best position). back grows toward earlier seats.
-    const positionScore = 1 - back / N; // button: 1.0, UTG: ~0.2
+    while ((idx + back) % N !== state.button && back < N) back++;
+    const positionScore = 1 - back / N; // button: 1.0, UTG: ~1/N
     return positionScore * 0.10;
   }
 
@@ -1849,7 +1850,7 @@ body {
     // No bet to face
     if (la.canCheck) {
       // value bet on strong, otherwise sometimes bluff in position
-      if (adjEquity > 0.55 + 0.05 * Math.random()) {
+      if (adjEquity > 0.55 + 0.05 * state.rng()) {
         return raiseSize(state, p, cfg, adjEquity);
       }
       if (bluffNow && state.rng() < cfg.bluff) {
@@ -1915,11 +1916,12 @@ body {
     const stub = [];
     for (let c = 0; c < 52; c++) if (!dead[c]) stub.push(c);
     const sims = Math.min(100, Math.max(40, 200 - oppN * 25));
+    // Our hand is fixed across all sims since board is already complete.
+    const my = evaluate7([hole[0], hole[1], ...board]);
     let wins = 0, ties = 0;
     for (let i = 0; i < sims; i++) {
       shuffle(stub, rng);
       let cur = 0;
-      const my = evaluate7([hole[0], hole[1], ...board]);
       let best = -1;
       for (let o = 0; o < oppN; o++) {
         const v = evaluate7([stub[cur++], stub[cur++], ...board]);
@@ -2548,24 +2550,30 @@ body {
 
   async function runBettingLoop() {
     while (true) {
+      // The user can leave the table mid-loop; bail cleanly.
       const st = State.pokerState;
-      // Check if hand is short-circuited (only 1 left)
+      if (!st) return;
+      // Only one player left → no further action this hand.
       if (Core.activeCount(st) <= 1) {
         await finishHandFoldout();
         return;
       }
-      // Check if everyone remaining is all-in
+      // Everyone remaining is all-in or has acted — close the street.
       const stillActing = st.players.filter(p => p && p.inHand && !p.hasFolded && !p.isAllIn);
       if (stillActing.length === 0 || Core.roundComplete(st)) {
         await endOfStreet();
+        if (!State.pokerState) return;
         if (st.street === 'showdown') { await finishHandShowdown(); return; }
         continue;
       }
-      // Pick toAct player
       const i = st.toActIdx;
+      // Defensive: if toActIdx is invalid for any reason, force a round-end
+      // pass rather than risk an infinite spin reading players[-1].
+      if (i < 0 || i >= st.players.length) { await endOfStreet(); if (!State.pokerState) return; continue; }
       const p = st.players[i];
       if (!p || !p.inHand || p.hasFolded || p.isAllIn) {
         st.toActIdx = Core.nextActiveSeat(st, i);
+        if (st.toActIdx < 0) { await endOfStreet(); if (!State.pokerState) return; }
         continue;
       }
       markActing(i);
@@ -2574,6 +2582,7 @@ body {
       } else {
         await botTurn(p, i);
       }
+      if (!State.pokerState) return;
       unmarkActing(i);
       refreshSeats();
       await delay(120);
@@ -2711,7 +2720,7 @@ body {
     // After 18s of inactivity, fold or check
     cancelActionTimer();
     State.actionTimerHandle = setTimeout(() => {
-      if (!heroResolve) return;
+      if (!heroResolve || !State.pokerState) return;
       const la = Core.legalActions(State.pokerState, p);
       if (la.canCheck) endHeroTurn({ type: 'check' });
       else endHeroTurn({ type: 'fold' });
@@ -2722,22 +2731,31 @@ body {
     State.actionTimerHandle = null;
   }
 
-  // Hero action button handlers
-  dom.btnFold.addEventListener('click', () => endHeroTurn({ type: 'fold' }));
+  // Hero action button handlers — every handler guards against a null
+  // pokerState in case the user already left the table.
+  dom.btnFold.addEventListener('click', () => {
+    if (!State.pokerState || !heroResolve) return;
+    endHeroTurn({ type: 'fold' });
+  });
   dom.btnCheck.addEventListener('click', () => {
+    if (!State.pokerState || !heroResolve) return;
     const p = State.pokerState.players[State.heroSeat];
     const la = Core.legalActions(State.pokerState, p);
     if (la.canCheck) endHeroTurn({ type: 'check' });
     else endHeroTurn({ type: 'call' });
   });
   dom.btnRaise.addEventListener('click', () => {
+    if (!State.pokerState || !heroResolve) return;
     const p = State.pokerState.players[State.heroSeat];
     const la = Core.legalActions(State.pokerState, p);
     let amt = +dom.betSlider.value;
     if (amt >= la.maxRaiseTo) endHeroTurn({ type: 'allin' });
     else endHeroTurn({ type: la.canBet ? 'bet' : 'raise', amount: amt });
   });
-  dom.btnAllin.addEventListener('click', () => endHeroTurn({ type: 'allin' }));
+  dom.btnAllin.addEventListener('click', () => {
+    if (!State.pokerState || !heroResolve) return;
+    endHeroTurn({ type: 'allin' });
+  });
   dom.betSlider.addEventListener('input', () => { dom.betAmt.textContent = '$' + fmt(+dom.betSlider.value); });
 
   // Bet quick buttons
@@ -2764,6 +2782,8 @@ body {
     // Add suspense: short thinking delay
     const thinkMs = 500 + Math.random() * 700;
     await delay(thinkMs);
+    // If the user left the table during the think, bail before touching state.
+    if (!State.pokerState || State.pokerState.players[i] !== p) return;
     const action = Core.decideBot(State.pokerState, i);
     Core.applyAction(State.pokerState, action);
     playActionSound(action);
@@ -2915,6 +2935,7 @@ body {
   // ----- Cleanup + History + next hand -----
   function cleanupAfterHand() {
     const st = State.pokerState;
+    if (!st) return; // user already left the table
     const hero = st.players[State.heroSeat];
     if (hero) {
       const delta = hero.stack - State.handStartStack;
