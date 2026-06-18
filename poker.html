@@ -508,6 +508,10 @@ body {
 .seat .seat-status.allin { color: var(--neon-cyan); background: rgba(34,211,238,0.2); animation: allinPulse 1s ease-in-out infinite; }
 @keyframes allinPulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.5); } }
 .seat .seat-status.win { color: var(--neon-green); background: rgba(92,255,161,0.2); animation: winPulse 0.7s ease-out 2; }
+.seat .seat-status.call { color: var(--gold-1); background: rgba(255,210,74,0.15); }
+.seat .seat-status.check { color: rgba(255,255,255,0.65); background: rgba(255,255,255,0.08); }
+.seat .seat-status.raise { color: var(--neon-violet); background: rgba(168,85,247,0.18); }
+.seat .seat-status.bet { color: var(--neon-cyan); background: rgba(34,211,238,0.18); }
 @keyframes winPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 
 .seat .seat-hole {
@@ -2321,6 +2325,7 @@ body {
   }
   function refreshSeats() {
     if (!State.pokerState) return;
+    const now = Date.now();
     for (let i = 0; i < State.pokerState.players.length; i++) {
       const p = State.pokerState.players[i];
       const seat = dom.seatsLayer.querySelector(`.seat[data-seat="${i}"]`);
@@ -2329,10 +2334,22 @@ body {
       seat.querySelector('[data-stack]').textContent = fmtChip(Math.round(p.stack));
       seat.classList.toggle('folded', !!p.hasFolded);
       const statusEl = seat.querySelector('[data-status]');
-      statusEl.className = 'seat-status';
-      if (p.hasFolded) { statusEl.classList.add('fold'); statusEl.textContent = 'FOLD'; }
-      else if (p.isAllIn) { statusEl.classList.add('allin'); statusEl.textContent = 'ALL IN'; }
-      else statusEl.textContent = '';
+      // Only overwrite the action label if (a) the seat is folded
+      // or all-in (durable states), or (b) the previous action label
+      // has been sitting there for a while.
+      const lastActionAt = +(statusEl.dataset.actAt || 0);
+      const stale = !lastActionAt || now - lastActionAt > 2200;
+      if (p.hasFolded) {
+        statusEl.className = 'seat-status fold';
+        statusEl.textContent = 'FOLD';
+        statusEl.dataset.actAt = '';
+      } else if (p.isAllIn && stale) {
+        statusEl.className = 'seat-status allin';
+        statusEl.textContent = 'ALL IN';
+      } else if (stale) {
+        statusEl.className = 'seat-status';
+        statusEl.textContent = '';
+      }
       const betEl = seat.querySelector('[data-bet]');
       if (p.betThisStreet > 0) {
         betEl.classList.remove('empty');
@@ -2602,12 +2619,19 @@ body {
   async function endOfStreet() {
     refreshSeats();
     await delay(420);
-    // collect bets to pot (visual: hide seat-bets; pot already includes them)
+    // Collect bets to pot (visual: hide seat-bets; pot already includes them).
+    // Also clear per-seat action labels so they don't bleed into the next street.
     for (let i = 0; i < State.pokerState.players.length; i++) {
       const seat = dom.seatsLayer.querySelector(`.seat[data-seat="${i}"]`);
       if (!seat) continue;
       const sb = seat.querySelector('[data-bet]');
       sb.classList.add('empty'); sb.textContent = '';
+      const statusEl = seat.querySelector('[data-status]');
+      const p = State.pokerState.players[i];
+      if (statusEl && p && !p.hasFolded) {
+        statusEl.dataset.actAt = '';
+        if (!p.isAllIn) { statusEl.className = 'seat-status'; statusEl.textContent = ''; }
+      }
     }
     const stBefore = State.pokerState.street;
     if (stBefore === 'preflop') {
@@ -2661,10 +2685,13 @@ body {
     const r = heroResolve; heroResolve = null;
     cancelActionTimer();
     disableActionBar();
+    const hero = State.pokerState && State.pokerState.players[State.heroSeat];
+    const beforeBet = hero ? hero.betThisStreet : 0;
     try {
       Core.applyAction(State.pokerState, action);
     } catch (e) { console.error('applyAction error', e); }
     playActionSound(action);
+    if (hero) showActionOnSeat(State.heroSeat, action, hero.betThisStreet - beforeBet);
     r();
   }
   function playActionSound(action) {
@@ -2676,6 +2703,25 @@ body {
       case 'raise': Audio.raise(); break;
       case 'allin': Audio.allin(); break;
     }
+  }
+
+  function showActionOnSeat(seatIdx, action, paidAmount) {
+    const seat = dom.seatsLayer.querySelector(`.seat[data-seat="${seatIdx}"]`);
+    if (!seat) return;
+    const statusEl = seat.querySelector('[data-status]');
+    statusEl.className = 'seat-status';
+    let cls = '', label = '';
+    switch (action.type) {
+      case 'fold':   cls = 'fold';  label = 'FOLD'; break;
+      case 'check':  cls = 'check'; label = 'CHECK'; break;
+      case 'call':   cls = 'call';  label = 'CALL ' + (paidAmount != null ? '$' + fmt(paidAmount) : ''); break;
+      case 'bet':    cls = 'bet';   label = 'BET ' + (action.amount != null ? '$' + fmt(action.amount) : ''); break;
+      case 'raise':  cls = 'raise'; label = 'RAISE ' + (action.amount != null ? '$' + fmt(action.amount) : ''); break;
+      case 'allin':  cls = 'allin'; label = 'ALL-IN'; break;
+    }
+    statusEl.classList.add(cls);
+    statusEl.textContent = label.trim();
+    statusEl.dataset.actAt = String(Date.now());
   }
 
   function updateActionBarForHero(p) {
@@ -2785,10 +2831,13 @@ body {
     // If the user left the table during the think, bail before touching state.
     if (!State.pokerState || State.pokerState.players[i] !== p) return;
     const action = Core.decideBot(State.pokerState, i);
+    const beforeBet = p.betThisStreet;
     Core.applyAction(State.pokerState, action);
     playActionSound(action);
+    const paid = p.betThisStreet - beforeBet;
+    showActionOnSeat(i, action, paid);
     refreshSeats();
-    await delay(220);
+    await delay(380);
   }
 
   // ----- Fold-out resolution -----
