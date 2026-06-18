@@ -2135,6 +2135,101 @@ body::after {
   box-shadow: inset 0 0 0 1px rgba(92,255,161,0.28);
 }
 
+/* ----- Texas Hold'em preview ----- */
+.preview.poker {
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(34,211,238,0.15), transparent 60%),
+    radial-gradient(ellipse at 50% 95%, rgba(255,210,74,0.13), transparent 60%),
+    linear-gradient(180deg, #06180e 0%, #02100a 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.32), inset 0 -36px 58px rgba(0,0,0,0.45);
+  overflow: hidden;
+}
+.preview.poker::before {
+  content: '';
+  position: absolute;
+  inset: 18px 22px;
+  border-radius: 50% / 36%;
+  background:
+    radial-gradient(ellipse at center top, rgba(255,255,255,0.06), transparent 60%),
+    radial-gradient(ellipse at 50% 0%, #1b8855 0%, var(--felt-light) 30%, var(--felt-deep) 92%);
+  box-shadow:
+    inset 0 0 0 3px rgba(0,0,0,0.5),
+    inset 0 0 0 4.5px rgba(255,210,74,0.4),
+    inset 0 0 36px rgba(0,0,0,0.45);
+}
+.preview.poker .pk-cards {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; gap: 3px;
+  z-index: 4;
+}
+.preview.poker .pk-card {
+  width: 22px; height: 32px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #fffdf1, #ded5b8);
+  display: grid; place-items: center;
+  font-family: 'Bungee', cursive;
+  font-size: 11px;
+  color: #130417;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.1);
+  opacity: 0;
+  animation: pkCardIn 4.4s linear infinite;
+}
+.preview.poker .pk-card.red { color: #d62433; }
+.preview.poker .pk-card:nth-child(1) { animation-delay: 0s; }
+.preview.poker .pk-card:nth-child(2) { animation-delay: 0.6s; }
+.preview.poker .pk-card:nth-child(3) { animation-delay: 1.2s; }
+.preview.poker .pk-card:nth-child(4) { animation-delay: 1.9s; }
+.preview.poker .pk-card:nth-child(5) { animation-delay: 2.6s; }
+@keyframes pkCardIn {
+  0%   { opacity: 0; transform: translate(-30px, -30px) rotate(-25deg) scale(0.7); }
+  8%   { opacity: 1; transform: translate(0, 0) rotate(0) scale(1); }
+  82%  { opacity: 1; transform: translate(0, 0) rotate(0) scale(1); }
+  92%  { opacity: 0; transform: translate(0, 18px) rotate(8deg) scale(0.85); }
+  100% { opacity: 0; transform: translate(0, 18px); }
+}
+.preview.poker .pk-chip {
+  position: absolute;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.85), inset 0 0 0 2.5px rgba(0,0,0,0.2), 0 4px 6px rgba(0,0,0,0.5);
+  z-index: 3;
+}
+.preview.poker .pk-chip.r { background: linear-gradient(180deg, #e74848, #8a1818); top: 60%; left: 28%; transform: translate(-50%, -50%); animation: pkChipFloat 3.6s ease-in-out infinite; }
+.preview.poker .pk-chip.b { background: linear-gradient(180deg, #2a2a2a, #050505); top: 64%; left: 36%; transform: translate(-50%, -50%); animation: pkChipFloat 3.6s ease-in-out infinite 0.3s; }
+.preview.poker .pk-chip.g { background: linear-gradient(180deg, #2dbf63, #0e6a37); top: 64%; left: 64%; transform: translate(-50%, -50%); animation: pkChipFloat 3.6s ease-in-out infinite 0.6s; }
+.preview.poker .pk-chip.y { background: linear-gradient(180deg, #ffe066, #b8860b); top: 60%; left: 72%; transform: translate(-50%, -50%); animation: pkChipFloat 3.6s ease-in-out infinite 0.9s; }
+@keyframes pkChipFloat {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+  50%      { transform: translate(-50%, -50%) translateY(-4px); }
+}
+.preview.poker .pk-pot {
+  position: absolute;
+  top: 76%; left: 50%; transform: translateX(-50%);
+  font-family: 'Geist Mono', monospace;
+  font-weight: 700; font-size: 12px;
+  color: var(--gold-1);
+  text-shadow: 0 0 8px rgba(255,210,74,0.5);
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.55);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.45);
+  z-index: 4;
+}
+.preview.poker::after {
+  content: 'NO LIMIT';
+  position: absolute;
+  top: 26px; left: 50%; transform: translateX(-50%);
+  z-index: 5;
+  font-family: 'Bungee', cursive;
+  font-size: 8px;
+  letter-spacing: 0.28em;
+  color: rgba(255,210,74,0.55);
+  text-shadow: 0 0 12px rgba(255,210,74,0.4);
+  white-space: nowrap;
+}
+
 /* DIAMOND WHEEL PREVIEW — spinning big-six wheel with flapper + hub */
 .preview.diamondwheel {
   background:
@@ -2967,6 +3062,31 @@ html.low-power .preview.dragontree .dt-coin.c2 {
       <div class="game-meta">
         <span class="meta-pill">9/6 PAYTABLE</span>
         <span class="meta-pill">800x ROYAL</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="poker.html" data-game="poker">
+      <div class="preview poker">
+        <div class="pk-cards">
+          <div class="pk-card red">A&#9829;</div>
+          <div class="pk-card">K&#9824;</div>
+          <div class="pk-card red">Q&#9830;</div>
+          <div class="pk-card">J&#9824;</div>
+          <div class="pk-card">10&#9824;</div>
+        </div>
+        <div class="pk-chip r"></div>
+        <div class="pk-chip b"></div>
+        <div class="pk-chip g"></div>
+        <div class="pk-chip y"></div>
+        <div class="pk-pot">$240</div>
+      </div>
+      <div class="game-title">TEXAS HOLD&rsquo;EM</div>
+      <div class="game-tagline">6-MAX NO LIMIT &middot; 6 STAKE TIERS</div>
+      <div class="game-desc">Sit down at a felt-green table with five AI regulars, post the blinds, and play full No Limit Hold&rsquo;em — from a friendly $1/$2 to the high-roller $500/$1000 Diamond Suite.</div>
+      <div class="game-meta">
+        <span class="meta-pill">REAL SIDE POTS</span>
+        <span class="meta-pill">6 TABLES</span>
       </div>
       <div class="play-cta">PLAY</div>
     </a>

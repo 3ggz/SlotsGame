@@ -14,7 +14,7 @@
      - Bump CACHE_VERSION to roll out a new shell.
    ============================================================ */
 
-const CACHE_VERSION = 'v110';
+const CACHE_VERSION = 'v111';
 const PRECACHE      = `diamond-casino-shell-${CACHE_VERSION}`;
 const RUNTIME_HTML  = `diamond-casino-html-${CACHE_VERSION}`;
 const RUNTIME_AUDIO = `diamond-casino-audio-${CACHE_VERSION}`;
@@ -40,6 +40,7 @@ const PRECACHE_URLS = [
   './diamondwheel.html',
   './diamonddrop.html',
   './icecoldbeer.html',
+  './poker.html',
   './plinko.html',
   './rocket.html',
   './roulette.html',
