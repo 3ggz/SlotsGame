@@ -363,11 +363,12 @@ html.low-power .lobby-link, html.low-power .history-btn, html.low-power .balance
   'use strict';
 
   const BALL_R = 0.42, HOLE_VIS = 0.62;
-  // Hazards are strict (you must thread the gaps); the LIT target is
-  // forgiving (the goal should reward intent, not pixel-perfect aim) —
-  // otherwise the ball sails right past every hole, as testing showed.
-  const HAZARD_CAPTURE_R = 0.52, TARGET_CAPTURE_R = 0.95;
-  const CAPTURE_R = HAZARD_CAPTURE_R;   // back-comat for layout helpers
+  // The ball has to be MOSTLY inside a hole for it to count, the way a
+  // real Ice Cold Beer board works — you can't just brush past the rim.
+  // Hazard radius shrank so glancing the lip no longer busts you; target
+  // radius also tightened so you actually have to aim into the hole.
+  const HAZARD_CAPTURE_R = 0.34, TARGET_CAPTURE_R = 0.46;
+  const CAPTURE_R = HAZARD_CAPTURE_R;   // back-compat for layout helpers
   const HALF = 6.0;           // play half-width (rod end x)
   const WALL_X = 6.35;        // wall x (ball center clamps near here)
   const BOTTOM = -11.4, TOP = 8.6;
@@ -377,8 +378,11 @@ html.low-power .lobby-link, html.low-power .history-btn, html.low-power .balance
   const ROD_SPEED = 7.6;      // units/sec a knob moves while held — enough
                               // authority to level out and catch the (now
                               // livelier) ball without feeling twitchy
-  const GRAVITY = -30;        // steep so an incline genuinely accelerates the
-                              // ball — tilting has real bite, you chase it
+  const GRAVITY = -55;        // honest steel-ball weight — no moon physics,
+                              // no ride-it-up-on-a-fast-tilt launches
+  const MAX_BALL_SPEED = 12;  // velocity cap (units/sec) — even on a
+                              // catastrophically fast tilt, the ball can
+                              // never gain enough energy to fly off the rod
   const H = 1 / 120;          // fixed physics step
 
   // Climbing zig-zag target checkpoints — exactly one is lit at a time.
@@ -397,15 +401,20 @@ html.low-power .lobby-link, html.low-power .history-btn, html.low-power .balance
   // Banked-rung multiplier ladder (bank k targets -> LADDER[k-1]).
   const LADDER = [1.4, 2.0, 3.0, 4.6, 7.5, 13, 28];
 
-  // Hazard holes: a staggered grid, then carve a safe corridor along the
-  // path so a navigable lane always exists (the challenge is controlling
-  // the physics ball within it, not finding the path).
+  // Hazard holes: a denser staggered grid, then carve a safe corridor along
+  // the path so a navigable lane always exists. With the new tighter capture
+  // radius and more holes, you actually have to thread real gaps now.
   function buildHazards() {
-    const rowsY = [-9.6, -6.4, -3.4, -0.4, 2.6, 5.4, 7.4];
+    const rowsY = [-9.6, -8.2, -6.4, -5.0, -3.4, -1.8, -0.4, 1.0, 2.6, 4.0, 5.4, 6.6, 7.4];
     const evenX = [-5, -3.2, -1.4, 1.4, 3.2, 5];
     const oddX = [-4.2, -2.4, 0, 2.4, 4.2];
     const path = [{ x: 0, y: BOTTOM }, ...TARGETS];
-    const clearR = 1.95, corridorR = 1.75;
+    // Tighter clearances so the new (smaller) capture radius still works
+    // — the corridor just has to leave room for the ball + a small buffer.
+    // Ball radius 0.42 + hazard capture 0.34 = 0.76 minimum centre-distance,
+    // so corridorR 1.05 still leaves the path navigable while letting more
+    // hazards survive the cull (denser obstacle field as requested).
+    const clearR = 1.20, corridorR = 1.05;
     function distSeg(px, py, a, b) {
       const vx = b.x - a.x, vy = b.y - a.y, wx = px - a.x, wy = py - a.y;
       const L2 = vx * vx + vy * vy; let t = L2 ? (wx * vx + wy * vy) / L2 : 0;
@@ -497,6 +506,12 @@ html.low-power .lobby-link, html.low-power .history-btn, html.low-power .balance
           .setTranslation(sx * WALL_X, (TOP + BOTTOM) / 2, 0).setRestitution(0).setFriction(0.9)
       );
     }
+    // Hard ceiling — the ball physically cannot escape above the play
+    // field, regardless of how violently the rod is whipped upward.
+    world.createCollider(
+      RAPIER.ColliderDesc.cuboid(WALL_X + 1, 0.5, 1)
+        .setTranslation(0, TOP + 1.0, 0).setRestitution(0).setFriction(0.4)
+    );
 
     function setRod(leftY, rightY) {
       // Rod's left end ends up at leftY, right at rightY — matches the
@@ -507,7 +522,19 @@ html.low-power .lobby-link, html.low-power .history-btn, html.low-power .balance
       rod.setNextKinematicTranslation({ x: 0, y: (leftY + rightY) / 2, z: 0 });
       rod.setNextKinematicRotation({ x: 0, y: 0, z: Math.sin(ang / 2), w: Math.cos(ang / 2) });
     }
-    function step(leftY, rightY) { setRod(leftY, rightY); world.step(); }
+    function step(leftY, rightY) {
+      setRod(leftY, rightY);
+      world.step();
+      // Hard cap on ball velocity — even if a sudden rod jolt imparts a
+      // huge impulse, the ball can never exceed MAX_BALL_SPEED. Without
+      // this you can launch it like a slingshot on a fast tilt.
+      const v = ballBody.linvel();
+      const sp = Math.hypot(v.x, v.y);
+      if (sp > MAX_BALL_SPEED) {
+        const s = MAX_BALL_SPEED / sp;
+        ballBody.setLinvel({ x: v.x * s, y: v.y * s, z: 0 }, true);
+      }
+    }
     function getBall() { const t = ballBody.translation(), v = ballBody.linvel(); return { x: t.x, y: t.y, vx: v.x, vy: v.y }; }
     function resetBall(x, y) {
       ballBody.setTranslation({ x, y, z: 0 }, true);
@@ -767,8 +794,17 @@ function frame(now) {
         acc -= Core.H; n++;
       }
       const b = sim.getBall();
-      // safety: if the ball somehow escaped below, re-seat it
-      if (b.y < Core.BOTTOM - 2 || Math.abs(b.x) > Core.WALL_X + 1) { sim.resetBall(0, Core.BALL_START.y); }
+      // Safety net — if the ball somehow escapes the play field, the rod
+      // probably caused it by being far from the ball's reset position.
+      // Reset the WHOLE board (ball AND both rod ends) so the ball can't
+      // get stuck respawning at the bottom while the rod sits up high,
+      // dropping forever.
+      if (b.y < Core.BOTTOM - 2 || Math.abs(b.x) > Core.WALL_X + 1) {
+        State.leftY = State.rightY = Core.ROD_START_Y;
+        sim.resetBall(0, Core.BALL_START.y);
+        // step once with the reset rod so renderer / physics align
+        sim.step(State.leftY, State.rightY);
+      }
       renderer.updateBall(b.x, b.y);
       renderer.updateRod(State.leftY, State.rightY);
       checkCapture(b);
