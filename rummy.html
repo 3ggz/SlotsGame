@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Rummy 500 &middot; Diamond Casino</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#0a0418" />
+</head>
+<body>
+<script>
+/* CORE TESTABLE API START */
+(function(){
+  'use strict';
+
+  // ----- seedable RNG -----
+  function mulberry32(seed) {
+    let a = (seed >>> 0) || 1;
+    return function() {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // ----- card encoding: single 52-card deck -----
+  //   card = rank*4 + suit, range 0..51
+  //   rank 0=A, 1=2, ... 8=9, 9=10(T), 10=J, 11=Q, 12=K
+  //   suit 0=clubs, 1=diamonds, 2=hearts, 3=spades
+  const RANK_CHARS = 'A23456789TJQK';
+  const SUIT_CHARS = 'cdhs';
+  const SUIT_GLYPH = ['♣','♦','♥','♠'];
+  const RED_SUITS  = new Set([1, 2]);
+
+  function RANK(c) { return c >> 2; }
+  function SUIT(c) { return c & 3; }
+  function cardToStr(c) { return RANK_CHARS[RANK(c)] + SUIT_CHARS[SUIT(c)]; }
+  function strToCard(s) {
+    const r = RANK_CHARS.indexOf(s[0]);
+    const su = SUIT_CHARS.indexOf(s[1]);
+    if (r < 0 || su < 0) return -1;
+    return r * 4 + su;
+  }
+  // Player-facing rank label ("10" not "T").
+  function rankLabel(r) { return r === 9 ? '10' : RANK_CHARS[r]; }
+
+  // Rummy 500 card values: Ace = 15, face cards = 10, 10..2 = pip value.
+  function cardValue(c) {
+    const r = RANK(c);
+    if (r === 0) return 15;   // ace
+    if (r >= 9) return 10;    // 10, J, Q, K
+    return r + 1;             // 2..9
+  }
+  function handValue(cards) { let v = 0; for (const c of cards) v += cardValue(c); return v; }
+
+  function makeDeck() {
+    const d = new Array(52);
+    for (let i = 0; i < 52; i++) d[i] = i;
+    return d;
+  }
+  function shuffle(deck, rng) {
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      const t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  // ----- meld validation -----
+  // Returns 'set' | 'run' | null for an array of card ints.
+  function meldType(cards) {
+    if (!cards || cards.length < 3) return null;
+    // SET: all same rank (one deck => suits automatically distinct), max 4.
+    if (cards.length <= 4) {
+      let same = true;
+      const r0 = RANK(cards[0]);
+      for (const c of cards) if (RANK(c) !== r0) { same = false; break; }
+      if (same) {
+        // reject duplicate identical cards (defensive; impossible in one deck)
+        const seen = new Set(cards);
+        if (seen.size === cards.length) return 'set';
+      }
+    }
+    if (isRun(cards)) return 'run';
+    return null;
+  }
+
+  function isRun(cards) {
+    if (cards.length < 3) return false;
+    const s0 = SUIT(cards[0]);
+    for (const c of cards) if (SUIT(c) !== s0) return false;
+    const ranks = cards.map(RANK);
+    if (new Set(ranks).size !== ranks.length) return false; // no dup ranks
+    // ace-low: sort ascending, must be consecutive
+    const asc = ranks.slice().sort((a, b) => a - b);
+    let lowOk = true;
+    for (let i = 1; i < asc.length; i++) if (asc[i] !== asc[i - 1] + 1) { lowOk = false; break; }
+    if (lowOk) return true;
+    // ace-high: only meaningful if an ace is present; map ace(0)->13
+    if (asc[0] === 0) {
+      const hi = ranks.map(r => r === 0 ? 13 : r).sort((a, b) => a - b);
+      let hiOk = true;
+      for (let i = 1; i < hi.length; i++) if (hi[i] !== hi[i - 1] + 1) { hiOk = false; break; }
+      if (hiOk) return true;
+    }
+    return false;
+  }
+
+  // Resolve a valid run's card values into sorted numbers (ace high -> 13).
+  function runValues(meld) {
+    const ranks = meld.map(RANK).sort((a, b) => a - b);
+    let lowOk = true;
+    for (let i = 1; i < ranks.length; i++) if (ranks[i] !== ranks[i - 1] + 1) { lowOk = false; break; }
+    if (lowOk) return ranks.slice();
+    return ranks.map(r => r === 0 ? 13 : r).sort((a, b) => a - b);
+  }
+
+  // Can `card` be added to existing table meld?
+  function canLayOff(card, meld) {
+    const t = meldType(meld);
+    if (!t) return false;
+    if (t === 'set') {
+      return RANK(card) === RANK(meld[0]) && meld.length < 4;
+    }
+    // run
+    if (SUIT(card) !== SUIT(meld[0])) return false;
+    const vals = runValues(meld);
+    const min = vals[0], max = vals[vals.length - 1];
+    const r = RANK(card);
+    const cands = (r === 0) ? [0, 13] : [r];
+    for (const cv of cands) {
+      if ((cv === min - 1 || cv === max + 1) && cv >= 0 && cv <= 13) return true;
+    }
+    return false;
+  }
+
+  // ----- discover candidate melds in a hand (hints + AI) -----
+  function findMelds(hand) {
+    const out = [];
+    // SETS: group by rank, count >= 3.
+    const byRank = {};
+    for (const c of hand) (byRank[RANK(c)] = byRank[RANK(c)] || []).push(c);
+    for (const r of Object.keys(byRank)) {
+      if (byRank[r].length >= 3) out.push(byRank[r].slice());
+    }
+    // RUNS: per suit, maximal consecutive segments (ace-low and ace-high).
+    const bySuit = {};
+    for (const c of hand) (bySuit[SUIT(c)] = bySuit[SUIT(c)] || []).push(c);
+    for (const s of Object.keys(bySuit)) {
+      const cards = bySuit[s];
+      collectRuns(cards, false, out);   // ace-low view
+      if (cards.some(c => RANK(c) === 0)) collectRuns(cards, true, out); // ace-high view
+    }
+    return out;
+  }
+  function collectRuns(cards, aceHigh, out) {
+    // map each card to a value; ace -> 13 when aceHigh
+    const items = cards.map(c => ({ c, v: (aceHigh && RANK(c) === 0) ? 13 : RANK(c) }))
+                       .sort((a, b) => a.v - b.v);
+    // de-dupe equal values (one deck won't have dups within a suit anyway)
+    let seg = [items[0]];
+    for (let i = 1; i < items.length; i++) {
+      if (items[i].v === items[i - 1].v + 1) seg.push(items[i]);
+      else { if (seg.length >= 3) out.push(seg.map(x => x.c)); seg = [items[i]]; }
+    }
+    if (seg.length >= 3) out.push(seg.map(x => x.c));
+  }
+
+  // ----- deal -----
+  // Rummy 500: deal 7 each, flip one to the discard pile, rest is stock.
+  // stock/discard are arrays where the LAST element is the top.
+  function deal(numPlayers, seed) {
+    const rng = mulberry32(seed);
+    const deck = shuffle(makeDeck(), rng);
+    const hands = [];
+    for (let p = 0; p < numPlayers; p++) hands.push([]);
+    for (let k = 0; k < 7; k++) {
+      for (let p = 0; p < numPlayers; p++) hands[p].push(deck.pop());
+    }
+    const discard = [deck.pop()];
+    return {
+      hands, stock: deck, discard,
+      tableMelds: [],                       // {id, owner, type, cards}
+      melded: hands.map(() => 0),           // running melded points per player
+      turn: 0, numPlayers,
+      phase: 'draw', dealOver: false, goneOut: -1,
+      nextMeldId: 1,
+    };
+  }
+
+  // ----- the signature mechanic: grabbing from the discard pile -----
+  // discardPile[last] is the top. Taking from `index` scoops index..top.
+  // If index < top, the chosen card (discardPile[index]) MUST be immediately
+  // usable — either forms a new meld with the resulting hand, or lays off
+  // onto an existing table meld.
+  function legalDiscardGrab(discardPile, index, hand, tableMelds) {
+    if (index < 0 || index >= discardPile.length) return { legal: false };
+    const chosen = discardPile[index];
+    const grabbed = discardPile.slice(index);
+    const isTopOnly = (index === discardPile.length - 1);
+    if (isTopOnly) return { legal: true, requiresUse: false, satisfier: null, grabbed };
+    const newHand = hand.concat(grabbed);
+    // (a) chosen forms a new meld?
+    const melds = findMelds(newHand);
+    for (const m of melds) {
+      if (m.indexOf(chosen) >= 0) return { legal: true, requiresUse: true, satisfier: { kind: 'meld', cards: m.slice() }, grabbed };
+    }
+    // (b) chosen lays off onto an existing meld?
+    for (const meld of (tableMelds || [])) {
+      if (canLayOff(chosen, meld.cards)) return { legal: true, requiresUse: true, satisfier: { kind: 'layoff', meldId: meld.id, card: chosen }, grabbed };
+    }
+    return { legal: false };
+  }
+
+  // ----- turn operations (mutate state) -----
+  function removeFromHand(hand, card) {
+    const i = hand.indexOf(card);
+    if (i >= 0) hand.splice(i, 1);
+  }
+  function applyDrawStock(state, p) {
+    if (state.stock.length === 0) reshuffleDiscardIntoStock(state);
+    const card = state.stock.pop();
+    if (card != null) state.hands[p].push(card);
+    state.phase = 'meld';
+    return card;
+  }
+  function reshuffleDiscardIntoStock(state) {
+    // keep the top discard, shuffle the rest back into stock
+    if (state.discard.length <= 1) return;
+    const top = state.discard.pop();
+    const rest = state.discard.splice(0);
+    state.discard = [top];
+    // deterministic-ish reshuffle using a fresh seed from sizes
+    const rng = mulberry32((rest.length * 2654435761) >>> 0);
+    state.stock = shuffle(rest, rng);
+  }
+  function applyDrawDiscard(state, p, index) {
+    const grab = legalDiscardGrab(state.discard, index, state.hands[p], state.tableMelds);
+    if (!grab.legal) return null;
+    const grabbed = state.discard.splice(index);
+    for (const c of grabbed) state.hands[p].push(c);
+    state.phase = 'meld';
+    state.pendingUse = grab.requiresUse ? grab.satisfier : null;
+    return grab;
+  }
+  function applyMeld(state, p, cards) {
+    const t = meldType(cards);
+    if (!t) return null;
+    for (const c of cards) if (state.hands[p].indexOf(c) < 0) return null;
+    for (const c of cards) removeFromHand(state.hands[p], c);
+    const meld = { id: state.nextMeldId++, owner: p, type: t, cards: cards.slice() };
+    state.tableMelds.push(meld);
+    for (const c of cards) state.melded[p] += cardValue(c);
+    clearPendingUse(state, cards);
+    return meld;
+  }
+  function applyLayoff(state, p, card, meldId) {
+    const meld = state.tableMelds.find(m => m.id === meldId);
+    if (!meld || !canLayOff(card, meld.cards)) return false;
+    if (state.hands[p].indexOf(card) < 0) return false;
+    removeFromHand(state.hands[p], card);
+    meld.cards.push(card);
+    state.melded[p] += cardValue(card);   // credited to the LAYER, not the owner
+    clearPendingUse(state, [card]);
+    return true;
+  }
+  function clearPendingUse(state, cards) {
+    if (!state.pendingUse) return;
+    const pu = state.pendingUse;
+    if (pu.kind === 'meld' && cards.some(c => pu.cards.indexOf(c) >= 0)) state.pendingUse = null;
+    else if (pu.kind === 'layoff' && cards.indexOf(pu.card) >= 0) state.pendingUse = null;
+  }
+  function applyDiscard(state, p, card) {
+    if (state.pendingUse) return false;           // must satisfy the grab obligation first
+    if (state.hands[p].indexOf(card) < 0) return false;
+    removeFromHand(state.hands[p], card);
+    state.discard.push(card);
+    if (state.hands[p].length === 0) endDeal(state, p, true);
+    else advanceTurn(state);
+    return true;
+  }
+  function advanceTurn(state) {
+    state.turn = (state.turn + 1) % state.numPlayers;
+    state.phase = 'draw';
+  }
+  function checkGoingOut(state, p) {
+    if (state.hands[p].length === 0) { endDeal(state, p, false); return true; }
+    return false;
+  }
+  function endDeal(state, goneOut, byDiscard) {
+    state.dealOver = true;
+    state.goneOut = goneOut;
+    state.byDiscard = byDiscard;
+    state.scores = scoreDeal(state);
+  }
+
+  // ----- scoring -----
+  function scoreDeal(state) {
+    const out = [];
+    for (let p = 0; p < state.numPlayers; p++) {
+      out.push(state.melded[p] - handValue(state.hands[p]));
+    }
+    return out;
+  }
+
+  // ----- bot policy -----
+  // Choose a disjoint set of melds from the hand maximizing points laid down.
+  function chooseMelds(hand) {
+    const cands = findMelds(hand).filter(m => meldType(m));
+    cands.sort((a, b) => handValue(b) - handValue(a));
+    const used = new Set();
+    const chosen = [];
+    for (const m of cands) {
+      if (m.some(c => used.has(c))) continue;
+      chosen.push(m.slice());
+      for (const c of m) used.add(c);
+    }
+    return chosen;
+  }
+  // Pick the least-useful card to discard.
+  function chooseDiscard(hand, opponentMelds) {
+    const melds = findMelds(hand);
+    const inMeld = new Set();
+    for (const m of melds) for (const c of m) inMeld.add(c);
+    function connected(c) {
+      for (const d of hand) {
+        if (d === c) continue;
+        if (RANK(d) === RANK(c)) return true;
+        if (SUIT(d) === SUIT(c) && Math.abs(RANK(d) - RANK(c)) <= 2) return true;
+      }
+      return false;
+    }
+    function feedsOpponent(c) {
+      for (const meld of (opponentMelds || [])) if (canLayOff(c, meld.cards)) return true;
+      return false;
+    }
+    let best = null, bestKey = -Infinity;
+    for (const c of hand) {
+      if (inMeld.has(c)) continue;              // keep meld material
+      let key = cardValue(c);                   // dump high deadwood
+      if (!connected(c)) key += 100;            // isolated cards first
+      if (feedsOpponent(c)) key -= 50;          // avoid feeding opponents
+      if (key > bestKey) { bestKey = key; best = c; }
+    }
+    if (best == null) {
+      // every card is meld material — discard the lowest-value one
+      best = hand[0];
+      for (const c of hand) if (cardValue(c) < cardValue(best)) best = c;
+    }
+    return best;
+  }
+  // Full bot turn plan. Pure-ish: reads state, returns a plan to execute.
+  function bestPlay(state, p) {
+    const opponentMelds = state.tableMelds.filter(m => m.owner !== p);
+    // 1) DRAW: is there a worthwhile discard grab? Evaluate the deepest legal
+    //    grab whose chosen card we can immediately use, plus the simple top take.
+    let drawPlan = { source: 'stock' };
+    // top-card take: useful if it extends our meld potential
+    const top = state.discard[state.discard.length - 1];
+    const handPlusTop = state.hands[p].concat([top]);
+    const meldsNow = chooseMelds(state.hands[p]);
+    const meldsWithTop = chooseMelds(handPlusTop);
+    const gainTop = laidValue(meldsWithTop) - laidValue(meldsNow);
+    // deeper grabs: scan from just below top upward for a legal, useful grab
+    let bestDeep = null;
+    for (let idx = state.discard.length - 2; idx >= 0 && idx >= state.discard.length - 6; idx--) {
+      const g = legalDiscardGrab(state.discard, idx, state.hands[p], state.tableMelds);
+      if (g.legal && g.requiresUse) {
+        const scoopVal = g.grabbed.reduce((s, c) => s + cardValue(c), 0);
+        const chosenVal = cardValue(state.discard[idx]);
+        // worth it if the chosen card is high value or completes a meld and
+        // we don't scoop too much junk
+        const junk = scoopVal - chosenVal;
+        if (chosenVal >= 10 && junk <= 12) { bestDeep = { idx, g }; break; }
+      }
+    }
+    if (bestDeep) drawPlan = { source: 'discard', index: bestDeep.idx };
+    else if (gainTop >= 5) drawPlan = { source: 'discard', index: state.discard.length - 1 };
+    return { draw: drawPlan };
+  }
+  function laidValue(melds) { let v = 0; for (const m of melds) v += handValue(m); return v; }
+
+  // ----- tournament -----
+  const TABLES = [
+    { id: 'bronze',   name: 'Bronze Sit & Go',   buyIn: 25,   target: 200, players: 4 },
+    { id: 'silver',   name: 'Silver Sit & Go',   buyIn: 100,  target: 300, players: 4 },
+    { id: 'gold',     name: 'Gold Sit & Go',     buyIn: 500,  target: 300, players: 4 },
+    { id: 'platinum', name: 'Platinum Sit & Go', buyIn: 2500, target: 500, players: 4 },
+    { id: 'diamond',  name: 'Diamond Sit & Go',  buyIn: 10000, target: 500, players: 4 },
+    { id: 'turbo',    name: 'Turbo 150',         buyIn: 50,   target: 150, players: 4 },
+  ];
+  function prizeFor(tier, numPlayers) {
+    const pool = tier.buyIn * numPlayers;
+    return { pool, prize: Math.round(pool * 0.7), consolation: Math.round(pool * 0.3) };
+  }
+  function createTournament(tier, players) {
+    const purse = prizeFor(tier, players.length);
+    return {
+      tier, players: players.map((pl, i) => ({ ...pl, index: i, cumulative: 0 })),
+      dealerButton: 0, target: tier.target,
+      pool: purse.pool, prize: purse.prize, consolation: purse.consolation,
+      dealLog: [], over: false, winner: null, runnerUp: null, payouts: null, dealNo: 0,
+    };
+  }
+  function applyDealScores(t, dealScores) {
+    for (const p of t.players) p.cumulative += (dealScores[p.index] || 0);
+    t.dealLog.push(dealScores.slice());
+    t.dealerButton = (t.dealerButton + 1) % t.players.length;
+    t.dealNo++;
+    checkTarget(t);
+    return t;
+  }
+  function checkTarget(t) {
+    const crossed = t.players.filter(p => p.cumulative >= t.target);
+    if (crossed.length === 0) return t;
+    const ranked = t.players.slice().sort((a, b) => b.cumulative - a.cumulative || a.index - b.index);
+    t.over = true;
+    t.winner = ranked[0];
+    t.runnerUp = ranked[1] || null;
+    t.payouts = {};
+    t.payouts[ranked[0].id] = t.prize;
+    if (ranked[1]) t.payouts[ranked[1].id] = t.consolation;
+    return t;
+  }
+
+  // ----- export -----
+  const api = {
+    mulberry32,
+    RANK_CHARS, SUIT_CHARS, SUIT_GLYPH, RED_SUITS,
+    RANK, SUIT, cardToStr, strToCard, rankLabel,
+    cardValue, handValue,
+    makeDeck, shuffle, deal,
+    meldType, isRun, runValues, canLayOff, findMelds,
+    legalDiscardGrab,
+    applyDrawStock, applyDrawDiscard, applyMeld, applyLayoff, applyDiscard,
+    checkGoingOut, advanceTurn, endDeal, scoreDeal,
+    chooseMelds, chooseDiscard, bestPlay,
+    TABLES, prizeFor, createTournament, applyDealScores, checkTarget,
+  };
+  if (typeof globalThis !== 'undefined') globalThis.RummyCore = api;
+  if (typeof window !== 'undefined') window.RummyCore = api;
+})();
+/* CORE TESTABLE API END */
+</script>
+</body>
+</html>
