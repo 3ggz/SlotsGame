@@ -374,15 +374,25 @@ html.low-power .lobby-link, html.low-power .history-btn, html.low-power .balance
   const BALL_START = { x: 0, y: -10.3 };
   const ROD_START_Y = -11.1;  // both ends here at round start (flat, low)
   const Y_MIN = -11.4, Y_MAX = 8.7;   // rod-end clamp
-  const ROD_SPEED = 6.5;      // units/sec a knob moves while held
-                              // (was 8.5 — slower gives finer control)
-  const GRAVITY = -16;
+  const ROD_SPEED = 7.6;      // units/sec a knob moves while held — enough
+                              // authority to level out and catch the (now
+                              // livelier) ball without feeling twitchy
+  const GRAVITY = -30;        // steep so an incline genuinely accelerates the
+                              // ball — tilting has real bite, you chase it
   const H = 1 / 120;          // fixed physics step
 
   // Climbing zig-zag target checkpoints — exactly one is lit at a time.
+  // The lateral swing WIDENS as you climb and the final hole sits off-centre
+  // in a corner, so you can no longer cheese the top by raising both ends
+  // evenly and riding straight up the middle — the finish is the hardest.
   const TARGETS = [
-    { x: -1.8, y: -7.8 }, { x: 2.2, y: -4.8 }, { x: -2.6, y: -1.6 },
-    { x: 2.8, y: 1.4 }, { x: -1.8, y: 4.2 }, { x: 1.8, y: 6.4 }, { x: 0.0, y: 8.2 },
+    { x: -1.6, y: -7.8 },  // 1.4x  — gentle opener
+    { x:  2.1, y: -5.0 },  // 2.0x
+    { x: -2.8, y: -2.2 },  // 3.0x
+    { x:  3.2, y:  0.6 },  // 4.6x  — swing widening
+    { x: -3.6, y:  3.4 },  // 7.5x
+    { x:  3.8, y:  5.8 },  // 13x   — near the right wall
+    { x: -4.0, y:  7.9 },  // 28x   — far top-left corner, the real test
   ];
   // Banked-rung multiplier ladder (bank k targets -> LADDER[k-1]).
   const LADDER = [1.4, 2.0, 3.0, 4.6, 7.5, 13, 28];
@@ -453,15 +463,21 @@ html.low-power .lobby-link, html.low-power .history-btn, html.low-power .balance
         .setTranslation(BALL_START.x, BALL_START.y, 0)
         .enabledTranslations(true, true, false)
         .setCcdEnabled(true)
-        // Tuned for a GLUED feel: heavy linear+angular damping kills any
-        // bounce after rod contact (was 0.2 / 0.4 — ball flew on tilt),
-        // higher density grounds it, restitution 0 prevents the rod from
-        // catapulting it on a fast tilt.
-        .setLinearDamping(2.0)
-        .setAngularDamping(3.0)
+        // The rod is advanced inside the physics substep loop, so the old
+        // "ball flies on a fast tilt" catapult is already gone. That means
+        // we no longer need the heavy damping that made the ball feel glued
+        // and sluggish. Light linear damping lets it actually ACCELERATE
+        // down an incline (real Ice Cold Beer skill is fighting that roll),
+        // while a little angular damping keeps the spin from running away.
+        .setLinearDamping(0.04)
+        .setAngularDamping(0.08)
     );
     world.createCollider(
-      RAPIER.ColliderDesc.ball(BALL_R).setRestitution(0).setFriction(1.4).setDensity(1.6),
+      // It's a steel ball on a steel rod — it SLIDES as much as it rolls.
+      // Lower friction (0.42) means the incline isn't paying the full
+      // rolling-inertia tax, so the ball actually picks up speed and the
+      // player has to chase it. Restitution 0 keeps it from pinballing.
+      RAPIER.ColliderDesc.ball(BALL_R).setRestitution(0).setFriction(0.42).setDensity(1.1),
       ballBody
     );
 
@@ -469,7 +485,7 @@ html.low-power .lobby-link, html.low-power .history-btn, html.low-power .balance
       RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, ROD_START_Y, 0)
     );
     world.createCollider(
-      RAPIER.ColliderDesc.cuboid(ROD_HALF_X, ROD_HALF_Y, ROD_HALF_Z).setRestitution(0).setFriction(1.4),
+      RAPIER.ColliderDesc.cuboid(ROD_HALF_X, ROD_HALF_Y, ROD_HALF_Z).setRestitution(0).setFriction(0.42),
       rod
     );
 
