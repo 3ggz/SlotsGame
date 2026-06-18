@@ -6,8 +6,397 @@
 <title>Rummy 500 &middot; Diamond Casino</title>
 <link rel="manifest" href="manifest.webmanifest" />
 <meta name="theme-color" content="#0a0418" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Outfit:wght@400;600;700;800&family=Geist+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg-0: #0a0418; --bg-1: #150828; --bg-2: #1c0a3a;
+  --gold-0: #fff0a8; --gold-1: #ffd24a; --gold-2: #b8860b; --gold-deep: #5c3d00;
+  --neon-pink: #ff2e93; --neon-cyan: #22d3ee; --neon-violet: #a855f7; --neon-green: #5cffa1;
+  --felt-light: #136942; --felt-deep: #0a3d24; --felt-edge: #02180c;
+  --card-red: #d62433; --card-black: #111;
+  --shadow-deep: 0 30px 60px -10px rgba(0,0,0,0.7), 0 18px 36px -18px rgba(0,0,0,0.5);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { width: 100%; min-height: 100%; }
+body {
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(168,85,247,0.2), transparent 55%),
+    radial-gradient(ellipse at 80% 20%, rgba(34,211,238,0.15), transparent 55%),
+    radial-gradient(ellipse at 20% 70%, rgba(255,46,147,0.12), transparent 55%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%, var(--bg-0));
+  color: #fff; overflow-x: hidden;
+}
+
+/* ---- nav ---- */
+.top-nav { position: fixed; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 50; }
+.lobby-link, .leave-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; height: 36px;
+  background: rgba(10,4,24,0.7); backdrop-filter: blur(6px); border-radius: 12px; color: #fff;
+  font-family: 'Bungee', cursive; font-size: 10px; letter-spacing: 0.18em; text-decoration: none;
+  cursor: pointer; border: 0; box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 4px 12px rgba(0,0,0,0.5);
+  transition: filter 0.15s, transform 0.08s;
+}
+.leave-btn { box-shadow: inset 0 0 0 1.5px rgba(255,46,147,0.5), 0 4px 12px rgba(0,0,0,0.5); }
+.lobby-link:hover, .leave-btn:hover { filter: brightness(1.15); }
+.lobby-link:active, .leave-btn:active { transform: translateY(2px); }
+.balance-link {
+  position: fixed; top: 12px; right: 12px; z-index: 50; display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 13px 6px; background: rgba(10,4,24,0.78); backdrop-filter: blur(6px); border-radius: 12px;
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.45), 0 4px 12px rgba(0,0,0,0.5); color: #fff; text-decoration: none;
+}
+.balance-link .bl-label { font-family: 'Bungee', cursive; font-size: 9px; letter-spacing: 0.18em; color: rgba(255,255,255,0.5); }
+.balance-link .bl-amt { font-family: 'Geist Mono', monospace; font-weight: 700; font-size: 14px; color: var(--gold-1); text-shadow: 0 0 10px rgba(255,210,74,0.45); }
+.balance-link .bl-add { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(180deg, var(--gold-0), var(--gold-1)); display: grid; place-items: center; color: #0a0418; font-family: 'Bungee', cursive; font-size: 14px; cursor: pointer; box-shadow: 0 2px 0 #3a2200; }
+
+/* ---- stage ---- */
+.stage { position: relative; min-height: 100vh; padding: 60px 12px 24px; display: flex; flex-direction: column; align-items: center; }
+.stage-inner { width: 100%; max-width: 1180px; display: flex; flex-direction: column; }
+
+/* ---- table select ---- */
+.select-header { text-align: center; margin-bottom: 22px; }
+.select-title {
+  font-family: 'Bungee Shade', cursive; font-size: clamp(28px, 6vw, 52px); line-height: 1;
+  background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 50%, var(--gold-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 6px 14px rgba(255,210,74,0.25));
+}
+.select-sub { margin-top: 8px; font-family: 'Bungee', cursive; font-size: 11px; letter-spacing: 0.22em; color: var(--neon-cyan); text-shadow: 0 0 12px rgba(34,211,238,0.4); }
+.tables-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; width: 100%; }
+.table-card {
+  position: relative; display: flex; flex-direction: column; padding: 22px; border-radius: 22px; border: 0; cursor: pointer;
+  text-align: left; background: linear-gradient(180deg, #2c1456 0%, #1a0735 50%, #0f041e 100%); color: #fff;
+  box-shadow: var(--shadow-deep), inset 0 0 0 1.5px rgba(255,210,74,0.22);
+  transition: transform 0.13s cubic-bezier(.2,1.4,.4,1), box-shadow 0.16s, filter 0.2s; font-family: inherit;
+}
+.table-card:hover:not(:disabled) { transform: translateY(-4px); box-shadow: var(--shadow-deep), inset 0 0 0 1.5px rgba(255,210,74,0.5), 0 0 36px rgba(255,210,74,0.2); }
+.table-card:disabled { filter: grayscale(0.4) brightness(0.55); cursor: not-allowed; }
+.table-card::before {
+  content: ''; position: absolute; inset: 8px; border-radius: 16px; pointer-events: none; padding: 1.5px;
+  background: linear-gradient(135deg, var(--gold-0), var(--gold-1) 30%, var(--gold-deep) 50%, var(--gold-1) 70%, var(--gold-0));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0.5;
+}
+.table-card .tc-tier { font-family: 'Bungee', cursive; font-size: 10px; letter-spacing: 0.2em; color: var(--neon-cyan); margin-bottom: 4px; }
+.table-card .tc-name { font-family: 'Bungee', cursive; font-size: 24px; background: linear-gradient(180deg, #fff7d1, var(--gold-1)); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 12px; }
+.table-card .tc-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.table-card .tc-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(255,210,74,0.15); border: 1px solid rgba(255,210,74,0.35); font-family: 'Bungee', cursive; font-size: 10px; letter-spacing: 0.14em; color: var(--gold-1); }
+.table-card .tc-prize { font-size: 12px; color: rgba(255,255,255,0.7); margin-bottom: 6px; }
+.table-card .tc-prize b { color: var(--neon-green); font-family: 'Geist Mono', monospace; }
+.table-card .tc-cta { margin-top: auto; padding: 10px; text-align: center; font-family: 'Bungee', cursive; font-size: 13px; letter-spacing: 0.18em; color: #0a0418; background: linear-gradient(180deg, var(--gold-0), var(--gold-1)); border-radius: 10px; box-shadow: 0 4px 0 #3a2200, inset 0 1px 0 rgba(255,255,255,0.3); }
+.table-card .tc-locked { margin-top: auto; padding: 10px; text-align: center; font-family: 'Bungee', cursive; font-size: 11px; letter-spacing: 0.18em; color: rgba(255,255,255,0.55); background: rgba(255,46,147,0.15); border-radius: 10px; border: 1px solid rgba(255,46,147,0.3); }
+
+/* ---- game screen ---- */
+.game-screen { display: none; flex-direction: column; width: 100%; align-items: center; }
+.game-screen.show { display: flex; }
+.game-header { text-align: center; margin-bottom: 8px; }
+.game-header .gh-name { font-family: 'Bungee Shade', cursive; font-size: clamp(20px, 4vw, 30px); background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 50%, var(--gold-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.game-header .gh-info { font-family: 'Bungee', cursive; font-size: 10px; letter-spacing: 0.2em; color: var(--neon-cyan); }
+
+/* opponents row */
+.opponents { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; width: 100%; }
+.opp {
+  position: relative; min-width: 120px; padding: 8px 12px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(20,10,38,0.95), rgba(10,4,24,0.95));
+  box-shadow: 0 6px 14px rgba(0,0,0,0.55), inset 0 0 0 1.5px rgba(255,255,255,0.06);
+  display: flex; flex-direction: column; align-items: center; gap: 2px; transition: box-shadow 0.25s, opacity 0.3s;
+}
+.opp.acting { box-shadow: 0 6px 14px rgba(0,0,0,0.55), inset 0 0 0 2px var(--neon-cyan), 0 0 22px rgba(34,211,238,0.5); }
+.opp.eliminated { opacity: 0.4; filter: grayscale(0.6); }
+.opp .opp-av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-family: 'Bungee', cursive; font-size: 15px; color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,0.1), 0 4px 10px rgba(0,0,0,0.6); }
+.opp .opp-name { font-family: 'Bungee', cursive; font-size: 10px; letter-spacing: 0.08em; white-space: nowrap; max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+.opp .opp-cards { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--neon-cyan); }
+.opp .opp-score { font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 700; color: var(--gold-1); }
+.opp .opp-mini-hand { display: flex; gap: 1px; margin-top: 2px; }
+.opp .opp-mini-hand .mini-card { width: 9px; height: 13px; border-radius: 2px; background: linear-gradient(135deg, #4a0d3b, #1a0420); box-shadow: inset 0 0 0 0.5px var(--gold-1); }
+
+/* center play area: piles + melds */
+.play-area {
+  width: 100%; max-width: 980px; border-radius: 26px; padding: 18px;
+  background:
+    radial-gradient(ellipse at center top, rgba(255,255,255,0.05), transparent 70%),
+    radial-gradient(ellipse at 50% 0%, #1b8855 0%, var(--felt-light) 28%, var(--felt-deep) 92%, var(--felt-edge) 100%);
+  box-shadow: var(--shadow-deep), inset 0 0 0 5px rgba(0,0,0,0.5), inset 0 0 0 6.5px rgba(255,210,74,0.4), inset 0 0 70px rgba(0,0,0,0.5);
+  display: flex; flex-direction: column; gap: 14px; min-height: 220px;
+}
+.piles { display: flex; justify-content: center; align-items: flex-start; gap: 26px; }
+.pile { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pile-label { font-family: 'Bungee', cursive; font-size: 9px; letter-spacing: 0.2em; color: rgba(255,255,255,0.6); }
+.stock-pile, .discard-pile { position: relative; }
+.stock-pile { cursor: pointer; }
+.stock-pile.disabled, .discard-pile.disabled { opacity: 0.5; pointer-events: none; }
+.stock-count { position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); font-family: 'Geist Mono', monospace; font-size: 10px; color: #fff; background: rgba(0,0,0,0.7); padding: 1px 6px; border-radius: 999px; }
+.discard-fan { display: flex; position: relative; height: 92px; }
+.discard-fan .card { cursor: pointer; transition: transform 0.12s; }
+.discard-fan .card:not(:first-child) { margin-left: -42px; }
+.discard-fan .card.grabbable:hover { transform: translateY(-10px); box-shadow: 0 10px 18px rgba(0,0,0,0.5), 0 0 0 2px var(--neon-green); }
+.discard-empty { width: 64px; height: 92px; border-radius: 7px; border: 2px dashed rgba(255,255,255,0.2); display: grid; place-items: center; color: rgba(255,255,255,0.3); font-size: 10px; font-family: 'Bungee', cursive; }
+
+/* table melds */
+.melds-area { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; min-height: 60px; }
+.meld-group { display: flex; position: relative; padding: 6px 8px 4px; border-radius: 10px; background: rgba(0,0,0,0.25); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); cursor: default; }
+.meld-group.layoff-target { box-shadow: inset 0 0 0 2px var(--neon-green), 0 0 16px rgba(92,255,161,0.4); cursor: pointer; }
+.meld-group .card { width: 40px; height: 58px; }
+.meld-group .card:not(:first-child) { margin-left: -24px; }
+.meld-group .meld-owner { position: absolute; top: -8px; left: 6px; font-family: 'Bungee', cursive; font-size: 7px; letter-spacing: 0.1em; padding: 1px 5px; border-radius: 999px; background: rgba(10,4,24,0.9); color: var(--neon-cyan); }
+.melds-empty { color: rgba(255,255,255,0.35); font-size: 12px; align-self: center; }
+
+/* ---- cards (shared) ---- */
+.card {
+  position: relative; width: 64px; height: 92px; border-radius: 7px; background: #fff; display: grid; grid-template-rows: 1fr 1fr;
+  font-family: 'Outfit', sans-serif; box-shadow: 0 4px 10px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.1);
+  overflow: hidden; will-change: transform; backface-visibility: hidden; flex: 0 0 auto;
+}
+.card.red { color: var(--card-red); } .card.black { color: var(--card-black); }
+.card .corner { display: flex; flex-direction: column; align-items: center; line-height: 1; padding: 4px 0 0; }
+.card .corner.tl { padding: 5px 0 0; }
+.card .corner.br { align-self: end; justify-self: end; padding: 0 4px 4px 0; transform: rotate(180deg); }
+.card .corner .r { font-weight: 800; font-size: 14px; } .card .corner .s { font-size: 12px; line-height: 0.9; }
+.card .center-suit { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 28px; line-height: 1; opacity: 0.9; }
+.card.back {
+  background: linear-gradient(135deg, #4a0d3b 0%, #1a0420 100%);
+  background-image: radial-gradient(circle at 20% 20%, rgba(255,210,74,0.18), transparent 50%), radial-gradient(circle at 80% 80%, rgba(34,211,238,0.18), transparent 50%), repeating-linear-gradient(45deg, rgba(255,210,74,0.08) 0 6px, transparent 6px 12px), linear-gradient(135deg, #4a0d3b, #1a0420);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.55), inset 0 0 0 2px var(--gold-1), inset 0 0 0 3px rgba(0,0,0,0.6); color: transparent;
+}
+.card.back::after { content: '◆'; position: absolute; inset: 0; display: grid; place-items: center; font-family: 'Bungee', cursive; font-size: 24px; background: linear-gradient(180deg, var(--gold-0), var(--gold-1), var(--gold-2)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 6px rgba(255,210,74,0.4)); }
+.card.dealing { animation: cardLand 0.28s cubic-bezier(.22,.61,.36,1); }
+@keyframes cardLand { 0% { opacity: 0; transform: translate(0,-120px) rotate(-18deg) scale(0.7); } 100% { opacity: 1; transform: translate(0,0) rotate(0) scale(1); } }
+
+/* ---- hero hand rail ---- */
+.hand-area { width: 100%; max-width: 980px; margin-top: 14px; }
+.hand-rail {
+  display: flex; justify-content: center; flex-wrap: nowrap; overflow-x: auto; overflow-y: visible;
+  padding: 28px 10px 12px; scrollbar-width: none; min-height: 130px;
+}
+.hand-rail::-webkit-scrollbar { display: none; }
+.hand-rail .card { cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
+.hand-rail .card:not(:first-child) { margin-left: -22px; }
+.hand-rail .card.selected { transform: translateY(-18px); box-shadow: 0 14px 22px rgba(0,0,0,0.5), 0 0 0 2.5px var(--gold-1), 0 0 20px rgba(255,210,74,0.5); z-index: 5; }
+.hand-rail .card.hint { box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 0 2px var(--neon-green); }
+.hand-rail .card.drawn { animation: cardDrawn 0.5s ease-out; }
+@keyframes cardDrawn { 0% { transform: translateY(-40px) scale(1.1); box-shadow: 0 0 0 3px var(--neon-cyan); } 100% { transform: translateY(0) scale(1); } }
+
+/* ---- action bar ---- */
+.action-bar { width: 100%; max-width: 760px; margin: 8px auto 0; display: flex; flex-direction: column; gap: 8px; }
+.action-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+.act {
+  padding: 13px 8px; border: 0; border-radius: 12px; font-family: 'Bungee', cursive; font-size: 12px; letter-spacing: 0.1em;
+  cursor: pointer; color: #fff; background: linear-gradient(180deg, #2a124d, #15082a);
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 4px 0 rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+  transition: transform 0.08s, filter 0.15s;
+}
+.act:hover:not(:disabled) { filter: brightness(1.15); }
+.act:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 1px 0 rgba(0,0,0,0.6); }
+.act:disabled { filter: grayscale(0.7) brightness(0.5); cursor: not-allowed; }
+.act.primary { color: #0a0418; background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 50%, var(--gold-2)); box-shadow: 0 4px 0 #3a2200, inset 0 1px 0 rgba(255,255,255,0.4); }
+.act.primary:active { box-shadow: 0 1px 0 #3a2200, inset 0 1px 0 rgba(255,255,255,0.4); }
+.act.cool { background: linear-gradient(180deg, var(--neon-cyan), #0a7a99); color: #06181d; box-shadow: 0 4px 0 #022838, inset 0 1px 0 rgba(255,255,255,0.4); }
+.act.cool:active { box-shadow: 0 1px 0 #022838, inset 0 1px 0 rgba(255,255,255,0.4); }
+.act.danger { background: linear-gradient(180deg, #ff2e93, #6a0d3e); box-shadow: 0 4px 0 #2a0518, inset 0 1px 0 rgba(255,255,255,0.3); }
+.act.danger:active { box-shadow: 0 1px 0 #2a0518, inset 0 1px 0 rgba(255,255,255,0.3); }
+.act.green { background: linear-gradient(180deg, var(--neon-green), #14a058); color: #04210f; box-shadow: 0 4px 0 #06301a, inset 0 1px 0 rgba(255,255,255,0.4); }
+.act.green:active { box-shadow: 0 1px 0 #06301a, inset 0 1px 0 rgba(255,255,255,0.4); }
+
+.message-banner {
+  margin: 12px auto 0; padding: 9px 16px; border-radius: 14px; background: rgba(0,0,0,0.4);
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.3); font-family: 'Bungee', cursive; font-size: 11px; letter-spacing: 0.14em;
+  color: #fff; text-align: center; min-height: 36px; align-self: center; display: inline-block; transition: color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.message-banner.good { color: var(--neon-green); box-shadow: inset 0 0 0 1.5px rgba(92,255,161,0.55); background: rgba(92,255,161,0.08); }
+.message-banner.bad { color: var(--neon-pink); box-shadow: inset 0 0 0 1.5px rgba(255,46,147,0.55); background: rgba(255,46,147,0.08); }
+
+/* ---- modals ---- */
+.modal-veil { position: fixed; inset: 0; z-index: 100; background: rgba(8,4,22,0.8); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; }
+.modal-veil.show { display: flex; }
+.modal-card { background: linear-gradient(180deg, #2c1456 0%, #1a0735 100%); border-radius: 22px; padding: 26px 22px 22px; box-shadow: var(--shadow-deep), inset 0 0 0 1.5px rgba(255,210,74,0.35); width: min(440px, 92vw); position: relative; }
+.modal-card h2 { font-family: 'Bungee', cursive; font-size: 18px; letter-spacing: 0.12em; margin-bottom: 4px; background: linear-gradient(180deg, var(--gold-0), var(--gold-1)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.modal-card p { font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 14px; }
+.modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.m-btn { padding: 12px; border: 0; border-radius: 12px; font-family: 'Bungee', cursive; font-size: 12px; letter-spacing: 0.14em; cursor: pointer; color: #fff; background: linear-gradient(180deg, #2a124d, #15082a); box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.35), 0 4px 0 rgba(0,0,0,0.6); transition: transform 0.08s, filter 0.15s; }
+.m-btn:hover { filter: brightness(1.15); } .m-btn:active { transform: translateY(2px); }
+.m-btn.confirm { color: #0a0418; background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 50%, var(--gold-2)); box-shadow: 0 4px 0 #3a2200, inset 0 1px 0 rgba(255,255,255,0.4); }
+.standings-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.standings-list .srow { display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(0,0,0,0.3); font-size: 13px; align-items: center; }
+.standings-list .srow.win { box-shadow: inset 0 0 0 1.5px var(--neon-green); }
+.standings-list .srow .s-rank { font-family: 'Bungee', cursive; color: var(--gold-1); font-size: 12px; }
+.standings-list .srow .s-name { color: #fff; }
+.standings-list .srow .s-score { font-family: 'Geist Mono', monospace; font-weight: 700; color: var(--neon-cyan); }
+.standings-list .srow .s-prize { font-family: 'Geist Mono', monospace; color: var(--neon-green); font-size: 12px; }
+.amount-input-wrap { position: relative; }
+.amount-input-wrap::before { content: '$'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-family: 'Geist Mono', monospace; font-size: 20px; color: rgba(255,210,74,0.7); pointer-events: none; }
+.amount-input { width: 100%; padding: 12px 14px 12px 26px; background: rgba(0,0,0,0.45); border: 0; border-radius: 12px; font-family: 'Geist Mono', monospace; font-size: 22px; font-weight: 700; color: var(--gold-1); box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.4); margin-bottom: 12px; }
+.quick-chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.quick-chip { padding: 10px 4px; border: 0; border-radius: 10px; background: rgba(10,4,24,0.7); font-family: 'Bungee', cursive; font-size: 10px; letter-spacing: 0.1em; color: var(--gold-1); cursor: pointer; box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.4); }
+
+#particles { position: fixed; inset: 0; pointer-events: none; z-index: 150; }
+.coin { position: fixed; width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff7d1, var(--gold-1) 55%, #7a5500 100%); box-shadow: 0 0 6px rgba(255,210,74,0.7); animation: coinShoot 1.6s cubic-bezier(.2,.7,.4,1) forwards; }
+@keyframes coinShoot { 0% { transform: translate(0,0) scale(0.6); opacity: 1; } 100% { transform: translate(var(--tx,0), var(--ty,0)) rotate(720deg) scale(1); opacity: 0; } }
+
+/* ---- responsive ---- */
+@media (max-width: 820px) {
+  .stage { padding: 56px 6px 20px; }
+  .play-area { padding: 12px; }
+  .opp { min-width: 96px; padding: 6px 8px; }
+  .opp .opp-av { width: 32px; height: 32px; font-size: 12px; }
+  .card { width: 52px; height: 74px; }
+  .card .corner .r { font-size: 12px; } .card .center-suit { font-size: 22px; }
+  .hand-rail .card:not(:first-child) { margin-left: -18px; }
+  .discard-fan .card:not(:first-child) { margin-left: -34px; }
+  .meld-group .card { width: 34px; height: 48px; }
+  .meld-group .card:not(:first-child) { margin-left: -20px; }
+}
+@media (max-width: 520px) {
+  .card { width: 46px; height: 66px; }
+  .card .corner .r { font-size: 11px; } .card .center-suit { font-size: 18px; }
+  .act { padding: 11px 4px; font-size: 10px; letter-spacing: 0.06em; }
+  .hand-rail { padding: 24px 4px 10px; }
+  .hand-rail .card:not(:first-child) { margin-left: -16px; }
+}
+</style>
 </head>
 <body>
+
+<div class="top-nav">
+  <a class="lobby-link" href="index.html">&larr;&nbsp;LOBBY</a>
+  <button class="leave-btn" id="btn-leave" style="display:none;">&#x2715;&nbsp;LEAVE</button>
+</div>
+<a class="balance-link" id="balance-link">
+  <span class="bl-label">BAL</span>
+  <span class="bl-amt" id="bal-amt">0</span>
+  <span class="bl-add" id="bl-add" title="Add chips">+</span>
+</a>
+
+<div class="stage">
+  <div class="stage-inner">
+
+    <!-- TABLE SELECT -->
+    <div class="table-select" id="table-select">
+      <div class="select-header">
+        <div class="select-title">RUMMY 500</div>
+        <div class="select-sub">SIT &amp; GO TOURNAMENTS &middot; LAST PLAYER STANDING WINS</div>
+      </div>
+      <div class="tables-grid" id="tables-grid"></div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div class="game-screen" id="game-screen">
+      <div class="game-header">
+        <div class="gh-name" id="gh-name">Table</div>
+        <div class="gh-info" id="gh-info">Info</div>
+      </div>
+
+      <div class="opponents" id="opponents"></div>
+
+      <div class="play-area">
+        <div class="piles">
+          <div class="pile">
+            <div class="pile-label">STOCK</div>
+            <div class="stock-pile" id="stock-pile">
+              <div class="card back"></div>
+              <div class="stock-count" id="stock-count">0</div>
+            </div>
+          </div>
+          <div class="pile">
+            <div class="pile-label">DISCARD</div>
+            <div class="discard-pile" id="discard-pile">
+              <div class="discard-fan" id="discard-fan"></div>
+            </div>
+          </div>
+        </div>
+        <div class="melds-area" id="melds-area">
+          <div class="melds-empty">No melds on the table yet</div>
+        </div>
+      </div>
+
+      <div class="hand-area">
+        <div class="hand-rail" id="hand-rail"></div>
+      </div>
+
+      <div class="message-banner" id="message-banner">Waiting...</div>
+
+      <div class="action-bar" id="action-bar">
+        <div class="action-row" id="draw-actions">
+          <button class="act primary" id="btn-draw-stock">DRAW STOCK</button>
+          <button class="act cool" id="btn-draw-discard">TAKE DISCARD</button>
+        </div>
+        <div class="action-row" id="play-actions">
+          <button class="act green" id="btn-meld">MELD</button>
+          <button class="act" id="btn-layoff">LAY OFF</button>
+          <button class="act" id="btn-sort">SORT</button>
+          <button class="act danger" id="btn-discard">DISCARD</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BUY-IN MODAL -->
+<div class="modal-veil" id="buyin-modal">
+  <div class="modal-card">
+    <h2 id="buyin-title">JOIN TOURNAMENT</h2>
+    <p id="buyin-blurb">Ante into the prize pool and take your seat.</p>
+    <div class="modal-actions">
+      <button class="m-btn" id="buyin-cancel">CANCEL</button>
+      <button class="m-btn confirm" id="buyin-confirm">BUY IN</button>
+    </div>
+  </div>
+</div>
+
+<!-- DEAL RESULT MODAL -->
+<div class="modal-veil" id="deal-modal">
+  <div class="modal-card">
+    <h2 id="deal-title">DEAL OVER</h2>
+    <div class="standings-list" id="deal-standings"></div>
+    <div class="modal-actions" style="grid-template-columns: 1fr;">
+      <button class="m-btn confirm" id="deal-continue">NEXT DEAL</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOURNAMENT OVER MODAL -->
+<div class="modal-veil" id="tourney-modal">
+  <div class="modal-card">
+    <h2 id="tourney-title">TOURNAMENT OVER</h2>
+    <div class="standings-list" id="tourney-standings"></div>
+    <div class="modal-actions" style="grid-template-columns: 1fr;">
+      <button class="m-btn confirm" id="tourney-done">BACK TO LOBBY</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD FUNDS MODAL -->
+<div class="modal-veil" id="addfunds-modal">
+  <div class="modal-card">
+    <h2>ADD CHIPS</h2>
+    <p>Top up to keep playing. Chips appear instantly.</p>
+    <div class="amount-input-wrap"><input class="amount-input" id="addfunds-input" type="number" min="1" step="1" value="500" /></div>
+    <div class="quick-chips">
+      <button class="quick-chip" data-amt="100">+$100</button>
+      <button class="quick-chip" data-amt="500">+$500</button>
+      <button class="quick-chip" data-amt="2500">+$2.5K</button>
+      <button class="quick-chip" data-amt="10000">+$10K</button>
+    </div>
+    <div class="modal-actions">
+      <button class="m-btn" id="addfunds-cancel">CANCEL</button>
+      <button class="m-btn confirm" id="addfunds-confirm">ADD</button>
+    </div>
+  </div>
+</div>
+
+<div id="particles"></div>
+
+<script src="casino-audio.js"></script>
+<script type="module" src="casino-account.js"></script>
+<script src="casino-jackpots.js"></script>
+<script src="casino-level.js"></script>
+<script src="casino-bots.js"></script>
+
 <script>
 /* CORE TESTABLE API START */
 (function(){
@@ -220,11 +609,14 @@
   }
   function applyDrawStock(state, p) {
     if (state.stock.length === 0) reshuffleDiscardIntoStock(state);
+    if (state.stock.length === 0) return null;   // truly exhausted — caller ends deal
     const card = state.stock.pop();
-    if (card != null) state.hands[p].push(card);
+    state.hands[p].push(card);
     state.phase = 'meld';
     return card;
   }
+  // True when no one can draw any more (stock empty and the discard can't refill it).
+  function dealStuck(state) { return state.stock.length === 0 && state.discard.length <= 1; }
   function reshuffleDiscardIntoStock(state) {
     // keep the top discard, shuffle the rest back into stock
     if (state.discard.length <= 1) return;
@@ -434,7 +826,7 @@
     meldType, isRun, runValues, canLayOff, findMelds,
     legalDiscardGrab,
     applyDrawStock, applyDrawDiscard, applyMeld, applyLayoff, applyDiscard,
-    checkGoingOut, advanceTurn, endDeal, scoreDeal,
+    checkGoingOut, advanceTurn, endDeal, scoreDeal, dealStuck,
     chooseMelds, chooseDiscard, bestPlay,
     TABLES, prizeFor, createTournament, applyDealScores, checkTarget,
   };
@@ -442,6 +834,591 @@
   if (typeof window !== 'undefined') window.RummyCore = api;
 })();
 /* CORE TESTABLE API END */
+</script>
+
+<script>
+/* ============================================================
+   RUMMY 500 — UI LAYER
+   ============================================================ */
+(function(){
+  'use strict';
+  const Core = window.RummyCore;
+  if (!Core) { console.error('RummyCore missing'); return; }
+
+  // ---- balance ----
+  const BALANCE_KEY = 'casino.balance';
+  function loadBalance() { const v = parseFloat(localStorage.getItem(BALANCE_KEY)); return isNaN(v) || v < 0 ? 1000 : v; }
+  function persistBalance(v) { try { localStorage.setItem(BALANCE_KEY, String(v)); } catch (e) {} }
+  function setBalance(n) { State.balance = Math.max(0, Math.round(n)); persistBalance(State.balance); paintBalance(); }
+  const fmt = n => Math.round(n || 0).toLocaleString('en-US');
+  function fmtChip(n) { if (Math.abs(n) >= 1000) return (n/1000).toFixed(n%1000?1:0).replace(/\.0$/,'') + 'K'; return String(n); }
+
+  // ---- audio (WebAudio synth, mirrors poker) ----
+  const Audio = (() => {
+    let actx = null;
+    function ctx() { if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } return actx; }
+    function tone(freq, dur, type, gain) {
+      const a = ctx(); if (!a) return;
+      try {
+        if (a.state === 'suspended') a.resume();
+        const o = a.createOscillator(); o.type = type || 'sine'; o.frequency.value = freq;
+        const g = a.createGain(); const vol = (window.Settings ? Settings.sfxVolume() : 1) * (gain || 0.16);
+        g.gain.value = 0; g.gain.linearRampToValueAtTime(vol, a.currentTime + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
+        o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + dur + 0.02);
+      } catch (e) {}
+    }
+    function chord(fs, dur, type, gain) { fs.forEach((f, i) => setTimeout(() => tone(f, dur, type, gain), i * 20)); }
+    function noise(dur, gain, hp) {
+      const a = ctx(); if (!a) return;
+      try {
+        if (a.state === 'suspended') a.resume();
+        const len = Math.floor(a.sampleRate * dur); const buf = a.createBuffer(1, len, a.sampleRate);
+        const data = buf.getChannelData(0); for (let i = 0; i < len; i++) data[i] = (Math.random()*2-1) * (1 - i/len);
+        const src = a.createBufferSource(); src.buffer = buf; const g = a.createGain();
+        g.gain.value = (window.Settings ? Settings.sfxVolume() : 1) * (gain || 0.12);
+        if (hp) { const f = a.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; src.connect(f); f.connect(g); } else src.connect(g);
+        g.connect(a.destination); src.start();
+      } catch (e) {}
+    }
+    return {
+      click() { tone(540, 0.04, 'square', 0.08); },
+      deal()  { noise(0.06, 0.16, 1500); tone(880, 0.04, 'triangle', 0.10); },
+      draw()  { noise(0.05, 0.14, 1800); tone(700, 0.05, 'triangle', 0.10); },
+      meld()  { chord([523, 659, 784], 0.16, 'triangle', 0.14); },
+      layoff(){ tone(660, 0.05, 'square', 0.10); tone(880, 0.05, 'square', 0.07); },
+      discard(){ noise(0.07, 0.10, 700); tone(300, 0.05, 'sawtooth', 0.07); },
+      grab()  { tone(440, 0.05, 'square', 0.10); tone(620, 0.06, 'square', 0.08); tone(820, 0.06, 'square', 0.06); },
+      win()   { chord([784, 988, 1318], 0.3, 'triangle', 0.18); },
+      bigwin(){ chord([523,659,784,988,1318,1568], 0.4, 'triangle', 0.18); setTimeout(()=>chord([784,988,1318,1568],0.4,'triangle',0.16), 200); },
+      lose()  { chord([300, 200], 0.2, 'sawtooth', 0.08); },
+      bad()   { tone(180, 0.18, 'sawtooth', 0.12); },
+    };
+  })();
+  ['pointerdown','touchstart','keydown'].forEach(e => window.addEventListener(e, () => { try { Audio.click(); } catch(_){} }, { once: true }));
+
+  // ---- DOM ----
+  const $ = id => document.getElementById(id);
+  const dom = {
+    balAmt: $('bal-amt'), balAdd: $('bl-add'),
+    tableSelect: $('table-select'), tablesGrid: $('tables-grid'),
+    gameScreen: $('game-screen'), ghName: $('gh-name'), ghInfo: $('gh-info'),
+    opponents: $('opponents'),
+    stockPile: $('stock-pile'), stockCount: $('stock-count'),
+    discardPile: $('discard-pile'), discardFan: $('discard-fan'),
+    meldsArea: $('melds-area'), handRail: $('hand-rail'),
+    msg: $('message-banner'), actionBar: $('action-bar'),
+    btnDrawStock: $('btn-draw-stock'), btnDrawDiscard: $('btn-draw-discard'),
+    btnMeld: $('btn-meld'), btnLayoff: $('btn-layoff'), btnSort: $('btn-sort'), btnDiscard: $('btn-discard'),
+    btnLeave: $('btn-leave'),
+    buyinModal: $('buyin-modal'), buyinTitle: $('buyin-title'), buyinBlurb: $('buyin-blurb'), buyinCancel: $('buyin-cancel'), buyinConfirm: $('buyin-confirm'),
+    dealModal: $('deal-modal'), dealTitle: $('deal-title'), dealStandings: $('deal-standings'), dealContinue: $('deal-continue'),
+    tourneyModal: $('tourney-modal'), tourneyTitle: $('tourney-title'), tourneyStandings: $('tourney-standings'), tourneyDone: $('tourney-done'),
+    addfundsModal: $('addfunds-modal'), addfundsInput: $('addfunds-input'), addfundsCancel: $('addfunds-cancel'), addfundsConfirm: $('addfunds-confirm'),
+    particles: $('particles'),
+  };
+
+  // ---- state ----
+  const State = {
+    balance: loadBalance(),
+    tier: null,
+    tourney: null,        // Core tournament object
+    deal: null,           // Core deal state
+    heroSeat: 0,
+    selected: [],         // selected card ids in hand
+    layoffMode: false,
+    sortMode: 0,          // 0 = by suit, 1 = by rank
+    busy: false,
+    botInfo: [],          // {name, hue} per seat
+    pendingTimers: [],
+  };
+  function paintBalance() { dom.balAmt.textContent = fmt(State.balance); }
+  paintBalance();
+  function refreshBal() { const f = loadBalance(); if (f !== State.balance) { State.balance = f; paintBalance(); renderTables(); } }
+  window.addEventListener('pageshow', refreshBal);
+  window.addEventListener('focus', refreshBal);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshBal(); });
+  window.addEventListener('storage', e => { if (e.key === BALANCE_KEY) refreshBal(); });
+
+  function delay(ms) { return new Promise(res => { const id = setTimeout(() => { State.pendingTimers = State.pendingTimers.filter(x => x !== id); res(); }, ms); State.pendingTimers.push(id); }); }
+  function clearTimers() { for (const id of State.pendingTimers) clearTimeout(id); State.pendingTimers.length = 0; }
+  function randInt(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+
+  // ---- card DOM ----
+  function buildCard(card, opts) {
+    const el = document.createElement('div'); el.className = 'card';
+    if (opts && opts.back) { el.classList.add('back'); return el; }
+    const r = Core.RANK(card), s = Core.SUIT(card);
+    el.classList.add(Core.RED_SUITS.has(s) ? 'red' : 'black');
+    const ch = Core.rankLabel(r), sg = Core.SUIT_GLYPH[s];
+    el.innerHTML = `<div class="corner tl"><div class="r">${ch}</div><div class="s">${sg}</div></div>
+                    <div class="center-suit">${sg}</div>
+                    <div class="corner br"><div class="r">${ch}</div><div class="s">${sg}</div></div>`;
+    el.dataset.card = String(card);
+    return el;
+  }
+  function avatarBg(hue) { return `linear-gradient(135deg, hsl(${hue},70%,55%), hsl(${(hue+40)%360},75%,35%))`; }
+  function initials(name) {
+    if (name === 'You') return 'ME';
+    const parts = String(name||'?').replace(/[._-]/g,' ').split(/\s+/).filter(Boolean);
+    return (parts.length===1 ? parts[0].slice(0,2) : (parts[0][0]+parts[1][0])).toUpperCase();
+  }
+
+  // ---- table select ----
+  function renderTables() {
+    dom.tablesGrid.innerHTML = '';
+    for (const tier of Core.TABLES) {
+      const purse = Core.prizeFor(tier, tier.players);
+      const afford = State.balance >= tier.buyIn;
+      const card = document.createElement('button');
+      card.className = 'table-card'; card.disabled = !afford;
+      card.innerHTML = `
+        <div class="tc-tier">${tier.id.toUpperCase()}</div>
+        <div class="tc-name">${tier.name}</div>
+        <div class="tc-row"><span class="tc-pill">BUY-IN $${fmt(tier.buyIn)}</span><span class="tc-pill">RACE TO ${tier.target}</span></div>
+        <div class="tc-prize">Prize <b>$${fmt(purse.prize)}</b> &middot; Consolation <b>$${fmt(purse.consolation)}</b></div>
+        <div class="tc-prize">${tier.players} players &middot; ${randInt(2,3)} waiting</div>
+        ${afford ? '<div class="tc-cta">SIT DOWN</div>' : `<div class="tc-locked">NEEDS $${fmt(tier.buyIn)}</div>`}`;
+      card.addEventListener('click', () => { if (!afford) return; Audio.click(); openBuyIn(tier); });
+      dom.tablesGrid.appendChild(card);
+    }
+  }
+  let buyinTier = null;
+  function openBuyIn(tier) {
+    buyinTier = tier;
+    const purse = Core.prizeFor(tier, tier.players);
+    dom.buyinTitle.textContent = 'JOIN ' + tier.name.toUpperCase();
+    dom.buyinBlurb.textContent = `Ante $${fmt(tier.buyIn)} into a $${fmt(purse.pool)} pool. First to ${tier.target} points wins $${fmt(purse.prize)} (runner-up $${fmt(purse.consolation)}).`;
+    dom.buyinModal.classList.add('show');
+  }
+  dom.buyinCancel.addEventListener('click', () => { Audio.click(); dom.buyinModal.classList.remove('show'); });
+  dom.buyinConfirm.addEventListener('click', () => {
+    Audio.click();
+    if (State.balance < buyinTier.buyIn) return;
+    dom.buyinModal.classList.remove('show');
+    joinTournament(buyinTier);
+  });
+
+  // ---- bot names ----
+  function pickBots(n) {
+    const out = [];
+    if (window.CasinoBots && !window.CasinoBots.disabled && window.CasinoBots.bots) {
+      const all = window.CasinoBots.bots().slice().sort(() => Math.random() - 0.5);
+      for (const b of all) { if (out.length >= n) break; out.push({ name: b.name, hue: b.hue }); }
+    }
+    const adj = ['Velvet','Neon','Lucky','Wild','Royal','Golden','Frosty','Quiet','Crimson','Onyx'];
+    const noun = ['Wolf','Aces','Jester','Shark','Knight','Crown','Hawk','Vegas','Comet','Saint'];
+    while (out.length < n) out.push({ name: adj[randInt(0,adj.length-1)]+noun[randInt(0,noun.length-1)]+randInt(2,99), hue: randInt(0,359) });
+    return out.slice(0, n);
+  }
+
+  // ---- join + run ----
+  function joinTournament(tier) {
+    setBalance(State.balance - tier.buyIn);
+    State.tier = tier;
+    State.botInfo = [{ name: 'You', hue: 200 }, ...pickBots(tier.players - 1)];
+    const players = State.botInfo.map((b, i) => ({ id: i === 0 ? 'hero' : 'bot' + i, name: b.name, isHero: i === 0 }));
+    State.tourney = Core.createTournament(tier, players);
+    State.heroSeat = 0;
+    dom.tableSelect.style.display = 'none';
+    dom.gameScreen.classList.add('show');
+    dom.btnLeave.style.display = 'inline-flex';
+    const purse = Core.prizeFor(tier, tier.players);
+    dom.ghName.textContent = tier.name;
+    dom.ghInfo.textContent = `RACE TO ${tier.target} · PRIZE $${fmt(purse.prize)}`;
+    startDeal();
+  }
+
+  async function startDeal() {
+    State.busy = true;
+    State.selected = []; State.layoffMode = false;
+    const seed = (Math.random() * 1e9) | 0;
+    State.deal = Core.deal(State.tourney.players.length, seed);
+    // dealer button sets who acts first: player after the button
+    State.deal.turn = (State.tourney.dealerButton + 1) % State.tourney.players.length;
+    showMsg('Dealing...', '');
+    renderAll();
+    await dealAnimation();
+    State.busy = false;
+    runTurnLoop();
+  }
+
+  async function dealAnimation() {
+    // brief staggered deal feedback
+    for (let k = 0; k < 7; k++) { Audio.deal(); await delay(70); }
+    renderAll();
+  }
+
+  // ---- rendering ----
+  function renderAll() { renderOpponents(); renderPiles(); renderMelds(); renderHand(); }
+
+  function renderOpponents() {
+    dom.opponents.innerHTML = '';
+    const t = State.tourney, d = State.deal;
+    for (let i = 0; i < t.players.length; i++) {
+      if (i === State.heroSeat) continue;
+      const pl = t.players[i];
+      const el = document.createElement('div');
+      el.className = 'opp' + (d && !d.dealOver && d.turn === i ? ' acting' : '');
+      const nCards = d ? d.hands[i].length : 7;
+      let mini = '';
+      for (let k = 0; k < Math.min(nCards, 11); k++) mini += '<div class="mini-card"></div>';
+      el.innerHTML = `
+        <div class="opp-av" style="background:${avatarBg(State.botInfo[i].hue)}">${initials(pl.name)}</div>
+        <div class="opp-name">${pl.name}</div>
+        <div class="opp-mini-hand">${mini}</div>
+        <div class="opp-cards">${nCards} cards · $${fmtChip(d ? d.melded[i] : 0)} down</div>
+        <div class="opp-score">${pl.cumulative} pts</div>`;
+      dom.opponents.appendChild(el);
+    }
+  }
+
+  function renderPiles() {
+    const d = State.deal;
+    dom.stockCount.textContent = String(d.stock.length);
+    // discard fan: show up to last 6 cards
+    dom.discardFan.innerHTML = '';
+    if (d.discard.length === 0) {
+      const e = document.createElement('div'); e.className = 'discard-empty'; e.textContent = 'EMPTY';
+      dom.discardFan.appendChild(e);
+    } else {
+      const start = Math.max(0, d.discard.length - 6);
+      for (let i = start; i < d.discard.length; i++) {
+        const c = buildCard(d.discard[i]);
+        c.dataset.pileIndex = String(i);
+        const isHeroTurn = !d.dealOver && d.turn === State.heroSeat && d.phase === 'draw';
+        if (isHeroTurn) {
+          // grabbable if legal from this index
+          const g = Core.legalDiscardGrab(d.discard, i, d.hands[State.heroSeat], d.tableMelds);
+          if (g.legal) { c.classList.add('grabbable'); c.addEventListener('click', () => heroGrabDiscard(i)); }
+        }
+        dom.discardFan.appendChild(c);
+      }
+    }
+    const heroDrawPhase = !d.dealOver && d.turn === State.heroSeat && d.phase === 'draw';
+    dom.stockPile.classList.toggle('disabled', !heroDrawPhase || d.stock.length === 0);
+  }
+
+  function renderMelds() {
+    const d = State.deal;
+    dom.meldsArea.innerHTML = '';
+    if (!d.tableMelds.length) { dom.meldsArea.innerHTML = '<div class="melds-empty">No melds on the table yet</div>'; return; }
+    for (const meld of d.tableMelds) {
+      const g = document.createElement('div'); g.className = 'meld-group';
+      const ownerName = State.tourney.players[meld.owner].name;
+      const lbl = document.createElement('div'); lbl.className = 'meld-owner'; lbl.textContent = meld.owner === State.heroSeat ? 'YOU' : ownerName.slice(0, 8);
+      g.appendChild(lbl);
+      // sort run cards for display
+      const cards = meld.type === 'run' ? sortRunForDisplay(meld.cards) : meld.cards.slice();
+      for (const c of cards) g.appendChild(buildCard(c));
+      // layoff target highlighting
+      if (State.layoffMode && State.selected.length === 1 && Core.canLayOff(State.selected[0], meld.cards)) {
+        g.classList.add('layoff-target');
+        g.addEventListener('click', () => heroLayoff(meld.id));
+      }
+      dom.meldsArea.appendChild(g);
+    }
+  }
+  function sortRunForDisplay(cards) {
+    return cards.slice().sort((a, b) => {
+      const va = Core.RANK(a) === 0 ? aceVal(cards) : Core.RANK(a);
+      const vb = Core.RANK(b) === 0 ? aceVal(cards) : Core.RANK(b);
+      return va - vb;
+    });
+  }
+  function aceVal(cards) {
+    // ace high if the run contains a K and no 2
+    const ranks = cards.map(Core.RANK);
+    return (ranks.indexOf(12) >= 0 && ranks.indexOf(1) < 0) ? 13 : 0;
+  }
+
+  function renderHand() {
+    const d = State.deal;
+    dom.handRail.innerHTML = '';
+    const hand = sortedHand(d.hands[State.heroSeat]);
+    for (const c of hand) {
+      const el = buildCard(c);
+      if (State.selected.indexOf(c) >= 0) el.classList.add('selected');
+      el.addEventListener('click', () => toggleSelect(c));
+      dom.handRail.appendChild(el);
+    }
+    updateActionButtons();
+  }
+  function sortedHand(hand) {
+    const arr = hand.slice();
+    if (State.sortMode === 1) arr.sort((a, b) => Core.RANK(a) - Core.RANK(b) || Core.SUIT(a) - Core.SUIT(b));
+    else arr.sort((a, b) => Core.SUIT(a) - Core.SUIT(b) || Core.RANK(a) - Core.RANK(b));
+    return arr;
+  }
+  function toggleSelect(c) {
+    const i = State.selected.indexOf(c);
+    if (i >= 0) State.selected.splice(i, 1); else State.selected.push(c);
+    Audio.click();
+    renderHand();
+    if (State.layoffMode) renderMelds();
+  }
+
+  function updateActionButtons() {
+    const d = State.deal;
+    const heroTurn = !d.dealOver && d.turn === State.heroSeat;
+    const drawPhase = heroTurn && d.phase === 'draw';
+    const playPhase = heroTurn && d.phase === 'meld';
+    dom.btnDrawStock.disabled = !drawPhase || (d.stock.length === 0 && d.discard.length <= 1);
+    dom.btnDrawDiscard.disabled = !drawPhase || d.discard.length === 0;
+    const sel = State.selected;
+    dom.btnMeld.disabled = !playPhase || !Core.meldType(sel);
+    dom.btnLayoff.disabled = !playPhase || sel.length !== 1 || !anyLayoff(sel[0]);
+    dom.btnDiscard.disabled = !playPhase || sel.length !== 1 || !!d.pendingUse;
+    dom.btnSort.disabled = false;
+    dom.btnDrawStock.classList.toggle('disabled', dom.btnDrawStock.disabled);
+  }
+  function anyLayoff(card) {
+    for (const m of State.deal.tableMelds) if (Core.canLayOff(card, m.cards)) return true;
+    return false;
+  }
+
+  function showMsg(text, cls) { dom.msg.textContent = text; dom.msg.className = 'message-banner' + (cls ? ' ' + cls : ''); }
+
+  // ---- hero turn ----
+  let heroResolve = null;
+  function heroTurn() {
+    return new Promise(res => {
+      heroResolve = res;
+      State.selected = []; State.layoffMode = false;
+      showMsg('Your turn — draw a card', '');
+      renderAll();
+    });
+  }
+  function finishHeroTurn() { if (heroResolve) { const r = heroResolve; heroResolve = null; r(); } }
+
+  dom.btnDrawStock.addEventListener('click', () => {
+    const d = State.deal; if (d.dealOver || d.turn !== State.heroSeat || d.phase !== 'draw') return;
+    Core.applyDrawStock(d, State.heroSeat); Audio.draw();
+    showMsg('Meld, lay off, then discard', ''); State.selected = [];
+    renderAll();
+  });
+  dom.btnDrawDiscard.addEventListener('click', () => {
+    const d = State.deal; if (d.dealOver || d.turn !== State.heroSeat || d.phase !== 'draw') return;
+    heroGrabDiscard(d.discard.length - 1);   // take the top card
+  });
+  function heroGrabDiscard(index) {
+    const d = State.deal; if (d.dealOver || d.turn !== State.heroSeat || d.phase !== 'draw') return;
+    const g = Core.applyDrawDiscard(d, State.heroSeat, index);
+    if (!g) { Audio.bad(); showMsg("Can't take from there — that card must be playable", 'bad'); return; }
+    Audio.grab();
+    if (d.pendingUse) {
+      const chosen = d.discard.length ? null : null;
+      const cc = g.satisfier.kind === 'meld' ? g.satisfier.cards.find(x => x === d.hands[State.heroSeat].find(y=>y===x)) : g.satisfier.card;
+      showMsg('You took ' + g.grabbed.length + ' cards — now meld/lay off the ' + Core.rankLabel(Core.RANK(g.satisfier.kind==='meld'?firstChosen(g):g.satisfier.card)), 'good');
+    } else {
+      showMsg('Meld, lay off, then discard', '');
+    }
+    State.selected = [];
+    renderAll();
+  }
+  function firstChosen(g) { return g.satisfier.cards[0]; }
+
+  dom.btnMeld.addEventListener('click', () => {
+    const d = State.deal; const sel = State.selected.slice();
+    if (!Core.meldType(sel)) { Audio.bad(); showMsg('Selected cards are not a valid set or run', 'bad'); return; }
+    Core.applyMeld(d, State.heroSeat, sel); Audio.meld();
+    State.selected = []; State.layoffMode = false;
+    if (Core.checkGoingOut(d, State.heroSeat)) { renderAll(); return finishHeroTurn(); }
+    showMsg(d.pendingUse ? 'Still need to play your grabbed card' : 'Meld more, lay off, or discard', d.pendingUse ? 'bad' : '');
+    renderAll();
+  });
+
+  dom.btnLayoff.addEventListener('click', () => {
+    if (State.selected.length !== 1) { showMsg('Select exactly one card to lay off', 'bad'); return; }
+    State.layoffMode = !State.layoffMode;
+    showMsg(State.layoffMode ? 'Tap a glowing meld to lay off onto it' : 'Meld, lay off, or discard', State.layoffMode ? 'good' : '');
+    renderMelds();
+  });
+  function heroLayoff(meldId) {
+    const d = State.deal; const card = State.selected[0];
+    if (!Core.applyLayoff(d, State.heroSeat, card, meldId)) { Audio.bad(); return; }
+    Audio.layoff();
+    State.selected = []; State.layoffMode = false;
+    if (Core.checkGoingOut(d, State.heroSeat)) { renderAll(); return finishHeroTurn(); }
+    showMsg(d.pendingUse ? 'Still need to play your grabbed card' : 'Lay off more, or discard', d.pendingUse ? 'bad' : '');
+    renderAll();
+  }
+
+  dom.btnDiscard.addEventListener('click', () => {
+    const d = State.deal;
+    if (State.selected.length !== 1) { showMsg('Select one card to discard', 'bad'); return; }
+    if (d.pendingUse) { Audio.bad(); showMsg('You must play your grabbed card first', 'bad'); return; }
+    const card = State.selected[0];
+    const ok = Core.applyDiscard(d, State.heroSeat, card);
+    if (!ok) { Audio.bad(); return; }
+    Audio.discard();
+    State.selected = [];
+    renderAll();
+    finishHeroTurn();
+  });
+
+  dom.btnSort.addEventListener('click', () => { State.sortMode = State.sortMode ? 0 : 1; Audio.click(); renderHand(); });
+
+  // ---- bot turn ----
+  async function botTurn(p) {
+    const d = State.deal;
+    markActing();
+    await delay(500 + Math.random() * 400);
+    if (d.dealOver) return;
+    // draw
+    const plan = Core.bestPlay(d, p);
+    if (plan.draw.source === 'discard') {
+      const g = Core.applyDrawDiscard(d, p, plan.draw.index);
+      if (!g) { Core.applyDrawStock(d, p); Audio.draw(); }
+      else { Audio.grab(); if (d.pendingUse) satisfyPending(p); }
+    } else { Core.applyDrawStock(d, p); Audio.draw(); }
+    renderAll();
+    await delay(360);
+    // meld everything possible
+    let melds = Core.chooseMelds(d.hands[p]);
+    for (const m of melds) { if (Core.applyMeld(d, p, m)) { Audio.meld(); renderAll(); await delay(300); } }
+    // layoffs
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const meld of d.tableMelds) {
+        for (const c of d.hands[p].slice()) {
+          if (Core.canLayOff(c, meld.cards)) { Core.applyLayoff(d, p, c, meld.id); Audio.layoff(); changed = true; renderAll(); await delay(220); }
+        }
+      }
+    }
+    // going out?
+    if (Core.checkGoingOut(d, p)) { renderAll(); return; }
+    // must clear obligation before discard
+    if (d.pendingUse) satisfyPending(p);
+    // discard
+    const opp = d.tableMelds.filter(m => m.owner !== p);
+    const disc = Core.chooseDiscard(d.hands[p], opp);
+    Core.applyDiscard(d, p, disc); Audio.discard();
+    renderAll();
+    await delay(260);
+  }
+  function satisfyPending(p) {
+    const d = State.deal; const pu = d.pendingUse; if (!pu) return;
+    if (pu.kind === 'meld') Core.applyMeld(d, p, pu.cards);
+    else if (pu.kind === 'layoff') Core.applyLayoff(d, p, pu.card, pu.meldId);
+    if (d.pendingUse) d.pendingUse = null; // safety
+  }
+  function markActing() { renderOpponents(); }
+
+  // ---- turn loop ----
+  async function runTurnLoop() {
+    let guard = 0;
+    while (State.deal && !State.deal.dealOver) {
+      // Safety: stock exhausted and discard can't refill, or pathological
+      // turn count — end the deal and score hands as they stand (no winner).
+      if (Core.dealStuck(State.deal) || ++guard > 400) { Core.endDeal(State.deal, -1, false); break; }
+      const p = State.deal.turn;
+      if (p === State.heroSeat) await heroTurn();
+      else await botTurn(p);
+      if (!State.deal) return;
+    }
+    if (State.deal && State.deal.dealOver) await endDealFlow();
+  }
+
+  // ---- deal end ----
+  async function endDealFlow() {
+    const d = State.deal, t = State.tourney;
+    const scores = d.scores;
+    Core.applyDealScores(t, scores);
+    const goneOut = d.goneOut;
+    if (goneOut === State.heroSeat) { Audio.win(); coinShower(); } else if (goneOut >= 0) Audio.lose();
+    // build standings rows for this deal
+    if (goneOut < 0) dom.dealTitle.textContent = 'DEAL ENDED — STOCK OUT';
+    else dom.dealTitle.textContent = (goneOut === State.heroSeat ? 'YOU WENT OUT!' : t.players[goneOut].name + ' WENT OUT');
+    dom.dealStandings.innerHTML = '';
+    const order = t.players.map((p, i) => ({ p, i, deal: scores[i] })).sort((a, b) => b.p.cumulative - a.p.cumulative);
+    for (const row of order) {
+      const div = document.createElement('div'); div.className = 'srow' + (row.i === goneOut ? ' win' : '');
+      div.innerHTML = `<div class="s-rank"></div><div class="s-name">${row.i===State.heroSeat?'You':row.p.name}</div>
+        <div><span class="s-score">${row.p.cumulative}</span> <span style="color:rgba(255,255,255,0.45);font-family:'Geist Mono'">(${row.deal>=0?'+':''}${row.deal})</span></div>`;
+      dom.dealStandings.appendChild(div);
+    }
+    if (t.over) { await delay(400); showTournamentOver(); return; }
+    dom.dealModal.classList.add('show');
+  }
+  dom.dealContinue.addEventListener('click', () => { Audio.click(); dom.dealModal.classList.remove('show'); startDeal(); });
+
+  function showTournamentOver() {
+    const t = State.tourney;
+    dom.dealModal.classList.remove('show');
+    const heroWon = t.winner && t.winner.id === 'hero';
+    dom.tourneyTitle.textContent = heroWon ? 'YOU WIN THE TOURNAMENT!' : t.winner.name + ' WINS';
+    dom.tourneyStandings.innerHTML = '';
+    const ranked = t.players.slice().sort((a, b) => b.cumulative - a.cumulative);
+    ranked.forEach((p, idx) => {
+      const prize = t.payouts && t.payouts[p.id] ? t.payouts[p.id] : 0;
+      const div = document.createElement('div'); div.className = 'srow' + (idx === 0 ? ' win' : '');
+      div.innerHTML = `<div class="s-rank">${idx+1}</div><div class="s-name">${p.id==='hero'?'You':p.name}</div>
+        <div>${prize ? `<span class="s-prize">+$${fmt(prize)}</span>` : `<span class="s-score">${p.cumulative}</span>`}</div>`;
+      dom.tourneyStandings.appendChild(div);
+    });
+    // credit prize
+    if (t.payouts && t.payouts['hero']) {
+      setBalance(State.balance + t.payouts['hero']);
+      if (heroWon) { Audio.bigwin(); coinShower(); }
+    }
+    // XP / jackpot contribution: buy-in as bet, prize as win
+    if (window.History && window.History.record) {
+      try { window.History.record('rummy', State.tier.buyIn, (t.payouts && t.payouts['hero']) || 0, 'rummy tournament'); } catch(e){}
+    }
+    dom.tourneyModal.classList.add('show');
+  }
+  dom.tourneyDone.addEventListener('click', () => { Audio.click(); dom.tourneyModal.classList.remove('show'); leaveTable(); });
+
+  // ---- leave ----
+  dom.btnLeave.addEventListener('click', () => {
+    if (!confirm('Leave the tournament? Your buy-in is forfeited.')) return;
+    leaveTable();
+  });
+  function leaveTable() {
+    clearTimers(); heroResolve = null;
+    State.deal = null; State.tourney = null; State.tier = null;
+    dom.gameScreen.classList.remove('show');
+    dom.tableSelect.style.display = '';
+    dom.btnLeave.style.display = 'none';
+    renderTables();
+  }
+
+  // ---- add funds ----
+  dom.balAdd.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); Audio.click(); dom.addfundsModal.classList.add('show'); });
+  dom.addfundsCancel.addEventListener('click', () => { Audio.click(); dom.addfundsModal.classList.remove('show'); });
+  dom.addfundsConfirm.addEventListener('click', () => { Audio.click(); const v = Math.max(0, Math.round(parseFloat(dom.addfundsInput.value)||0)); if (v>0) setBalance(State.balance + v); dom.addfundsModal.classList.remove('show'); renderTables(); });
+  for (const b of document.querySelectorAll('.quick-chip')) b.addEventListener('click', () => { setBalance(State.balance + (+b.dataset.amt)); renderTables(); Audio.click(); dom.addfundsModal.classList.remove('show'); });
+
+  // ---- coin shower ----
+  function coinShower() {
+    const cx = window.innerWidth/2, cy = window.innerHeight/2;
+    const n = window.matchMedia('(pointer: coarse)').matches ? 18 : 30;
+    for (let i = 0; i < n; i++) {
+      const c = document.createElement('div'); c.className = 'coin';
+      const ang = Math.random()*Math.PI - Math.PI/2, dist = 200 + Math.random()*280;
+      c.style.setProperty('--tx', Math.cos(ang)*dist + (Math.random()-0.5)*200 + 'px');
+      c.style.setProperty('--ty', -Math.abs(Math.sin(ang))*dist + 700 + 'px');
+      c.style.left = cx+'px'; c.style.top = cy+'px'; c.style.animationDuration = (1.3+Math.random()*0.6)+'s';
+      dom.particles.appendChild(c); setTimeout(() => c.remove(), 2200);
+    }
+  }
+
+  document.addEventListener('jackpot-win', () => refreshBal());
+
+  // ---- init ----
+  renderTables();
+  // expose minimal debug hooks for automated tests
+  window.RummyDebug = {
+    inGame: () => !!State.deal,
+    phase: () => State.deal ? State.deal.phase : null,
+    turn: () => State.deal ? State.deal.turn : -1,
+    heroHand: () => State.deal ? State.deal.hands[State.heroSeat].slice() : [],
+    dealNo: () => State.tourney ? State.tourney.dealNo : -1,
+    over: () => State.tourney ? State.tourney.over : false,
+  };
+})();
 </script>
 </body>
 </html>

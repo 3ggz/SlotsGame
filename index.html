@@ -2230,6 +2230,55 @@ body::after {
   white-space: nowrap;
 }
 
+/* RUMMY 500 PREVIEW — a fan of cards laying down into a meld */
+.preview.rummy {
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(34,211,238,0.16), transparent 60%),
+    radial-gradient(ellipse at 50% 95%, rgba(255,210,74,0.13), transparent 60%),
+    linear-gradient(180deg, #06180e 0%, #02100a 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.3), inset 0 -36px 58px rgba(0,0,0,0.45);
+  overflow: hidden;
+}
+.preview.rummy::before {
+  content: '';
+  position: absolute; inset: 18px 22px;
+  border-radius: 18px;
+  background: radial-gradient(ellipse at 50% 0%, #1b8855 0%, var(--felt-light) 30%, var(--felt-deep) 92%);
+  box-shadow: inset 0 0 0 3px rgba(0,0,0,0.5), inset 0 0 0 4.5px rgba(255,210,74,0.4), inset 0 0 30px rgba(0,0,0,0.45);
+}
+.preview.rummy .rm-meld {
+  position: absolute; top: 38%; left: 50%; transform: translate(-50%,-50%);
+  display: flex; z-index: 3;
+}
+.preview.rummy .rm-card {
+  width: 30px; height: 44px; border-radius: 4px;
+  background: linear-gradient(180deg, #fffdf1, #ded5b8);
+  display: grid; place-items: center;
+  font-family: 'Bungee', cursive; font-size: 12px; color: #130417;
+  box-shadow: 0 4px 7px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.1);
+}
+.preview.rummy .rm-card.red { color: #d62433; }
+.preview.rummy .rm-card:not(:first-child) { margin-left: -14px; }
+.preview.rummy .rm-meld.lay { animation: rmLay 4.2s ease-in-out infinite; }
+@keyframes rmLay {
+  0% { opacity: 0; transform: translate(-50%,-50%) translateY(-26px) scale(0.8); }
+  14% { opacity: 1; transform: translate(-50%,-50%) translateY(0) scale(1); }
+  82% { opacity: 1; transform: translate(-50%,-50%) translateY(0) scale(1); }
+  94%, 100% { opacity: 0; transform: translate(-50%,-50%) translateY(8px) scale(0.92); }
+}
+.preview.rummy .rm-hand {
+  position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+  display: flex; z-index: 4;
+}
+.preview.rummy .rm-hand .rm-card { width: 24px; height: 36px; font-size: 10px; }
+.preview.rummy .rm-hand .rm-card:not(:first-child) { margin-left: -10px; }
+.preview.rummy::after {
+  content: 'SIT & GO';
+  position: absolute; top: 26px; left: 50%; transform: translateX(-50%);
+  z-index: 5; font-family: 'Bungee', cursive; font-size: 8px; letter-spacing: 0.26em;
+  color: rgba(255,210,74,0.55); text-shadow: 0 0 12px rgba(255,210,74,0.4); white-space: nowrap;
+}
+
 /* DIAMOND WHEEL PREVIEW — spinning big-six wheel with flapper + hub */
 .preview.diamondwheel {
   background:
@@ -3087,6 +3136,31 @@ html.low-power .preview.dragontree .dt-coin.c2 {
       <div class="game-meta">
         <span class="meta-pill">REAL SIDE POTS</span>
         <span class="meta-pill">6 TABLES</span>
+      </div>
+      <div class="play-cta">PLAY</div>
+    </a>
+
+    <a class="game-card" href="rummy.html" data-game="rummy">
+      <div class="preview rummy">
+        <div class="rm-meld lay">
+          <div class="rm-card red">7&#9829;</div>
+          <div class="rm-card">7&#9824;</div>
+          <div class="rm-card red">7&#9830;</div>
+        </div>
+        <div class="rm-hand">
+          <div class="rm-card">4&#9824;</div>
+          <div class="rm-card">5&#9824;</div>
+          <div class="rm-card">6&#9824;</div>
+          <div class="rm-card red">K&#9829;</div>
+          <div class="rm-card">9&#9827;</div>
+        </div>
+      </div>
+      <div class="game-title">RUMMY 500</div>
+      <div class="game-tagline">SIT &amp; GO &middot; LAST PLAYER STANDING</div>
+      <div class="game-desc">Classic Rummy — lay down sets and runs, scoop the discard pile for the card you need, and be first to dump your hand. Sit-and-go tournaments race to the target for the prize pool.</div>
+      <div class="game-meta">
+        <span class="meta-pill">MELDS &amp; LAY-OFFS</span>
+        <span class="meta-pill">6 TOURNAMENTS</span>
       </div>
       <div class="play-cta">PLAY</div>
     </a>
