@@ -723,6 +723,21 @@ body {
   background: rgba(255,210,74,0.1);
   box-shadow: inset 0 0 0 1.5px var(--gold-1), 0 0 30px rgba(255,210,74,0.25);
 }
+.hero-hand-strength {
+  margin: 8px auto 0;
+  padding: 6px 16px;
+  font-family: 'Bungee', cursive;
+  font-size: 13px; letter-spacing: 0.18em;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 10px rgba(34,211,238,0.55);
+  text-align: center;
+  background: rgba(0,0,0,0.4);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1.5px rgba(34,211,238,0.45);
+  align-self: center;
+  display: none;
+}
+.hero-hand-strength.show { display: inline-block; }
 
 /* ------- Flying chip / win shower particles ------- */
 .flying-chip {
@@ -964,6 +979,7 @@ body {
       </div>
 
       <div class="message-banner" id="message-banner">Dealing...</div>
+      <div class="hero-hand-strength" id="hero-hand-strength"></div>
 
       <div class="action-bar" id="action-bar">
         <div class="actions" id="primary-actions">
@@ -2081,6 +2097,7 @@ body {
     addfundsCancel: $('addfunds-cancel'),
     addfundsConfirm: $('addfunds-confirm'),
     particles: $('particles'),
+    heroHandStrength: $('hero-hand-strength'),
   };
 
   // ----- State -----
@@ -2210,6 +2227,7 @@ body {
     return `linear-gradient(135deg, hsl(${hue}, 70%, 55%), hsl(${(hue+40)%360}, 75%, 35%))`;
   }
   function initials(name) {
+    if (name === 'You') return 'ME';
     const parts = String(name || '?').replace(/[._-]/g, ' ').split(/\s+/).filter(Boolean);
     if (!parts.length) return '?';
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
@@ -2329,8 +2347,38 @@ body {
     dom.potAmount.textContent = '$' + fmt(onTableTotal);
     dom.potAmount.classList.toggle('zero', onTableTotal === 0);
 
+    // Hero hand strength readout (only when hero has hole cards and is still in)
+    updateHeroHandStrength();
+
     // Dealer button position
     positionDealerButton();
+  }
+
+  function updateHeroHandStrength() {
+    const st = State.pokerState;
+    const hero = st && st.players[State.heroSeat];
+    if (!hero || hero.hasFolded || !hero.holeCards || hero.holeCards.length !== 2) {
+      dom.heroHandStrength.classList.remove('show');
+      dom.heroHandStrength.textContent = '';
+      return;
+    }
+    // Pre-flop: show the hole-card shorthand like "AKs"
+    if (!st.board || st.board.length === 0) {
+      const r1 = Core.RANK(hero.holeCards[0]);
+      const r2 = Core.RANK(hero.holeCards[1]);
+      const s1 = Core.SUIT(hero.holeCards[0]);
+      const s2 = Core.SUIT(hero.holeCards[1]);
+      const ranks = Core.RANK_CHARS[Math.max(r1, r2)] + Core.RANK_CHARS[Math.min(r1, r2)];
+      const suited = (s1 === s2);
+      const tag = r1 === r2 ? 'POCKET ' + Core.RANK_CHARS[r1] + Core.RANK_CHARS[r1] : ranks + (suited ? ' SUITED' : ' OFFSUIT');
+      dom.heroHandStrength.textContent = tag;
+      dom.heroHandStrength.classList.add('show');
+      return;
+    }
+    // Post-flop: best 5-of-7
+    const v = Core.evaluate7([hero.holeCards[0], hero.holeCards[1], ...st.board]);
+    dom.heroHandStrength.textContent = Core.describeHand(v).toUpperCase();
+    dom.heroHandStrength.classList.add('show');
   }
 
   function positionDealerButton() {
@@ -2875,20 +2923,16 @@ body {
         delta,
         desc: deltaDescription(delta),
       });
-      // History stays bounded
       if (State.history.length > 50) State.history.length = 50;
-      // Persist hero stack changes back to balance only when leaving — keep on table here.
-      // But: contribute to the level XP & jackpot via History.record
+      // XP + jackpot contribution. The engine zeros totalCommitted on the
+      // next startHand, so read it now while it still reflects the chips
+      // hero put in this hand. Gross win = net delta + chips put in.
       if (window.History && window.History.record) {
-        // bet = chips put in this hand (totalCommitted of hero, before payout was added)
-        // but at this point we don't have totalCommitted; estimate from delta + payout flow
-        // simpler: feed BB amount as bet (each hand at least involves a blind)
-        const bet = Math.max(0, st.bbAmt);
-        const win = delta > 0 ? delta + bet : 0; // approximate
+        const bet = Math.max(0, Math.round(hero.totalCommitted || 0));
+        const win = delta > 0 ? Math.round(delta + bet) : 0;
         try { window.History.record('poker', bet, win, 'poker hand'); } catch(e){}
       }
     }
-    // Move to next hand
     refreshSeats();
     scheduleNextHand(1600);
   }

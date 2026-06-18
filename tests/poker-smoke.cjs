@@ -34,7 +34,13 @@ function serve() {
   const page = await browser.newPage({ viewport: { width: 1240, height: 820 } });
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
-  page.on('console', m => { if (m.type() === 'error') errors.push('[console] ' + m.text()); });
+  page.on('console', m => {
+    if (m.type() !== 'error') return;
+    const t = m.text();
+    // External network / Firestore / cert errors are environment noise, not code errors.
+    if (/ERR_CERT|ERR_FAILED|ERR_NAME_NOT_RESOLVED|Failed to load resource|firestore|firebase|fonts\.googleapis|fonts\.gstatic|api\.qrserver/i.test(t)) return;
+    errors.push('[console] ' + t);
+  });
 
   await page.goto('http://localhost:' + PORT + '/poker.html', { waitUntil: 'networkidle' });
 
