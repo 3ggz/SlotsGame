@@ -552,8 +552,9 @@ body {
 .seat .seat-bet.empty { display: none; }
 
 /* Seat positions for 6-max (oval table) */
-/* Hero (seat 0): bottom center */
-.seat[data-seat="0"] { bottom: -8%; left: 50%; transform: translateX(-50%); }
+/* Hero (seat 0): bottom center — kept just inside the felt so the seat
+   box and its cards don't bleed into the message banner below the table. */
+.seat[data-seat="0"] { bottom: 2%; left: 50%; transform: translateX(-50%); }
 .seat[data-seat="0"] .seat-bet { top: -34px; left: 50%; transform: translateX(-50%); }
 /* Seat 1: bottom-right */
 .seat[data-seat="1"] { bottom: 6%; right: 4%; }
@@ -624,6 +625,41 @@ body {
   display: flex; flex-direction: column; gap: 10px;
 }
 .action-bar.disabled { opacity: 0.35; pointer-events: none; }
+
+/* ------- Pre-action (Zynga-style auto-action) bar ------- */
+.preaction-bar {
+  width: 100%; max-width: 760px;
+  margin: 14px auto 0;
+  display: none;
+  gap: 8px;
+}
+.preaction-bar.show { display: flex; }
+.preact {
+  flex: 1;
+  padding: 12px 6px;
+  border: 0; border-radius: 12px;
+  font-family: 'Bungee', cursive;
+  font-size: 11px; letter-spacing: 0.1em;
+  cursor: pointer;
+  color: rgba(255,255,255,0.85);
+  background: rgba(10,4,24,0.7);
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.14);
+  transition: filter 0.15s, transform 0.08s, box-shadow 0.15s, background 0.15s;
+}
+.preact:hover { filter: brightness(1.2); }
+.preact:active { transform: translateY(1px); }
+.preact[hidden] { display: none; }
+.preact.danger { box-shadow: inset 0 0 0 1.5px rgba(255,46,147,0.4); color: #ffb8d8; }
+.preact.armed {
+  color: #0a0418;
+  background: linear-gradient(180deg, var(--gold-0), var(--gold-1));
+  box-shadow: inset 0 0 0 2px var(--gold-1), 0 0 18px rgba(255,210,74,0.5);
+}
+.preact.danger.armed {
+  color: #fff;
+  background: linear-gradient(180deg, #ff2e93, #8a0a44);
+  box-shadow: inset 0 0 0 2px #ff2e93, 0 0 18px rgba(255,46,147,0.55);
+}
 .bet-controls {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 1fr;
@@ -984,6 +1020,17 @@ body {
 
       <div class="message-banner" id="message-banner">Dealing...</div>
       <div class="hero-hand-strength" id="hero-hand-strength"></div>
+
+      <!-- Zynga-style pre-action toggles: armed while it's NOT your turn,
+           auto-fire when your turn arrives. Cleared when a raise changes
+           the price so you must re-confirm. -->
+      <div class="preaction-bar" id="preaction-bar">
+        <button class="preact danger" data-pa="fold">FOLD</button>
+        <button class="preact" data-pa="checkfold">CHECK / FOLD</button>
+        <button class="preact" data-pa="check">CHECK</button>
+        <button class="preact" data-pa="call">CALL <span id="pa-call-amt"></span></button>
+        <button class="preact" data-pa="callany">CALL ANY</button>
+      </div>
 
       <div class="action-bar" id="action-bar">
         <div class="actions" id="primary-actions">
@@ -2104,6 +2151,8 @@ body {
     addfundsConfirm: $('addfunds-confirm'),
     particles: $('particles'),
     heroHandStrength: $('hero-hand-strength'),
+    preactionBar: $('preaction-bar'),
+    paCallAmt: $('pa-call-amt'),
   };
 
   // ----- State -----
@@ -2121,6 +2170,10 @@ body {
     pendingTimers: [],
     revealedSeats: new Set(),
     showdownInProgress: false,
+    // Zynga-style armed pre-action: { type, amount } or null.
+    //  type: 'fold' | 'checkfold' | 'check' | 'call' | 'callany'
+    //  amount: the to-call price this CALL was armed against (call only)
+    preAction: null,
   };
 
   function paintBalance() { dom.balAmt.textContent = fmt(State.balance); }
@@ -2459,6 +2512,12 @@ body {
   }
 
   // ----- Main hand loop -----
+  function seatedWithChips(st) {
+    let n = 0;
+    for (const p of st.players) if (p && p.stack > 0) n++;
+    return n;
+  }
+
   async function scheduleNextHand(delayMs) {
     clearPendingTimers();
     await delay(delayMs);
@@ -2470,37 +2529,65 @@ body {
       offerRebuyOrLeave();
       return;
     }
-    if (Core.activeCount(State.pokerState) < 2) {
-      // Need at least 2 players
-      offerRebuyOrLeave();
-      return;
+    // Count players who still have chips to play the next hand. (We must NOT
+    // use activeCount here — at the end of a hand everyone but the winner is
+    // flagged hasFolded, so that would always read as 1 and end the table.)
+    if (seatedWithChips(State.pokerState) < 2) {
+      // No opponents left with chips — refill should have handled it, but
+      // guard anyway by topping up the table before bailing.
+      refillBustedSeats();
+      if (seatedWithChips(State.pokerState) < 2) { offerRebuyOrLeave(); return; }
     }
     startNewHand();
   }
 
+  function makeFreshBot(seat) {
+    const T = State.selectedTable;
+    const info = pickBotPool(1)[0];
+    const buyin = randInt(T.minBuyIn, Math.min(T.maxBuyIn, Math.round(T.bb * (60 + Math.random() * 140))));
+    return {
+      id: 'bot' + seat + '_' + Date.now() + '_' + Math.floor(Math.random() * 1e4),
+      seat,
+      name: info.name, isHero: false, hue: info.hue,
+      stack: buyin, holeCards: [], inHand: true, hasFolded: false, isAllIn: false,
+      betThisStreet: 0, totalCommitted: 0, needsToAct: true, actedThisHand: false,
+      personality: Core.PERSONALITY_KEYS[Math.floor(Math.random() * Core.PERSONALITY_KEYS.length)],
+    };
+  }
+
+  // Between hands: busted bots leave, fresh bots sit down. Occasionally a
+  // healthy bot also stands up (cashes out) and a new face arrives, so the
+  // table feels like a living room of players coming and going.
   function refillBustedSeats() {
     if (!State.pokerState || !State.selectedTable) return;
     const st = State.pokerState;
-    const T = State.selectedTable;
+    let changed = false;
+    // Pass 1 — busted bots leave the table.
     for (let i = 0; i < st.players.length; i++) {
       const p = st.players[i];
-      if (!p) {
-        // re-seat: spawn fresh bot
-        const info = pickBotPool(1)[0];
-        const buyin = randInt(T.minBuyIn, Math.min(T.maxBuyIn, Math.round(T.bb * (60 + Math.random() * 140))));
-        st.players[i] = {
-          id: 'bot' + i + '_' + Date.now(),
-          seat: i,
-          name: info.name, isHero: false, hue: info.hue,
-          stack: buyin, holeCards: [], inHand: true, hasFolded: false, isAllIn: false,
-          betThisStreet: 0, totalCommitted: 0, needsToAct: true, actedThisHand: false,
-          personality: Core.PERSONALITY_KEYS[Math.floor(Math.random() * Core.PERSONALITY_KEYS.length)],
-        };
-      } else if (p.stack <= 0 && !p.isHero) {
-        st.players[i] = null;
+      if (p && !p.isHero && p.stack <= 0) { st.players[i] = null; changed = true; }
+    }
+    // Pass 1b — a healthy bot occasionally cashes out (one per hand at most),
+    // but never drop below 3 live bots so hands always have action.
+    const liveBots = st.players.filter(p => p && !p.isHero && p.stack > 0).length;
+    if (liveBots > 3 && Math.random() < 0.18) {
+      const candidates = [];
+      for (let i = 0; i < st.players.length; i++) {
+        const p = st.players[i];
+        if (p && !p.isHero && p.stack > 0) candidates.push(i);
+      }
+      if (candidates.length) {
+        const leave = candidates[Math.floor(Math.random() * candidates.length)];
+        st.players[leave] = null; changed = true;
       }
     }
-    renderSeats();
+    // Pass 2 — fill every empty (non-hero) seat with a fresh buy-in so the
+    // table stays full and hands keep dealing.
+    for (let i = 0; i < st.players.length; i++) {
+      if (i === State.heroSeat) continue;
+      if (!st.players[i]) { st.players[i] = makeFreshBot(i); changed = true; }
+    }
+    if (changed) renderSeats();
   }
 
   function offerRebuyOrLeave() {
@@ -2513,6 +2600,8 @@ body {
     State.busy = true;
     State.revealedSeats = new Set();
     State.showdownInProgress = false;
+    clearPreAction();
+    hidePreActionBar();
     State.handStartStack = State.pokerState.players[State.heroSeat] ? State.pokerState.players[State.heroSeat].stack : 0;
     // Clear board UI
     dom.community.innerHTML = '';
@@ -2597,11 +2686,15 @@ body {
       if (p.isHero) {
         await heroTurn(p);
       } else {
+        // While a bot acts, let the hero arm a pre-action (Check / Call etc).
+        renderPreActionBar();
         await botTurn(p, i);
       }
       if (!State.pokerState) return;
       unmarkActing(i);
       refreshSeats();
+      // The bot may have raised — reconcile any armed pre-action.
+      renderPreActionBar();
       await delay(120);
     }
   }
@@ -2674,25 +2767,137 @@ body {
   // ----- Hero turn (UI prompt) -----
   let heroResolve = null;
   function heroTurn(p) {
+    // If a valid pre-action is armed, fire it immediately and skip the prompt.
+    const pre = resolveArmedAction(p);
+    if (pre) {
+      clearPreAction();
+      hidePreActionBar();
+      State._autoFireCount = (State._autoFireCount || 0) + 1;
+      return (async () => {
+        await delay(260); // brief beat so the auto-action reads naturally
+        if (!State.pokerState || State.pokerState.players[State.heroSeat] !== p) return;
+        applyHeroAction(pre, p);
+      })();
+    }
     return new Promise(res => {
       heroResolve = res;
+      clearPreAction();
+      hidePreActionBar();
       updateActionBarForHero(p);
       startActionTimer(p);
     });
   }
-  function endHeroTurn(action) {
-    if (!heroResolve) return;
-    const r = heroResolve; heroResolve = null;
-    cancelActionTimer();
-    disableActionBar();
-    const hero = State.pokerState && State.pokerState.players[State.heroSeat];
+  // Apply an action when it's genuinely the hero's turn (used by both the
+  // manual buttons and the auto pre-action path).
+  function applyHeroAction(action, p) {
+    const hero = p || (State.pokerState && State.pokerState.players[State.heroSeat]);
     const beforeBet = hero ? hero.betThisStreet : 0;
     try {
       Core.applyAction(State.pokerState, action);
     } catch (e) { console.error('applyAction error', e); }
     playActionSound(action);
     if (hero) showActionOnSeat(State.heroSeat, action, hero.betThisStreet - beforeBet);
-    r();
+    if (heroResolve) { const r = heroResolve; heroResolve = null; r(); }
+  }
+  function endHeroTurn(action) {
+    if (!heroResolve) return;
+    cancelActionTimer();
+    disableActionBar();
+    applyHeroAction(action);
+  }
+
+  // ----- Zynga-style pre-action engine -----
+  // Decide whether an armed pre-action can fire on the hero's actual turn.
+  // Returns a concrete action object, or null if it should fall through to
+  // the manual prompt (e.g. a CALL armed against a price that has since
+  // been raised — the player must re-confirm).
+  function resolveArmedAction(p) {
+    const pa = State.preAction;
+    if (!pa) return null;
+    const la = Core.legalActions(State.pokerState, p);
+    switch (pa.type) {
+      case 'fold':
+        return { type: 'fold' };
+      case 'checkfold':
+        return la.canCheck ? { type: 'check' } : { type: 'fold' };
+      case 'callany':
+        return la.canCheck ? { type: 'check' } : { type: 'call' };
+      case 'check':
+        // Only fires if checking is still free; a bet appeared → re-confirm.
+        return la.canCheck ? { type: 'check' } : null;
+      case 'call':
+        // Fires only if the price is unchanged. Free now → just check.
+        if (la.canCheck) return { type: 'check' };
+        if (la.canCall && la.toCall === pa.amount) return { type: 'call' };
+        return null; // price moved → drop arm, prompt manually
+      default:
+        return null;
+    }
+  }
+
+  function clearPreAction() {
+    State.preAction = null;
+    for (const b of dom.preactionBar.querySelectorAll('.preact')) b.classList.remove('armed');
+  }
+  function hidePreActionBar() { dom.preactionBar.classList.remove('show'); }
+
+  // Show/refresh the pre-action toggles. Called whenever the betting state
+  // changes while it's NOT the hero's turn. Reconciles any armed selection
+  // that the latest raise has invalidated.
+  function renderPreActionBar() {
+    const st = State.pokerState;
+    const hero = st && st.players[State.heroSeat];
+    // Only meaningful when a hand is live, hero is still in it, and it's
+    // not currently the hero's turn (their own turn uses the real buttons).
+    if (!st || !hero || hero.hasFolded || hero.isAllIn || !hero.inHand ||
+        st.street === 'showdown' || st.toActIdx === State.heroSeat) {
+      hidePreActionBar();
+      return;
+    }
+    const la = Core.legalActions(st, hero);
+    const facingBet = !la.canCheck && la.toCall > 0;
+
+    // Reconcile the armed action against the new price.
+    const pa = State.preAction;
+    if (pa) {
+      if (pa.type === 'check' && facingBet) clearPreAction();
+      else if (pa.type === 'call' && (!facingBet || la.toCall !== pa.amount)) clearPreAction();
+    }
+
+    const byType = {};
+    for (const b of dom.preactionBar.querySelectorAll('.preact')) byType[b.dataset.pa] = b;
+
+    // Which toggles make sense right now:
+    //  - not facing a bet: CHECK, CHECK/FOLD
+    //  - facing a bet:      FOLD, CALL $X, CALL ANY
+    const show = facingBet
+      ? { fold: true, call: true, callany: true, check: false, checkfold: false }
+      : { fold: false, call: false, callany: false, check: true, checkfold: true };
+    for (const t of Object.keys(byType)) byType[t].hidden = !show[t];
+    if (show.call) dom.paCallAmt.textContent = '$' + fmt(la.toCall);
+
+    // Reflect armed state on the buttons.
+    for (const b of dom.preactionBar.querySelectorAll('.preact')) {
+      b.classList.toggle('armed', !!State.preAction && State.preAction.type === b.dataset.pa);
+    }
+    dom.preactionBar.classList.add('show');
+  }
+
+  function armPreAction(type) {
+    const st = State.pokerState;
+    const hero = st && st.players[State.heroSeat];
+    if (!hero) return;
+    // Toggle off if re-clicking the armed one.
+    if (State.preAction && State.preAction.type === type) { clearPreAction(); renderPreActionBar(); return; }
+    const la = Core.legalActions(st, hero);
+    const amount = (type === 'call') ? la.toCall : undefined;
+    State.preAction = { type, amount };
+    renderPreActionBar();
+    Audio.click();
+  }
+
+  for (const b of document.querySelectorAll('.preact')) {
+    b.addEventListener('click', () => armPreAction(b.dataset.pa));
   }
   function playActionSound(action) {
     switch (action.type) {
@@ -2825,8 +3030,13 @@ body {
   // ----- Bot turn -----
   async function botTurn(p, i) {
     disableActionBar();
-    // Add suspense: short thinking delay
-    const thinkMs = 500 + Math.random() * 700;
+    // Pace bot thinking. When the hero is still in the hand we linger a beat
+    // so the action reads; once the hero has folded (or is all-in) there's
+    // nothing for them to decide, so we speed the table up considerably.
+    const hero = State.pokerState.players[State.heroSeat];
+    const heroWatching = hero && (hero.hasFolded || hero.isAllIn || !hero.inHand);
+    const thinkMs = heroWatching ? (110 + Math.random() * 130)
+                                 : (240 + Math.random() * 340);
     await delay(thinkMs);
     // If the user left the table during the think, bail before touching state.
     if (!State.pokerState || State.pokerState.players[i] !== p) return;
@@ -2837,18 +3047,20 @@ body {
     const paid = p.betThisStreet - beforeBet;
     showActionOnSeat(i, action, paid);
     refreshSeats();
-    await delay(380);
+    await delay(heroWatching ? 130 : 230);
   }
 
   // ----- Fold-out resolution -----
   async function finishHandFoldout() {
+    clearPreAction();
+    hidePreActionBar();
     const st = State.pokerState;
     const summary = Core.resolveFoldOut(st);
     refreshSeats();
     const winnerId = summary[0].winnerId;
     const winnerSeat = st.players.findIndex(p => p && p.id === winnerId);
     if (winnerSeat >= 0) flashWinAtSeat(winnerSeat, summary[0].amount, 'Wins pot — uncontested');
-    await delay(1800);
+    await delay(1400);
     cleanupAfterHand();
   }
 
@@ -2856,6 +3068,8 @@ body {
   async function finishHandShowdown() {
     if (State.showdownInProgress) return;
     State.showdownInProgress = true;
+    clearPreAction();
+    hidePreActionBar();
     const st = State.pokerState;
     // Reveal all hole cards in order from last aggressor or button
     const seatsToReveal = [];
@@ -2891,7 +3105,7 @@ body {
       coinShower();
       Audio.bigwin();
     }
-    await delay(2400);
+    await delay(1900);
     cleanupAfterHand();
   }
 
@@ -3004,7 +3218,7 @@ body {
       }
     }
     refreshSeats();
-    scheduleNextHand(1600);
+    scheduleNextHand(1200);
   }
 
   function deltaDescription(d) {
@@ -3096,6 +3310,19 @@ body {
   window.addEventListener('resize', () => {
     if (State.pokerState) positionDealerButton();
   });
+
+  // Lightweight read-only hooks for automated tests (no behaviour impact).
+  window.PokerDebug = {
+    handNo: () => State.pokerState ? State.pokerState.handNo : -1,
+    street: () => State.pokerState ? State.pokerState.street : null,
+    toAct: () => State.pokerState ? State.pokerState.toActIdx : -1,
+    heroStack: () => State.pokerState && State.pokerState.players[State.heroSeat]
+      ? State.pokerState.players[State.heroSeat].stack : -1,
+    busy: () => State.busy,
+    inGame: () => !!State.pokerState,
+    autoFireCount: () => State._autoFireCount || 0,
+    armedType: () => State.preAction ? State.preAction.type : null,
+  };
 
 })();
 </script>

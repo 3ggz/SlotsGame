@@ -59,54 +59,61 @@ function serve() {
   // Game screen should show
   await page.waitForSelector('#game-screen.show', { timeout: 3000 });
 
-  // Take a screenshot at table-sit
-  await page.waitForTimeout(900);
-  await page.screenshot({ path: path.join(ROOT, 'tests/poker-1-sit.png'), fullPage: false });
-
-  // Wait for the first hand to begin and dealt — check community starts empty, seats populated
+  // First hand dealt — seats populated.
   await page.waitForFunction(() => document.querySelectorAll('.seat .seat-hole .card').length >= 10, null, { timeout: 5000 });
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(600);
 
-  // Hero might need to act preflop — wait for action bar to be enabled, then click CALL or CHECK
-  // Loop up to 3 hands of auto-play
-  let hands = 0;
-  const maxHands = 3;
+  // Drive the table: arm CHECK/FOLD pre-actions when offered (so we exercise
+  // the auto-action path) and fold on any manual prompt to keep moving. The
+  // table must keep dealing hand after hand — never bail back to the lobby
+  // after a single hand (regression guard for the activeCount bug).
+  let bailedToLobby = false;
+  let preactionSeen = false;
   const start = Date.now();
-  while (hands < maxHands && Date.now() - start < 60000) {
-    // wait for action bar enabled (hero turn) or proceed
-    const enabled = await page.evaluate(() => !document.querySelector('#action-bar').classList.contains('disabled'));
-    if (enabled) {
-      // Choose CHECK/CALL by default; sometimes fold
-      const btnCheck = await page.locator('#btn-check');
-      const isCallable = !(await btnCheck.isDisabled());
-      if (isCallable) await btnCheck.click();
-      else await page.click('#btn-fold');
-      await page.waitForTimeout(400);
-    } else {
-      // detect new hand started by checking handNo? simpler: poll
-      const status = await page.evaluate(() => {
-        const bn = document.querySelector('#message-banner');
-        return bn ? bn.textContent : '';
+  while (Date.now() - start < 55000) {
+    const s = await page.evaluate(() => ({
+      inGame: window.PokerDebug ? PokerDebug.inGame() : true,
+      handNo: window.PokerDebug ? PokerDebug.handNo() : 0,
+      pre: document.querySelector('#preaction-bar').classList.contains('show'),
+      armed: window.PokerDebug ? PokerDebug.armedType() : null,
+      ae: !document.querySelector('#action-bar').classList.contains('disabled'),
+    }));
+    if (!s.inGame) { bailedToLobby = true; break; }
+    if (s.pre) preactionSeen = true;
+    if (s.pre && !s.armed) {
+      await page.evaluate(() => {
+        const cf = document.querySelector('.preact[data-pa="checkfold"]');
+        if (cf && !cf.hidden) { cf.click(); return; }
+        const f = document.querySelector('.preact[data-pa="fold"]');
+        if (f && !f.hidden) f.click();
       });
-      // Did a new hand start?
-      const newHand = await page.evaluate(() => document.querySelector('#community').children.length === 0);
-      // crude heuristic: when there's a fresh hand we'll see 0 community cards.
-      if (newHand && (await page.evaluate(() => {
-        const banner = document.querySelector('#message-banner');
-        return banner && /New hand/.test(banner.textContent);
-      }))) hands++;
-      await page.waitForTimeout(450);
     }
-    if (errors.length) break;
+    if (s.ae) {
+      // Manual prompt (no valid pre-action) — fold to advance.
+      const checkDisabled = await page.evaluate(() => document.querySelector('#btn-check').disabled);
+      if (!checkDisabled) await page.click('#btn-check'); else await page.click('#btn-fold');
+    }
+    // Stop once we've confirmed several hands have been dealt continuously.
+    if (s.handNo >= 4) break;
+    await page.waitForTimeout(180);
   }
-  await page.screenshot({ path: path.join(ROOT, 'tests/poker-2-playing.png'), fullPage: false });
 
-  console.log('handsObserved=' + hands);
+  const handNo = await page.evaluate(() => window.PokerDebug ? PokerDebug.handNo() : 0);
+  const autoFires = await page.evaluate(() => window.PokerDebug ? PokerDebug.autoFireCount() : 0);
+
+  console.log('handsDealt=' + handNo);
+  console.log('bailedToLobby=' + bailedToLobby);
+  console.log('preactionSeen=' + preactionSeen);
+  console.log('autoFireCount=' + autoFires);
   console.log('errors=' + errors.length);
-  if (errors.length) {
-    for (const e of errors) console.log('  - ' + e);
-  }
+  if (errors.length) for (const e of errors) console.log('  - ' + e);
+
+  let failed = errors.length > 0;
+  if (bailedToLobby) { console.log('FAIL: table bailed to lobby (continuous-play regression)'); failed = true; }
+  if (handNo < 3) { console.log('FAIL: expected continuous play (>=3 hands), got ' + handNo); failed = true; }
+  if (!preactionSeen) { console.log('FAIL: pre-action bar never appeared'); failed = true; }
+
   await browser.close();
   server.close();
-  process.exit(errors.length ? 1 : 0);
+  process.exit(failed ? 1 : 0);
 })();
