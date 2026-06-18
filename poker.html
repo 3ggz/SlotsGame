@@ -324,20 +324,23 @@ body {
 }
 
 /* ------- Community cards + pot ------- */
-.community {
-  position: absolute;
-  top: 38%; left: 50%; transform: translate(-50%, -50%);
-  display: flex; gap: 6px;
-  z-index: 5;
-}
-.community .card { width: 58px; height: 84px; }
+/* Pot sits ABOVE the board cards; community cards sit BELOW it. That
+   keeps the pot away from the hero's hole cards at the bottom of the
+   felt, which was crowding/covering the hero's hand on mobile. */
 .pot-display {
   position: absolute;
-  top: 60%; left: 50%; transform: translate(-50%, -50%);
+  top: 26%; left: 50%; transform: translate(-50%, -50%);
   text-align: center;
   pointer-events: none;
   z-index: 5;
 }
+.community {
+  position: absolute;
+  top: 46%; left: 50%; transform: translate(-50%, -50%);
+  display: flex; gap: 6px;
+  z-index: 5;
+}
+.community .card { width: 58px; height: 84px; }
 .pot-display .pot-label {
   font-family: 'Bungee', cursive;
   font-size: 9px; letter-spacing: 0.22em;
@@ -494,6 +497,17 @@ body {
   0%, 100% { box-shadow: 0 6px 14px rgba(0,0,0,0.55), inset 0 0 0 2px var(--neon-cyan), 0 0 18px rgba(34,211,238,0.4); }
   50%      { box-shadow: 0 6px 14px rgba(0,0,0,0.55), inset 0 0 0 2px var(--neon-cyan), 0 0 32px rgba(34,211,238,0.75); }
 }
+/* Check signifier — a quick double-knock on the seat box, the universal
+   poker "tap the table" gesture. Triggered when the player checks. */
+.seat.knock .seat-box { animation: seatKnock 0.42s ease-out; }
+@keyframes seatKnock {
+  0%   { transform: translateY(0); }
+  18%  { transform: translateY(3px); }
+  36%  { transform: translateY(0); }
+  56%  { transform: translateY(3px); }
+  74%  { transform: translateY(0); }
+  100% { transform: translateY(0); }
+}
 .seat .seat-status {
   font-family: 'Bungee', cursive;
   font-size: 8px; letter-spacing: 0.18em;
@@ -530,26 +544,38 @@ body {
 .seat.hero .seat-hole .card .corner .s { font-size: 11px; }
 .seat.hero .seat-hole .card .center-suit { font-size: 26px; }
 
+/* Per-seat bet badge: a single chip-shaped disc with the amount written
+   on it (the way real chip stacks have value imprinted). Easier to read
+   at a glance than a pill with a chip glyph next to a number. */
 .seat .seat-bet {
   position: absolute;
-  display: flex; align-items: center; gap: 4px;
-  padding: 2px 8px;
-  background: rgba(0,0,0,0.55);
-  border-radius: 999px;
-  font-family: 'Geist Mono', monospace;
-  font-weight: 700; font-size: 11px;
-  color: var(--gold-1);
-  box-shadow: inset 0 0 0 1px rgba(255,210,74,0.35);
+  display: grid;
+  place-items: center;
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255,255,255,0.4), transparent 55%),
+    linear-gradient(180deg, var(--gold-0), var(--gold-1) 55%, var(--gold-2));
+  box-shadow:
+    inset 0 0 0 3px rgba(255,255,255,0.9),
+    inset 0 0 0 4px rgba(0,0,0,0.25),
+    0 4px 10px rgba(0,0,0,0.55),
+    0 0 14px rgba(255,210,74,0.45);
+  font-family: 'Bungee', cursive;
+  font-size: 10px;
+  font-weight: 700;
+  color: #2a0a00;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.45);
   z-index: 6;
   white-space: nowrap;
+  letter-spacing: 0.02em;
+  animation: seatBetIn 0.32s cubic-bezier(.2,1.5,.4,1);
 }
-.seat .seat-bet::before {
-  content: '';
-  width: 14px; height: 14px; border-radius: 50%;
-  background: linear-gradient(180deg, var(--gold-0), var(--gold-2));
-  box-shadow: inset 0 0 0 1.5px rgba(0,0,0,0.4), 0 0 8px rgba(255,210,74,0.55);
+@keyframes seatBetIn {
+  0%   { opacity: 0; transform: translate(-50%, 8px) scale(0.4); }
+  100% { opacity: 1; transform: var(--seat-bet-rest, translate(-50%, 0) scale(1)); }
 }
-.seat .seat-bet.empty { display: none; }
+.seat .seat-bet.empty { display: none; animation: none; }
 
 /* Seat positions for 6-max (oval table) */
 /* Hero (seat 0): bottom center — kept just inside the felt so the seat
@@ -1934,20 +1960,40 @@ body {
     return { type: 'fold' };
   }
 
+  // Snap a chip amount to a "clean" multiple of the big blind so bot raises
+  // come out as $20 / $40 / $60 instead of $13 / $27 / $43. Step size
+  // scales with the BB so it stays sensible at all stakes.
+  //   bb=2  -> step 2    (round to nearest $2)
+  //   bb=5  -> step 5
+  //   bb=10 -> step 10
+  //   bb=50 -> step 25
+  //   bb>=200-> step bb/2
+  function snapBet(amount, bb) {
+    let step;
+    if (bb <= 2)       step = bb;
+    else if (bb <= 10) step = bb;
+    else if (bb <= 50) step = Math.round(bb / 2);
+    else               step = Math.round(bb / 2);
+    if (step < 1) step = 1;
+    return Math.round(amount / step) * step;
+  }
+
   function raiseSize(state, p, cfg, equityHint) {
     const la = legalActions(state, p);
     const pot = totalPot(state);
     let base;
     if (state.street === 'preflop') {
       base = state.bbAmt * (2.4 + 0.7 * cfg.aggroBoost + 0.6 * state.rng());
-      // bump if facing limpers/raises
       base += Math.max(0, (state.currentBet - state.bbAmt));
     } else {
       const factor = 0.45 + 0.35 * cfg.aggroBoost + 0.15 * state.rng();
       base = pot * factor;
       if (equityHint > 0.85) base *= 1.25;
     }
-    let target = Math.max(la.minRaiseTo, Math.round(base));
+    // Snap to BB-sized increments before clamping so the chip amounts read
+    // as round numbers ($20, $40) instead of arbitrary ($13, $27).
+    let target = snapBet(base, state.bbAmt);
+    target = Math.max(la.minRaiseTo, target);
     target = Math.min(target, la.maxRaiseTo);
     if (target >= la.maxRaiseTo) return { type: 'allin' };
     return { type: la.canCheck ? 'bet' : 'raise', amount: target };
@@ -2943,6 +2989,44 @@ body {
     statusEl.classList.add(cls);
     statusEl.textContent = label.trim();
     statusEl.dataset.actAt = String(Date.now());
+
+    // Per-action signifiers — a check knocks the seat (universal poker
+    // gesture); chip actions fly a chip from the seat into the bet badge
+    // so the player can see chips actually moving when bots act.
+    if (action.type === 'check') {
+      seat.classList.remove('knock');
+      void seat.offsetWidth;
+      seat.classList.add('knock');
+      setTimeout(() => seat.classList.remove('knock'), 460);
+    } else if (paidAmount > 0 || action.type === 'allin') {
+      flyChipToSeatBet(seatIdx);
+    }
+  }
+
+  // Fire a small chip from the seat's avatar to its bet badge. Quick
+  // feedback that the bot really moved chips into the pot.
+  function flyChipToSeatBet(seatIdx) {
+    const seat = dom.seatsLayer.querySelector(`.seat[data-seat="${seatIdx}"]`);
+    if (!seat) return;
+    const av = seat.querySelector('[data-avatar]');
+    const bet = seat.querySelector('[data-bet]');
+    if (!av || !bet) return;
+    // Compute travel vector in viewport coords.
+    const ar = av.getBoundingClientRect();
+    const br = bet.getBoundingClientRect();
+    const fly = document.createElement('div');
+    fly.className = 'flying-chip ' + chipClassFor(1);
+    fly.style.left = (ar.left + ar.width/2 - 16) + 'px';
+    fly.style.top  = (ar.top  + ar.height/2 - 16) + 'px';
+    fly.style.transform = 'translate(0,0) scale(0.5)';
+    document.body.appendChild(fly);
+    const dx = (br.left + br.width/2)  - (ar.left + ar.width/2);
+    const dy = (br.top  + br.height/2) - (ar.top  + ar.height/2);
+    requestAnimationFrame(() => {
+      fly.style.transform = `translate(${dx}px, ${dy}px) scale(0.7)`;
+    });
+    setTimeout(() => fly.style.opacity = '0', 420);
+    setTimeout(() => fly.remove(), 800);
   }
 
   function updateActionBarForHero(p) {
@@ -2960,12 +3044,14 @@ body {
       dom.betSlider.min = Math.max(0, min);
       dom.betSlider.max = max;
       dom.betSlider.step = Math.max(1, Math.round(State.selectedTable.bb / 2));
-      const def = Math.min(max, Math.max(min, Math.round(Core.totalPot(State.pokerState) * 0.5)));
+      // Default to the MINIMUM legal raise (clamped to all-in if min > max),
+      // not half-pot — half-pot was rounding up to maxRaiseTo on small
+      // stacks and silently turning a casual "BET" click into an all-in.
+      const def = Math.min(max, min);
       dom.betSlider.value = def;
       dom.betAmt.textContent = '$' + fmt(def);
       dom.betSliderRow.style.display = 'flex';
       dom.btnAllin.disabled = false;
-      // Enable bet quicks
       for (const b of document.querySelectorAll('.bet-quick')) b.disabled = false;
     } else {
       dom.btnRaise.disabled = true;
