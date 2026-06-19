@@ -3320,6 +3320,10 @@ body {
         const win = delta > 0 ? Math.round(delta + bet) : 0;
         try { window.History.record('poker', bet, win, 'poker hand'); } catch(e){}
       }
+      // History.record may have triggered a level-up that credited chips
+      // straight to localStorage; re-sync so leaveTable's setBalance(...+stack)
+      // doesn't overwrite that reward with our stale State.balance.
+      State.balance = loadBalance(); paintBalance();
     }
     refreshSeats();
     scheduleNextHand(1200);
@@ -3409,6 +3413,7 @@ body {
     const d = e.detail || {};
     showBanner('LEVEL UP — Level ' + d.newLevel + ' · +$' + fmt(d.reward), 'win');
     coinShower();
+    refreshBalanceFromStorage();   // pick up the level-up chip reward
   });
 
   window.addEventListener('resize', () => {

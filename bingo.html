@@ -234,6 +234,20 @@ body {
 .m-btn:hover { filter: brightness(1.15); } .m-btn:active { transform: translateY(2px); }
 .m-btn.confirm { color: #0a0418; background: linear-gradient(180deg, var(--gold-0), var(--gold-1) 50%, var(--gold-2)); box-shadow: 0 4px 0 #3a2200, inset 0 1px 0 rgba(255,255,255,0.4); }
 .result-card-mini { display: flex; justify-content: center; margin-bottom: 14px; }
+.mini-bingo { display: flex; flex-direction: column; gap: 3px; }
+.mini-bingo .mb-head { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+.mini-bingo .mb-head span { text-align: center; font-family: 'Bungee', cursive; font-size: 10px; }
+.mini-bingo .mb-head span.B { color: var(--b-B); } .mini-bingo .mb-head span.I { color: var(--b-I); } .mini-bingo .mb-head span.N { color: var(--b-N); } .mini-bingo .mb-head span.G { color: var(--b-G); } .mini-bingo .mb-head span.O { color: var(--b-O); }
+.mini-bingo .mb-body { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+.mini-bingo .mc {
+  width: 30px; height: 30px; border-radius: 6px; display: grid; place-items: center;
+  font-family: 'Geist Mono', monospace; font-weight: 700; font-size: 11px; color: #1a0a2e;
+  background: linear-gradient(180deg, #fffdf3, #e6dcc4); position: relative;
+}
+.mini-bingo .mc.free { background: linear-gradient(180deg, var(--gold-0), var(--gold-1)); font-family: 'Bungee', cursive; font-size: 7px; }
+.mini-bingo .mc.daubed::after { content: ''; position: absolute; inset: 16%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.5), var(--neon-pink) 60%, #8a0a44); box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+.mini-bingo .mc.win { box-shadow: 0 0 0 2.5px var(--gold-1), 0 0 12px rgba(255,210,74,0.7); }
+.mini-bingo .mc.win.daubed::after { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.6), var(--neon-green) 60%, #14a058); }
 .amount-input-wrap { position: relative; }
 .amount-input-wrap::before { content: '$'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-family: 'Geist Mono', monospace; font-size: 20px; color: rgba(255,210,74,0.7); pointer-events: none; }
 .amount-input { width: 100%; padding: 12px 14px 12px 26px; background: rgba(0,0,0,0.45); border: 0; border-radius: 12px; font-family: 'Geist Mono', monospace; font-size: 22px; font-weight: 700; color: var(--gold-1); box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.4); margin-bottom: 12px; text-align: center; }
@@ -372,6 +386,7 @@ body {
   <div class="modal-card">
     <h2 id="result-title">BINGO!</h2>
     <p id="result-sub"></p>
+    <div class="result-card-mini" id="result-card"></div>
     <div class="big-prize" id="result-prize" style="display:none;"></div>
     <div class="modal-actions">
       <button class="m-btn" id="result-leave">LEAVE</button>
@@ -651,7 +666,7 @@ body {
     btnBingo: $('btn-bingo'), btnAutodaub: $('btn-autodaub'), btnMusic: $('btn-music'), btnStart: $('btn-start'), btnNewcard: $('btn-newcard'),
     countdown: $('countdown'), btnLeave: $('btn-leave'),
     buyinModal: $('buyin-modal'), buyinTitle: $('buyin-title'), buyinBlurb: $('buyin-blurb'), buyinCancel: $('buyin-cancel'), buyinConfirm: $('buyin-confirm'),
-    resultModal: $('result-modal'), resultTitle: $('result-title'), resultSub: $('result-sub'), resultPrize: $('result-prize'), resultLeave: $('result-leave'), resultAgain: $('result-again'),
+    resultModal: $('result-modal'), resultTitle: $('result-title'), resultSub: $('result-sub'), resultPrize: $('result-prize'), resultCard: $('result-card'), resultLeave: $('result-leave'), resultAgain: $('result-again'),
     addfundsModal: $('addfunds-modal'), addfundsInput: $('addfunds-input'), addfundsCancel: $('addfunds-cancel'), addfundsConfirm: $('addfunds-confirm'),
     particles: $('particles'),
   };
@@ -742,6 +757,9 @@ body {
   dom.buyinCancel.addEventListener('click', () => { Audio.click(); dom.buyinModal.classList.remove('show'); });
   dom.buyinConfirm.addEventListener('click', () => {
     Audio.click();
+    // Guard against a rapid double-click double-charging the buy-in: once the
+    // modal is dismissed the first click already handled it.
+    if (!dom.buyinModal.classList.contains('show')) return;
     if (State.balance < buyinRoom.buyIn) return;
     dom.buyinModal.classList.remove('show');
     joinRoom(buyinRoom);
@@ -1057,6 +1075,10 @@ body {
     if (window.History && window.History.record) {
       try { window.History.record('bingo', room.buyIn, heroWon ? purse.prize : 0, 'bingo game'); } catch(e){}
     }
+    // History.record may have credited a level-up reward or jackpot directly to
+    // localStorage; re-sync so our in-memory balance picks it up (otherwise the
+    // next setBalance would overwrite and lose the reward).
+    State.balance = loadBalance(); paintBalance();
     showResult(heroWon, winnerIdx, purse);
   }
 
@@ -1070,19 +1092,42 @@ body {
       dom.resultSub.textContent = State.botInfo[winnerIdx].name + ' completed ' + Core.PATTERNS[State.room.pattern].name + ' first. Better luck next game!';
       dom.resultPrize.style.display = 'none';
     }
+    // Show the winner's actual card with the completed pattern highlighted —
+    // proof of a fair win/loss.
+    renderResultCard(winnerIdx);
     dom.resultModal.classList.add('show');
   }
+  function renderResultCard(winnerIdx) {
+    const grid = State.cards[winnerIdx];
+    const winShape = Core.cardWins(grid, State.calledSet, State.room.pattern) || [];
+    const winSet = new Set(winShape);
+    let head = '<div class="mb-head">';
+    for (const L of Core.LETTERS) head += `<span class="${L}">${L}</span>`;
+    head += '</div>';
+    let body = '<div class="mb-body">';
+    for (let i = 0; i < 25; i++) {
+      const isFree = i === Core.FREE_INDEX;
+      const n = grid[i];
+      const daubed = isFree || State.calledSet.has(n);
+      const cls = 'mc' + (isFree ? ' free' : '') + (daubed ? ' daubed' : '') + (winSet.has(i) ? ' win' : '');
+      body += `<div class="${cls}">${isFree ? 'FREE' : n}</div>`;
+    }
+    body += '</div>';
+    dom.resultCard.innerHTML = `<div class="mini-bingo">${head}${body}</div>`;
+  }
   dom.resultAgain.addEventListener('click', () => {
-    Audio.click(); dom.resultModal.classList.remove('show');
+    Audio.click();
+    // Guard against a double-click re-buying twice.
+    if (!dom.resultModal.classList.contains('show')) return;
+    dom.resultModal.classList.remove('show');
     const room = State.room;
     if (State.balance < room.buyIn) { setStatus('Not enough chips to play again', ''); leaveRoom(); return; }
-    resetGameState();
-    joinRoom(room);
+    joinRoom(room);   // joinRoom calls resetGameState() itself
   });
   dom.resultLeave.addEventListener('click', () => { Audio.click(); dom.resultModal.classList.remove('show'); leaveRoom(); });
 
   function resetGameState() {
-    State.heroWon = false; State._botScheduled = null; State._announcedOneAway = false;
+    State.heroWon = false; State._announcedOneAway = false;
     clearAllTimers();
   }
 
@@ -1135,6 +1180,9 @@ body {
   }
 
   document.addEventListener('jackpot-win', () => refreshBal());
+  // A level-up credits chips straight to localStorage; pick that up so our
+  // in-memory balance stays authoritative and the reward is never overwritten.
+  document.addEventListener('level-up', () => refreshBal());
 
   // ---- init ----
   setMusic(true);

@@ -1667,6 +1667,10 @@ body {
     if (window.History && window.History.record) {
       try { window.History.record('rummy', State.tier.buyIn, (t.payouts && t.payouts['hero']) || 0, 'rummy tournament'); } catch(e){}
     }
+    // History.record may have triggered a level-up that credited chips
+    // straight to localStorage — re-sync so we don't overwrite that reward
+    // on the next setBalance.
+    State.balance = loadBalance(); paintBalance();
     dom.tourneyModal.classList.add('show');
   }
   dom.tourneyDone.addEventListener('click', () => { Audio.click(); dom.tourneyModal.classList.remove('show'); leaveTable(); });
@@ -1706,6 +1710,7 @@ body {
   }
 
   document.addEventListener('jackpot-win', () => refreshBal());
+  document.addEventListener('level-up', () => refreshBal());
 
   // ---- init ----
   renderTables();
