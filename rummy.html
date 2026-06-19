@@ -200,7 +200,14 @@ body {
 .hand-rail .card { cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
 .hand-rail .card:not(:first-child) { margin-left: -22px; }
 .hand-rail .card.selected { transform: translateY(-18px); box-shadow: 0 14px 22px rgba(0,0,0,0.5), 0 0 0 2.5px var(--gold-1), 0 0 20px rgba(255,210,74,0.5); z-index: 5; }
-.hand-rail .card.hint { box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 0 2px var(--neon-green); }
+/* hint = card is part of a potential meld in the current hand */
+.hand-rail .card.hint { box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 0 2px rgba(92,255,161,0.55); }
+/* selected cards that DO form a valid meld get a brighter gold halo */
+.hand-rail .card.selected.valid-meld { box-shadow: 0 14px 22px rgba(0,0,0,0.5), 0 0 0 2.5px var(--neon-green), 0 0 22px rgba(92,255,161,0.65); }
+/* explainer below the action buttons that says why MELD is locked */
+.action-hint { margin-top: 4px; font-family: 'Bungee', cursive; font-size: 9px; letter-spacing: 0.1em; color: rgba(255,255,255,0.55); text-align: center; min-height: 14px; }
+.action-hint.good { color: var(--neon-green); }
+.action-hint.bad  { color: rgba(255,180,60,0.85); }
 .hand-rail .card.drawn { animation: cardDrawn 0.5s ease-out; }
 @keyframes cardDrawn { 0% { transform: translateY(-40px) scale(1.1); box-shadow: 0 0 0 3px var(--neon-cyan); } 100% { transform: translateY(0) scale(1); } }
 
@@ -396,6 +403,7 @@ body {
           <button class="act" id="btn-sort">SORT</button>
           <button class="act danger" id="btn-discard">DISCARD</button>
         </div>
+        <div class="action-hint" id="action-hint"></div>
       </div>
     </div>
   </div>
@@ -989,6 +997,7 @@ body {
     msg: $('message-banner'), actionLog: $('action-log'), actionBar: $('action-bar'),
     btnDrawStock: $('btn-draw-stock'), btnDrawDiscard: $('btn-draw-discard'),
     btnMeld: $('btn-meld'), btnLayoff: $('btn-layoff'), btnSort: $('btn-sort'), btnDiscard: $('btn-discard'),
+    actionHint: $('action-hint'),
     btnLeave: $('btn-leave'),
     buyinModal: $('buyin-modal'), buyinTitle: $('buyin-title'), buyinBlurb: $('buyin-blurb'), buyinCancel: $('buyin-cancel'), buyinConfirm: $('buyin-confirm'),
     dealModal: $('deal-modal'), dealTitle: $('deal-title'), dealStandings: $('deal-standings'), dealContinue: $('deal-continue'),
@@ -1167,10 +1176,13 @@ body {
       for (let i = start; i < d.discard.length; i++) {
         const c = buildCard(d.discard[i]);
         c.dataset.pileIndex = String(i);
-        const isHeroTurn = !d.dealOver && d.turn === State.heroSeat && d.phase === 'draw';
-        if (isHeroTurn) {
+        const isHeroDrawTurn = !d.dealOver && d.turn === State.heroSeat && d.phase === 'draw';
+        if (isHeroDrawTurn) {
           const g = Core.legalDiscardGrab(d.discard, i, d.hands[State.heroSeat], d.tableMelds);
           if (g.legal) { c.classList.add('grabbable'); c.addEventListener('click', () => heroGrabDiscard(i)); }
+          else c.addEventListener('click', () => explainGrabRefusal(i));
+        } else if (!d.dealOver && d.turn === State.heroSeat && d.phase === 'meld') {
+          c.addEventListener('click', () => { Audio.bad(); showMsg("You've already drawn — meld/lay off, then discard", 'bad'); });
         }
         dom.discardFan.appendChild(c);
       }
@@ -1199,6 +1211,8 @@ body {
           if (g.legal) {
             c.classList.add('grabbable');
             c.addEventListener('click', () => { dom.pileModal.classList.remove('show'); heroGrabDiscard(i); });
+          } else {
+            c.addEventListener('click', () => { dom.pileModal.classList.remove('show'); explainGrabRefusal(i); });
           }
         }
         wrap.appendChild(c);
@@ -1249,9 +1263,24 @@ body {
     const d = State.deal;
     dom.handRail.innerHTML = '';
     const hand = sortedHand(d.hands[State.heroSeat]);
+    // Hint set: union of cards that appear in ANY discoverable meld in the
+    // current hand. So if you have 7c 7d 7h, all three glow green; if you
+    // have 5h 6h 7h, those three glow too — telling you "these can meld".
+    const hintSet = new Set();
+    for (const m of Core.findMelds(hand)) for (const c of m) hintSet.add(c);
+    // Also hint cards that can lay off on existing table melds.
+    for (const c of hand) {
+      for (const m of d.tableMelds) {
+        if (Core.canLayOff(c, m.cards)) { hintSet.add(c); break; }
+      }
+    }
+    const selectionValid = State.selected.length >= 3 && Core.meldType(State.selected);
     for (const c of hand) {
       const el = buildCard(c);
-      if (State.selected.indexOf(c) >= 0) el.classList.add('selected');
+      const isSel = State.selected.indexOf(c) >= 0;
+      if (isSel) el.classList.add('selected');
+      if (isSel && selectionValid) el.classList.add('valid-meld');
+      if (!isSel && hintSet.has(c)) el.classList.add('hint');
       el.addEventListener('click', () => toggleSelect(c));
       dom.handRail.appendChild(el);
     }
@@ -1284,6 +1313,61 @@ body {
     dom.btnDiscard.disabled = !playPhase || sel.length !== 1 || !!d.pendingUse;
     dom.btnSort.disabled = false;
     dom.btnDrawStock.classList.toggle('disabled', dom.btnDrawStock.disabled);
+    // Explainer line under the buttons so the player always knows WHY a
+    // button is greyed out — no more "I selected an ace and MELD is locked,
+    // why?" confusion.
+    setActionHint(d, drawPhase, playPhase, sel);
+  }
+  function setActionHint(d, drawPhase, playPhase, sel) {
+    const el = dom.actionHint;
+    el.className = 'action-hint';
+    if (d.dealOver) { el.textContent = ''; return; }
+    if (drawPhase) {
+      el.textContent = 'DRAW FIRST — take a card from stock or discard';
+      return;
+    }
+    if (!playPhase) { el.textContent = ''; return; }
+    if (d.pendingUse) {
+      const pu = d.pendingUse;
+      const c = pu.kind === 'meld' ? pu.cards[0] : pu.card;
+      const txt = Core.rankLabel(Core.RANK(c)) + Core.SUIT_GLYPH[Core.SUIT(c)];
+      el.textContent = 'YOU MUST MELD OR LAY OFF THE ' + txt + ' BEFORE DISCARDING';
+      el.classList.add('bad');
+      return;
+    }
+    if (sel.length === 0) {
+      el.textContent = 'SELECT CARDS — TAP THEM IN YOUR HAND';
+      return;
+    }
+    if (sel.length < 3) {
+      // could be a 1-card lay-off though
+      if (sel.length === 1 && anyLayoff(sel[0])) { el.textContent = 'TAP LAY OFF, THEN A GLOWING TABLE MELD'; el.classList.add('good'); return; }
+      if (sel.length === 1) { el.textContent = 'PICK 2 MORE OF THE SAME RANK, OR 2 MORE SAME-SUIT CONSECUTIVE — OR DISCARD'; return; }
+      el.textContent = 'NEED AT LEAST 3 CARDS FOR A MELD'; return;
+    }
+    const t = Core.meldType(sel);
+    if (t === 'set') { el.textContent = 'VALID SET — TAP MELD'; el.classList.add('good'); return; }
+    if (t === 'run') { el.textContent = 'VALID RUN — TAP MELD'; el.classList.add('good'); return; }
+    // sel.length >= 3 but no valid meld: explain why
+    el.textContent = whyNotMeld(sel);
+    el.classList.add('bad');
+  }
+  function whyNotMeld(sel) {
+    const ranks = sel.map(Core.RANK), suits = sel.map(Core.SUIT);
+    const sameRank = ranks.every(r => r === ranks[0]);
+    const sameSuit = suits.every(s => s === suits[0]);
+    if (sameRank) {
+      if (sel.length > 4) return 'A SET CAN ONLY HAVE 4 CARDS';
+      const set = new Set(sel); if (set.size < sel.length) return 'A SET CANNOT REPEAT THE SAME CARD';
+      return 'NOT A VALID MELD';
+    }
+    if (sameSuit) {
+      const asc = ranks.slice().sort((a,b)=>a-b);
+      let consec = true; for (let i=1;i<asc.length;i++) if (asc[i] !== asc[i-1]+1) { consec = false; break; }
+      if (!consec) return 'RUN MUST BE CONSECUTIVE — TRY ADJACENT CARDS';
+      return 'NOT A VALID MELD';
+    }
+    return 'SET = SAME RANK · RUN = SAME SUIT, CONSECUTIVE';
   }
   function anyLayoff(card) {
     for (const m of State.deal.tableMelds) if (Core.canLayOff(card, m.cards)) return true;
@@ -1291,6 +1375,18 @@ body {
   }
 
   function showMsg(text, cls) { dom.msg.textContent = text; dom.msg.className = 'message-banner' + (cls ? ' ' + cls : ''); }
+  // Tell the player EXACTLY why a buried discard card can't be grabbed.
+  function explainGrabRefusal(index) {
+    const d = State.deal;
+    const card = d.discard[index];
+    const label = Core.rankLabel(Core.RANK(card)) + Core.SUIT_GLYPH[Core.SUIT(card)];
+    if (index === d.discard.length - 1) {
+      // top card is always grabbable; if not, something else went wrong
+      showMsg('Tap TAKE DISCARD to take the ' + label, ''); Audio.bad(); return;
+    }
+    showMsg('Can\'t take the ' + label + ' from there — you\'d need 2 hand cards that form a meld with it, OR a table meld you can lay it off on', 'bad');
+    Audio.bad();
+  }
 
   // ---- pile inspector + action announcement log ----
   dom.btnViewPile.addEventListener('click', () => { Audio.click(); openPileModal(); });
