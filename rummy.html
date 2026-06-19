@@ -132,10 +132,32 @@ body {
 .stock-pile { cursor: pointer; }
 .stock-pile.disabled, .discard-pile.disabled { opacity: 0.5; pointer-events: none; }
 .stock-count { position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); font-family: 'Geist Mono', monospace; font-size: 10px; color: #fff; background: rgba(0,0,0,0.7); padding: 1px 6px; border-radius: 999px; }
+/* Discard pile: spread the visible cards out enough that you can ACTUALLY
+   read each rank/suit instead of just a sliver of corner. The little count
+   badge says how many total are in the pile; tap "VIEW PILE" to expand
+   the whole history in a modal. */
+.discard-pile { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .discard-fan { display: flex; position: relative; height: 92px; }
 .discard-fan .card { cursor: pointer; transition: transform 0.12s; }
-.discard-fan .card:not(:first-child) { margin-left: -42px; }
+.discard-fan .card:not(:first-child) { margin-left: -28px; }
 .discard-fan .card.grabbable:hover { transform: translateY(-10px); box-shadow: 0 10px 18px rgba(0,0,0,0.5), 0 0 0 2px var(--neon-green); }
+.discard-meta { display: flex; align-items: center; gap: 8px; }
+.discard-count { font-family: 'Bungee', cursive; font-size: 9px; letter-spacing: 0.16em; color: rgba(255,255,255,0.55); }
+.view-pile-btn {
+  border: 0; background: rgba(34,211,238,0.16); color: var(--neon-cyan);
+  font-family: 'Bungee', cursive; font-size: 8px; letter-spacing: 0.18em;
+  padding: 4px 8px; border-radius: 999px; cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(34,211,238,0.4);
+}
+.view-pile-btn:hover { filter: brightness(1.2); }
+.view-pile-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Discard-pile inspector modal */
+.pile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 6px; max-height: 60vh; overflow-y: auto; padding: 4px 2px; }
+.pile-grid .card { width: 100%; height: auto; aspect-ratio: 64/92; cursor: default; }
+.pile-grid .card.grabbable { cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 0 2px var(--neon-green); }
+.pile-grid .card.grabbable:hover { transform: translateY(-4px); }
+.pile-position { display: block; text-align: center; font-family: 'Geist Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.45); margin-top: 2px; }
 .discard-empty { width: 64px; height: 92px; border-radius: 7px; border: 2px dashed rgba(255,255,255,0.2); display: grid; place-items: center; color: rgba(255,255,255,0.3); font-size: 10px; font-family: 'Bungee', cursive; }
 
 /* table melds */
@@ -208,6 +230,22 @@ body {
   box-shadow: inset 0 0 0 1.5px rgba(255,210,74,0.3); font-family: 'Bungee', cursive; font-size: 11px; letter-spacing: 0.14em;
   color: #fff; text-align: center; min-height: 36px; align-self: center; display: inline-block; transition: color 0.2s, box-shadow 0.2s, background 0.2s;
 }
+/* Action ticker: announces every bot action ("AtomicHawk drew from stock",
+   "DiamondShark melded 7♣ 7♦ 7♥", "RoyalAce discarded K♠") so the player
+   can actually follow what's happening. */
+.action-log { margin: 6px auto 0; min-height: 24px; align-self: center; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.action-log .a-line {
+  font-family: 'Bungee', cursive; font-size: 10px; letter-spacing: 0.1em;
+  padding: 4px 10px; border-radius: 999px;
+  background: rgba(10,4,24,0.6); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.85); animation: alIn 0.32s cubic-bezier(.2,1.5,.4,1);
+}
+.action-log .a-line .a-name { color: var(--gold-1); }
+.action-log .a-line .a-suit-r { color: var(--card-red); }
+.action-log .a-line .a-suit-b { color: #fff; }
+.action-log .a-line.fade { opacity: 0.6; }
+.action-log .a-line.dim { opacity: 0.4; }
+@keyframes alIn { 0% { opacity: 0; transform: translateY(-6px); } 100% { opacity: 1; transform: translateY(0); } }
 .message-banner.good { color: var(--neon-green); box-shadow: inset 0 0 0 1.5px rgba(92,255,161,0.55); background: rgba(92,255,161,0.08); }
 .message-banner.bad { color: var(--neon-pink); box-shadow: inset 0 0 0 1.5px rgba(255,46,147,0.55); background: rgba(255,46,147,0.08); }
 
@@ -328,6 +366,10 @@ body {
             <div class="pile-label">DISCARD</div>
             <div class="discard-pile" id="discard-pile">
               <div class="discard-fan" id="discard-fan"></div>
+              <div class="discard-meta">
+                <span class="discard-count" id="discard-count"></span>
+                <button class="view-pile-btn" id="btn-view-pile">VIEW PILE</button>
+              </div>
             </div>
           </div>
         </div>
@@ -341,6 +383,7 @@ body {
       </div>
 
       <div class="message-banner" id="message-banner">Waiting...</div>
+      <div class="action-log" id="action-log"></div>
 
       <div class="action-bar" id="action-bar">
         <div class="action-row" id="draw-actions">
@@ -388,6 +431,18 @@ body {
     <div class="standings-list" id="tourney-standings"></div>
     <div class="modal-actions" style="grid-template-columns: 1fr;">
       <button class="m-btn confirm" id="tourney-done">BACK TO LOBBY</button>
+    </div>
+  </div>
+</div>
+
+<!-- DISCARD PILE INSPECTOR -->
+<div class="modal-veil" id="pile-modal">
+  <div class="modal-card">
+    <h2>DISCARD PILE</h2>
+    <p id="pile-blurb">Tap a card with a green outline to scoop it (plus everything above it).</p>
+    <div class="pile-grid" id="pile-grid"></div>
+    <div class="modal-actions" style="grid-template-columns: 1fr;">
+      <button class="m-btn" id="pile-close">CLOSE</button>
     </div>
   </div>
 </div>
@@ -928,8 +983,10 @@ body {
     opponents: $('opponents'),
     stockPile: $('stock-pile'), stockCount: $('stock-count'),
     discardPile: $('discard-pile'), discardFan: $('discard-fan'),
+    discardCount: $('discard-count'), btnViewPile: $('btn-view-pile'),
+    pileModal: $('pile-modal'), pileGrid: $('pile-grid'), pileClose: $('pile-close'),
     meldsArea: $('melds-area'), handRail: $('hand-rail'),
-    msg: $('message-banner'), actionBar: $('action-bar'),
+    msg: $('message-banner'), actionLog: $('action-log'), actionBar: $('action-bar'),
     btnDrawStock: $('btn-draw-stock'), btnDrawDiscard: $('btn-draw-discard'),
     btnMeld: $('btn-meld'), btnLayoff: $('btn-layoff'), btnSort: $('btn-sort'), btnDiscard: $('btn-discard'),
     btnLeave: $('btn-leave'),
@@ -1054,6 +1111,7 @@ body {
   async function startDeal() {
     State.busy = true;
     State.selected = []; State.layoffMode = false;
+    clearLog();
     const seed = (Math.random() * 1e9) | 0;
     State.deal = Core.deal(State.tourney.players.length, seed);
     // dealer button sets who acts first: player after the button
@@ -1098,27 +1156,60 @@ body {
   function renderPiles() {
     const d = State.deal;
     dom.stockCount.textContent = String(d.stock.length);
-    // discard fan: show up to last 6 cards
+    // discard fan: show the last 4 cards with enough spread to actually
+    // read the rank/suit. The full pile is one tap away via VIEW PILE.
     dom.discardFan.innerHTML = '';
     if (d.discard.length === 0) {
       const e = document.createElement('div'); e.className = 'discard-empty'; e.textContent = 'EMPTY';
       dom.discardFan.appendChild(e);
     } else {
-      const start = Math.max(0, d.discard.length - 6);
+      const start = Math.max(0, d.discard.length - 4);
       for (let i = start; i < d.discard.length; i++) {
         const c = buildCard(d.discard[i]);
         c.dataset.pileIndex = String(i);
         const isHeroTurn = !d.dealOver && d.turn === State.heroSeat && d.phase === 'draw';
         if (isHeroTurn) {
-          // grabbable if legal from this index
           const g = Core.legalDiscardGrab(d.discard, i, d.hands[State.heroSeat], d.tableMelds);
           if (g.legal) { c.classList.add('grabbable'); c.addEventListener('click', () => heroGrabDiscard(i)); }
         }
         dom.discardFan.appendChild(c);
       }
     }
+    dom.discardCount.textContent = d.discard.length + ' CARD' + (d.discard.length === 1 ? '' : 'S');
+    dom.btnViewPile.disabled = d.discard.length === 0;
     const heroDrawPhase = !d.dealOver && d.turn === State.heroSeat && d.phase === 'draw';
-    dom.stockPile.classList.toggle('disabled', !heroDrawPhase || d.stock.length === 0);
+    dom.stockPile.classList.toggle('disabled', !heroDrawPhase || (d.stock.length === 0 && d.discard.length <= 1));
+  }
+
+  // Build the discard-pile inspector grid (full history, oldest at top-left).
+  function openPileModal() {
+    const d = State.deal; if (!d) return;
+    dom.pileGrid.innerHTML = '';
+    const isHeroDrawTurn = !d.dealOver && d.turn === State.heroSeat && d.phase === 'draw';
+    if (d.discard.length === 0) {
+      dom.pileGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:rgba(255,255,255,0.5);padding:20px;">Empty.</div>';
+    } else {
+      // Oldest at the bottom of the pile (index 0). Show top first so it
+      // reads "newest at top, oldest at bottom" — closest to mental model.
+      for (let i = d.discard.length - 1; i >= 0; i--) {
+        const wrap = document.createElement('div');
+        const c = buildCard(d.discard[i]);
+        if (isHeroDrawTurn) {
+          const g = Core.legalDiscardGrab(d.discard, i, d.hands[State.heroSeat], d.tableMelds);
+          if (g.legal) {
+            c.classList.add('grabbable');
+            c.addEventListener('click', () => { dom.pileModal.classList.remove('show'); heroGrabDiscard(i); });
+          }
+        }
+        wrap.appendChild(c);
+        const pos = document.createElement('div');
+        pos.className = 'pile-position';
+        pos.textContent = (i === d.discard.length - 1) ? 'TOP' : ('+' + (d.discard.length - 1 - i));
+        wrap.appendChild(pos);
+        dom.pileGrid.appendChild(wrap);
+      }
+    }
+    dom.pileModal.classList.add('show');
   }
 
   function renderMelds() {
@@ -1201,6 +1292,56 @@ body {
 
   function showMsg(text, cls) { dom.msg.textContent = text; dom.msg.className = 'message-banner' + (cls ? ' ' + cls : ''); }
 
+  // ---- pile inspector + action announcement log ----
+  dom.btnViewPile.addEventListener('click', () => { Audio.click(); openPileModal(); });
+  dom.pileClose.addEventListener('click', () => { Audio.click(); dom.pileModal.classList.remove('show'); });
+
+  function nameFor(idx) {
+    if (idx === State.heroSeat) return 'You';
+    const pl = State.tourney && State.tourney.players[idx];
+    return pl ? pl.name : '?';
+  }
+  function cardHTML(card) {
+    const r = Core.RANK(card), s = Core.SUIT(card);
+    const cls = Core.RED_SUITS.has(s) ? 'a-suit-r' : 'a-suit-b';
+    return `<span class="${cls}">${Core.rankLabel(r)}${Core.SUIT_GLYPH[s]}</span>`;
+  }
+  function cardsHTML(cards) { return cards.map(cardHTML).join(' '); }
+  // Push a new action line into the log. Keep only the 3 most recent so the
+  // banner stays readable; older lines fade out.
+  function announce(html) {
+    const div = document.createElement('div'); div.className = 'a-line'; div.innerHTML = html;
+    dom.actionLog.insertBefore(div, dom.actionLog.firstChild);
+    while (dom.actionLog.children.length > 3) dom.actionLog.removeChild(dom.actionLog.lastChild);
+    // dim older lines
+    const lines = dom.actionLog.children;
+    if (lines[1]) lines[1].classList.add('fade');
+    if (lines[2]) lines[2].classList.add('dim');
+  }
+  function clearLog() { dom.actionLog.innerHTML = ''; }
+  function announceDraw(idx, source, count) {
+    const n = `<span class="a-name">${nameFor(idx)}</span>`;
+    if (source === 'stock') announce(`${n} drew from stock`);
+    else if (count > 1) announce(`${n} took ${count} cards from discard`);
+    else announce(`${n} took the discard`);
+  }
+  function announceMeld(idx, cards) {
+    const n = `<span class="a-name">${nameFor(idx)}</span>`;
+    announce(`${n} melded ${cardsHTML(cards)}`);
+  }
+  function announceLayoff(idx, card) {
+    const n = `<span class="a-name">${nameFor(idx)}</span>`;
+    announce(`${n} laid off ${cardHTML(card)}`);
+  }
+  function announceDiscard(idx, card) {
+    const n = `<span class="a-name">${nameFor(idx)}</span>`;
+    announce(`${n} discarded ${cardHTML(card)}`);
+  }
+  function announceOut(idx) {
+    const n = `<span class="a-name">${nameFor(idx)}</span>`;
+    announce(`${n} went out!`);
+  }
+
   // ---- hero turn ----
   let heroResolve = null;
   function heroTurn() {
@@ -1216,6 +1357,7 @@ body {
   dom.btnDrawStock.addEventListener('click', () => {
     const d = State.deal; if (d.dealOver || d.turn !== State.heroSeat || d.phase !== 'draw') return;
     Core.applyDrawStock(d, State.heroSeat); Audio.draw();
+    announceDraw(State.heroSeat, 'stock', 1);
     showMsg('Meld, lay off, then discard', ''); State.selected = [];
     renderAll();
   });
@@ -1228,10 +1370,10 @@ body {
     const g = Core.applyDrawDiscard(d, State.heroSeat, index);
     if (!g) { Audio.bad(); showMsg("Can't take from there — that card must be playable", 'bad'); return; }
     Audio.grab();
+    announceDraw(State.heroSeat, 'discard', g.grabbed.length);
     if (d.pendingUse) {
-      const chosen = d.discard.length ? null : null;
-      const cc = g.satisfier.kind === 'meld' ? g.satisfier.cards.find(x => x === d.hands[State.heroSeat].find(y=>y===x)) : g.satisfier.card;
-      showMsg('You took ' + g.grabbed.length + ' cards — now meld/lay off the ' + Core.rankLabel(Core.RANK(g.satisfier.kind==='meld'?firstChosen(g):g.satisfier.card)), 'good');
+      const card = g.satisfier.kind === 'meld' ? g.satisfier.cards[0] : g.satisfier.card;
+      showMsg('You took ' + g.grabbed.length + ' cards — now meld/lay off the ' + Core.rankLabel(Core.RANK(card)) + Core.SUIT_GLYPH[Core.SUIT(card)], 'good');
     } else {
       showMsg('Meld, lay off, then discard', '');
     }
@@ -1244,8 +1386,9 @@ body {
     const d = State.deal; const sel = State.selected.slice();
     if (!Core.meldType(sel)) { Audio.bad(); showMsg('Selected cards are not a valid set or run', 'bad'); return; }
     Core.applyMeld(d, State.heroSeat, sel); Audio.meld();
+    announceMeld(State.heroSeat, sel);
     State.selected = []; State.layoffMode = false;
-    if (Core.checkGoingOut(d, State.heroSeat)) { renderAll(); return finishHeroTurn(); }
+    if (Core.checkGoingOut(d, State.heroSeat)) { announceOut(State.heroSeat); renderAll(); return finishHeroTurn(); }
     showMsg(d.pendingUse ? 'Still need to play your grabbed card' : 'Meld more, lay off, or discard', d.pendingUse ? 'bad' : '');
     renderAll();
   });
@@ -1260,8 +1403,9 @@ body {
     const d = State.deal; const card = State.selected[0];
     if (!Core.applyLayoff(d, State.heroSeat, card, meldId)) { Audio.bad(); return; }
     Audio.layoff();
+    announceLayoff(State.heroSeat, card);
     State.selected = []; State.layoffMode = false;
-    if (Core.checkGoingOut(d, State.heroSeat)) { renderAll(); return finishHeroTurn(); }
+    if (Core.checkGoingOut(d, State.heroSeat)) { announceOut(State.heroSeat); renderAll(); return finishHeroTurn(); }
     showMsg(d.pendingUse ? 'Still need to play your grabbed card' : 'Lay off more, or discard', d.pendingUse ? 'bad' : '');
     renderAll();
   }
@@ -1274,6 +1418,7 @@ body {
     const ok = Core.applyDiscard(d, State.heroSeat, card);
     if (!ok) { Audio.bad(); return; }
     Audio.discard();
+    announceDiscard(State.heroSeat, card);
     State.selected = [];
     renderAll();
     finishHeroTurn();
@@ -1282,49 +1427,86 @@ body {
   dom.btnSort.addEventListener('click', () => { State.sortMode = State.sortMode ? 0 : 1; Audio.click(); renderHand(); });
 
   // ---- bot turn ----
+  // Paced so a human can actually follow what just happened: each visible
+  // step (draw, each meld, each lay-off, discard) gets its own announcement
+  // and a beat of delay. The thinking pause varies a touch so it doesn't
+  // feel mechanical.
   async function botTurn(p) {
     const d = State.deal;
     markActing();
-    await delay(500 + Math.random() * 400);
-    if (d.dealOver) return;
-    // draw
+    showMsg(nameFor(p) + ' is thinking...', '');
+    await delay(800 + Math.random() * 600);
+    if (d.dealOver || !State.deal) return;
+
+    // ---- DRAW ----
     const plan = Core.bestPlay(d, p);
+    let didStock = false, grabCount = 0;
     if (plan.draw.source === 'discard') {
       const g = Core.applyDrawDiscard(d, p, plan.draw.index);
-      if (!g) { Core.applyDrawStock(d, p); Audio.draw(); }
-      else { Audio.grab(); if (d.pendingUse) satisfyPending(p); }
-    } else { Core.applyDrawStock(d, p); Audio.draw(); }
+      if (!g) { Core.applyDrawStock(d, p); Audio.draw(); didStock = true; }
+      else { Audio.grab(); grabCount = g.grabbed.length; if (d.pendingUse) satisfyPendingSilent(p); }
+    } else { Core.applyDrawStock(d, p); Audio.draw(); didStock = true; }
+    announceDraw(p, didStock ? 'stock' : 'discard', grabCount);
     renderAll();
-    await delay(360);
-    // meld everything possible
+    await delay(700);
+
+    // ---- MELDS (one at a time, with announcement + beat) ----
     let melds = Core.chooseMelds(d.hands[p]);
-    for (const m of melds) { if (Core.applyMeld(d, p, m)) { Audio.meld(); renderAll(); await delay(300); } }
-    // layoffs
+    for (const m of melds) {
+      if (d.dealOver || !State.deal) return;
+      if (Core.applyMeld(d, p, m)) {
+        Audio.meld();
+        announceMeld(p, m);
+        renderAll();
+        await delay(720);
+      }
+    }
+
+    // ---- LAYOFFS (one at a time) ----
     let changed = true;
     while (changed) {
       changed = false;
       for (const meld of d.tableMelds) {
         for (const c of d.hands[p].slice()) {
-          if (Core.canLayOff(c, meld.cards)) { Core.applyLayoff(d, p, c, meld.id); Audio.layoff(); changed = true; renderAll(); await delay(220); }
+          if (d.dealOver || !State.deal) return;
+          if (Core.canLayOff(c, meld.cards)) {
+            Core.applyLayoff(d, p, c, meld.id);
+            Audio.layoff();
+            announceLayoff(p, c);
+            changed = true;
+            renderAll();
+            await delay(560);
+          }
         }
       }
     }
-    // going out?
-    if (Core.checkGoingOut(d, p)) { renderAll(); return; }
-    // must clear obligation before discard
-    if (d.pendingUse) satisfyPending(p);
-    // discard
+
+    // ---- GOING OUT? ----
+    if (d.hands[p].length === 0) {
+      announceOut(p);
+      Core.checkGoingOut(d, p);
+      renderAll();
+      return;
+    }
+
+    // ---- DISCARD ----
+    if (d.pendingUse) satisfyPendingSilent(p);
+    await delay(420);
+    if (d.dealOver || !State.deal) return;
     const opp = d.tableMelds.filter(m => m.owner !== p);
     const disc = Core.chooseDiscard(d.hands[p], opp);
-    Core.applyDiscard(d, p, disc); Audio.discard();
+    if (disc != null && Core.applyDiscard(d, p, disc)) {
+      Audio.discard();
+      announceDiscard(p, disc);
+    }
     renderAll();
-    await delay(260);
+    await delay(540);
   }
-  function satisfyPending(p) {
+  function satisfyPendingSilent(p) {
     const d = State.deal; const pu = d.pendingUse; if (!pu) return;
     if (pu.kind === 'meld') Core.applyMeld(d, p, pu.cards);
     else if (pu.kind === 'layoff') Core.applyLayoff(d, p, pu.card, pu.meldId);
-    if (d.pendingUse) d.pendingUse = null; // safety
+    if (d.pendingUse) d.pendingUse = null;
   }
   function markActing() { renderOpponents(); }
 
