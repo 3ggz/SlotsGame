@@ -116,6 +116,7 @@
     standardcraps:      { name: 'Standard Craps',       betPct: [0.01,  0.05], rounds: [5, 10],   hitRate: 0.46, payout: [1, 9],     bigMult: 3,  fav: 0.7, tempo: 0,    replyRate: 0,    idle: 1, perPlayer: 2, max: 5, sessionMin: 10, sessionMax: 40 },
     poker:              { name: "Texas Hold'em",        betPct: [0.008, 0.05], rounds: [10, 22],  hitRate: 0.40, payout: [1.2, 12],  bigMult: 4,  fav: 1.2, tempo: 0,    replyRate: 0,    idle: 2, perPlayer: 3, max: 6, sessionMin: 12, sessionMax: 45 },
     rummy:              { name: 'Rummy 500',            betPct: [0.01,  0.06], rounds: [12, 28],  hitRate: 0.36, payout: [1.5, 4],   bigMult: 3,  fav: 1.0, tempo: 0,    replyRate: 0,    idle: 2, perPlayer: 3, max: 4, sessionMin: 10, sessionMax: 40 },
+    bingo:              { name: 'Bingo',                betPct: [0.01,  0.05], rounds: [25, 60],  hitRate: 0.40, payout: [1, 27],    bigMult: 6,  fav: 1.2, tempo: 0,    replyRate: 0,    idle: 3, perPlayer: 6, max: 30, sessionMin: 8,  sessionMax: 30 },
   };
   const GAME_KEYS = Object.keys(GAME_CONFIG);
   const CHAT_GAMES = new Set(['roulette', 'rocket']);
